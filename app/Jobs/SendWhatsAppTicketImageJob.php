@@ -11,6 +11,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use App\Support\LogContext;
 
 /**
  * Per-ticket WhatsApp image-send job. One job == one ticket, so a 50-ticket
@@ -99,38 +101,93 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             $ticket->refresh();
         }
 
-        $response = $delivery->sendImage($ticket);
+        $jobRunId = (string) Str::uuid();
+        $response = null;
 
-        if ($response->successful() && ! $response->json('error')) {
-            $ticket->update([
-                'whatsapp_sent' => true,
-                'delivery_status' => 'sent',
-            ]);
+        try {
+            $response = $delivery->sendImage($ticket);
 
-            return;
+            if ($response->successful() && ! $response->json('error')) {
+                $ticket->update([
+                    'whatsapp_sent' => true,
+                    'delivery_status' => 'sent',
+                ]);
+
+                Log::info(
+                    'WHATSAPP_TICKET_SENT',
+                    LogContext::base(
+                        'WHATSAPP_TICKET_SENT',
+                        'whatsapp.send_ticket_image',
+                        [
+                            'job_run_id' => $jobRunId,
+                            'ticket_id' => $ticket->id,
+                            'booking_id' => $ticket->booking_id,
+                            'phone_masked' => LogContext::maskPhone($ticket->phone),
+                            'http_status' => $response->status(),
+                            'external_service' => 'meta_whatsapp',
+                        ]
+                    )
+                );
+
+                return;
+            }
+
+            Log::error(
+                'WHATSAPP_SEND_FAILED',
+                LogContext::whatsappFailure(
+                    'whatsapp.send_ticket_image',
+                    $ticket->phone,
+                    $response,
+                    null,
+                    [
+                        'job_run_id' => $jobRunId,
+                        'ticket_id' => $ticket->id,
+                    ]
+                )
+            );
+
+            // Permanent Meta errors: recipient not on WA (131026), outside the
+            // 24h window (131047), media download error (131053). Don't burn the
+            // retry budget — fail now, leaving whatsapp_sent=false for a resend.
+            $errorCode = $response->json('error.code');
+            $permanent = in_array($errorCode, [131026, 131047, 131053], true);
+
+            $ticket->update(['delivery_status' => 'failed']);
+
+            if ($permanent) {
+                $this->fail(new \RuntimeException(
+                    'Permanent Meta error '.$errorCode.' — '.$response->body()
+                ));
+
+                return;
+            }
+
+            // Retryable — throw so the worker schedules the next attempt. The
+            // row is back at 'failed', so the retry (or a fresh tap) re-claims it.
+            throw new \RuntimeException(
+                'WhatsApp image send failed (status '.$response->status().'): '.$response->body()
+            );
+        } catch (\Throwable $e) {
+            if ($response === null) {
+                $ticket->update(['delivery_status' => 'failed']);
+
+                Log::error(
+                    'WHATSAPP_SEND_FAILED',
+                    LogContext::whatsappFailure(
+                        'whatsapp.send_ticket_image',
+                        $ticket->phone,
+                        null,
+                        $e,
+                        [
+                            'job_run_id' => $jobRunId,
+                            'ticket_id' => $ticket->id,
+                        ]
+                    )
+                );
+            }
+
+            throw $e;
         }
-
-        // Permanent Meta errors: recipient not on WA (131026), outside the
-        // 24h window (131047), media download error (131053). Don't burn the
-        // retry budget — fail now, leaving whatsapp_sent=false for a resend.
-        $errorCode = $response->json('error.code');
-        $permanent = in_array($errorCode, [131026, 131047, 131053], true);
-
-        $ticket->update(['delivery_status' => 'failed']);
-
-        if ($permanent) {
-            $this->fail(new \RuntimeException(
-                'Permanent Meta error '.$errorCode.' — '.$response->body()
-            ));
-
-            return;
-        }
-
-        // Retryable — throw so the worker schedules the next attempt. The
-        // row is back at 'failed', so the retry (or a fresh tap) re-claims it.
-        throw new \RuntimeException(
-            'WhatsApp image send failed (status '.$response->status().'): '.$response->body()
-        );
     }
 
     public function failed(\Throwable $e): void
@@ -142,9 +199,15 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             ->where('whatsapp_sent', false)
             ->update(['delivery_status' => 'failed']);
 
-        Log::error('SendWhatsAppTicketImageJob: failed', [
-            'ticket_id' => $this->ticketId,
-            'error' => $e->getMessage(),
-        ]);
+        Log::error(
+            'WHATSAPP_SEND_FAILED',
+            LogContext::whatsappFailure(
+                'whatsapp.send_ticket_image.exhausted',
+                null,
+                null,
+                $e,
+                ['ticket_id' => $this->ticketId]
+            )
+        );
     }
 }

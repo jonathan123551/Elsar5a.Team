@@ -7,12 +7,16 @@ use App\Jobs\GenerateTicketImageJob;
 use App\Jobs\SendWhatsAppTicketImageJob;
 use App\Jobs\SendWhatsAppTicketTemplateJob;
 use App\Models\Booking;
+use App\Models\ShowTime;
 use App\Models\Ticket;
-use Illuminate\Http\Request;
+use App\Support\CloudinaryUrl;
+use App\Support\LogContext;
 use Cloudinary\Configuration\Configuration;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Support\CloudinaryUrl;
+use Illuminate\Support\Facades\Schema;
 
 class BookingController extends Controller
 {
@@ -64,6 +68,16 @@ class BookingController extends Controller
         'status'      => 'approved',
         'approved_at' => now(),
     ]);
+
+    Log::info('BOOKING_APPROVED', LogContext::base(
+        'BOOKING_APPROVED',
+        'admin.booking.approve',
+        [
+            'booking_id' => $booking->id,
+            'tickets_count' => (int) $booking->tickets->count(),
+            'show_time_id' => $booking->show_time_id,
+        ]
+    ));
 
     // Build each ticket's QR image ahead of time (idempotent on
     // qr_image_path) so it's ready in Cloudinary by the time the customer
@@ -160,18 +174,23 @@ public function sendTicketTemplate($phone)
             ]
         );
 
-        if (!$response->successful()) {
-            // WhatsApp errors used to fail silently — a ticket would
-            // be marked as sent even when the Cloud API rejected
-            // the image (too large, bad format, expired token,
-            // etc.). Log the structured error so we can diagnose
-            // future failures from Railway logs.
-            Log::error('whatsapp: send failed', [
-                'phone'   => $phone,
-                'image'   => $imageUrl,
-                'status'  => $response->status(),
-                'body'    => $response->json() ?? $response->body(),
-            ]);
+        if ($response->successful()) {
+            Log::info('WHATSAPP_TICKET_SENT', LogContext::base(
+                'WHATSAPP_TICKET_SENT',
+                'admin.booking.send_ticket',
+                [
+                    'phone_masked' => LogContext::maskPhone($phone),
+                    'http_status' => $response->status(),
+                    'external_service' => 'meta_whatsapp',
+                ]
+            ));
+        } else {
+            Log::error('WHATSAPP_SEND_FAILED', LogContext::whatsappFailure(
+                'admin.booking.send_ticket',
+                $phone,
+                $response,
+                null
+            ));
         }
 
         return $response;
@@ -187,7 +206,9 @@ public function receiveTicket(Request $request)
     // تنظيف الرقم
     $phone = preg_replace('/[^0-9]/', '', $phone);
 
-    \Log::info('USER CLICKED', ['phone' => $phone]);
+    Log::info('USER CLICKED', [
+        'phone_masked' => LogContext::maskPhone($phone),
+    ]);
 
     // هات كل التذاكر اللي لسه متبعتتش لنفس الرقم
     $tickets = Ticket::where('phone', $phone)
@@ -232,22 +253,82 @@ public function receiveTicket(Request $request)
      ======================= */
     public function reject(Booking $booking)
     {
-        if ($booking->status === 'rejected') {
-            return back()->with('status', 'الحجز مرفوض بالفعل');
+        $alreadyRejected = false;
+
+        DB::transaction(function () use ($booking, &$alreadyRejected) {
+            $booking = Booking::whereKey($booking->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($booking->status === 'rejected') {
+                $alreadyRejected = true;
+                return;
+            }
+
+            $previousStatus = $booking->status;
+
+            $ticketQuantity =
+                $booking->tickets_count
+                ?? $booking->quantity
+                ?? $booking->tickets()->count();
+
+            $showTime = ShowTime::whereKey($booking->show_time_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($previousStatus !== 'rejected') {
+                $available = (int) $showTime->available_tickets;
+                $total = $showTime->total_tickets !== null
+                    ? (int) $showTime->total_tickets
+                    : null;
+
+                $restored = $available + (int) $ticketQuantity;
+
+                if ($total !== null) {
+                    $restored = min($restored, $total);
+                }
+
+                $showTime->available_tickets = $restored;
+
+                if ($restored > 0) {
+                    $showTime->is_sold_out = false;
+                }
+
+                $showTime->save();
+            }
+
+            $booking->status = 'rejected';
+
+            if (Schema::hasColumn('bookings', 'rejected_at') || isset($booking->rejected_at)) {
+                $booking->rejected_at = now();
+            }
+
+            $booking->save();
+
+            Log::info('BOOKING_REJECTED', LogContext::base(
+                'BOOKING_REJECTED',
+                'admin.booking.reject',
+                [
+                    'booking_id' => $booking->id,
+                    'previous_status' => $previousStatus,
+                    'tickets_count' => (int) $ticketQuantity,
+                    'show_time_id' => $showTime->id,
+                ]
+            ));
+        });
+
+        if ($alreadyRejected) {
+            Log::warning('NON_FATAL_RECOVERY', LogContext::base(
+                'NON_FATAL_RECOVERY',
+                'admin.booking.reject.already_rejected',
+                [
+                    'booking_id' => $booking->id,
+                    'reason' => 'booking_already_rejected',
+                ]
+            ));
         }
 
-        if ($booking->status === 'approved') {
-            return back()->with('status', 'لا يمكن رفض حجز تم اعتماده');
-        }
-
-        $booking->update([
-            'status' => 'rejected',
-            'rejected_at' => now(),
-        ]);
-
-        return redirect()
-            ->route('admin.bookings.index')
-            ->with('status', 'تم رفض الحجز بنجاح ❌');
+        return redirect()->back();
     }
     /* =======================
  | RESEND TICKET
@@ -270,18 +351,58 @@ public function resendTicket($id)
 }
     public function delete($id)
 {
-    $booking = Booking::with('tickets')->findOrFail($id);
+    DB::transaction(function () use ($id) {
+        $booking = Booking::whereKey($id)
+            ->lockForUpdate()
+            ->firstOrFail();
 
-    // حذف التذاكر
-    foreach ($booking->tickets as $ticket) {
-        $ticket->delete();
-    }
+        $previousStatus = $booking->status;
 
-    // حذف الحجز
-    $booking->delete();
+        $ticketQuantity =
+            $booking->tickets_count
+            ?? $booking->quantity
+            ?? $booking->tickets()->count();
 
-    return redirect()->route('admin.bookings.index')
-        ->with('status', 'تم حذف الحجز بالكامل');
+        if ($previousStatus !== 'rejected') {
+            $showTime = ShowTime::whereKey($booking->show_time_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $available = (int) $showTime->available_tickets;
+            $total = $showTime->total_tickets !== null
+                ? (int) $showTime->total_tickets
+                : null;
+
+            $restored = $available + (int) $ticketQuantity;
+
+            if ($total !== null) {
+                $restored = min($restored, $total);
+            }
+
+            $showTime->available_tickets = $restored;
+
+            if ($restored > 0) {
+                $showTime->is_sold_out = false;
+            }
+
+            $showTime->save();
+        }
+
+        $booking->tickets()->delete();
+        $booking->delete();
+
+        Log::info('BOOKING_DELETED', LogContext::base(
+            'BOOKING_DELETED',
+            'admin.booking.delete',
+            [
+                'booking_id' => $id,
+                'previous_status' => $previousStatus,
+                'tickets_count' => (int) $ticketQuantity,
+            ]
+        ));
+    });
+
+    return redirect()->back();
 }
 
     /**

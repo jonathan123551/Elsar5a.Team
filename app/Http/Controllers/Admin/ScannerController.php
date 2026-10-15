@@ -7,7 +7,9 @@ use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use App\Support\LogContext;
 use Carbon\Carbon;
 
 class ScannerController extends Controller
@@ -98,6 +100,16 @@ class ScannerController extends Controller
             ];
 
             if ($ticket->scanned_at) {
+                Log::warning('TICKET_ALREADY_SCANNED', LogContext::base(
+                    'TICKET_ALREADY_SCANNED',
+                    'admin.scanner.check',
+                    [
+                        'ticket_code' => $code,
+                        'ticket_id' => $ticket->id,
+                        'scanned_at' => (string) $ticket->scanned_at,
+                    ]
+                ));
+
                 return array_merge([
                     'status'  => 'used',
                     'message' => 'تم استخدامها',
@@ -115,6 +127,17 @@ class ScannerController extends Controller
             }
 
             $ticket->save();
+
+            Log::info('SCANNER_TICKET_VALIDATED', LogContext::base(
+                'SCANNER_TICKET_VALIDATED',
+                'admin.scanner.check',
+                [
+                    'ticket_code' => $code,
+                    'ticket_id' => $ticket->id,
+                    'booking_id' => $booking->id,
+                    'show_time_id' => $time ? (int) $time->id : null,
+                ]
+            ));
 
             $payload['scanned_at'] = now()->format('g:i A');
 

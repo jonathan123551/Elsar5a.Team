@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Cloudinary\Configuration\Configuration;
 use Cloudinary\Api\Upload\UploadApi;
 use App\Support\UploadCompressor;
+use App\Support\LogContext;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class BookingController extends Controller
 {
@@ -89,6 +92,14 @@ class BookingController extends Controller
         if ($idempotencyToken !== '' && strlen($idempotencyToken) <= 64) {
             $idempotencyCacheKey = 'booking_idem_' . sha1($idempotencyToken . '|' . $showTime->id);
             if (!Cache::add($idempotencyCacheKey, true, now()->addMinutes(10))) {
+                Log::warning('DUPLICATE_REQUEST_BLOCKED', LogContext::base(
+                    'DUPLICATE_REQUEST_BLOCKED',
+                    'booking.store.idempotency',
+                    [
+                        'reason' => 'idempotency_token_collision',
+                        'show_time_id' => $showTime->id,
+                    ]
+                ));
                 return back()->withErrors([
                     'general' => '⏳ هذا الطلب تمت معالجته بالفعل — يرجى الانتظار قليلًا.',
                 ])->withInput();
@@ -106,6 +117,14 @@ class BookingController extends Controller
             if ($idempotencyCacheKey) {
                 Cache::forget($idempotencyCacheKey);
             }
+            Log::warning('DUPLICATE_REQUEST_BLOCKED', LogContext::base(
+                'DUPLICATE_REQUEST_BLOCKED',
+                'booking.store.rate_lock',
+                [
+                    'reason' => 'concurrent_submission_lock',
+                    'show_time_id' => $showTime->id,
+                ]
+            ));
             return back()->withErrors([
                 'general' => '⏳ الطلب قيد المعالجة بالفعل',
             ])->withInput();
@@ -175,19 +194,32 @@ class BookingController extends Controller
             // edge. That alone shaves ~80-95% off the time the user
             // spends staring at the spinner, and keeps the request
             // well under the worker's memory cap.
-            $compressedPath = UploadCompressor::compress(
-                $request->file('payment_screenshot'),
-                maxEdge: 2000,
-                quality: 82,
-            );
+            try {
+                $compressedPath = UploadCompressor::compress(
+                    $request->file('payment_screenshot'),
+                    maxEdge: 2000,
+                    quality: 82,
+                );
 
-            $upload = (new UploadApi())->upload(
-                $compressedPath,
-                ['folder' => 'payments/screenshots']
-            );
+                $upload = (new UploadApi())->upload(
+                    $compressedPath,
+                    ['folder' => 'payments/screenshots']
+                );
 
-            if ($compressedPath !== $request->file('payment_screenshot')->getRealPath()) {
-                @unlink($compressedPath);
+                if ($compressedPath !== $request->file('payment_screenshot')->getRealPath()) {
+                    @unlink($compressedPath);
+                }
+            } catch (\Throwable $e) {
+                Log::error('CLOUDINARY_UPLOAD_FAILED', LogContext::base(
+                    'CLOUDINARY_UPLOAD_FAILED',
+                    'booking.store.upload_screenshot',
+                    [
+                        'show_time_id' => $showTime->id,
+                        'exception_class' => get_class($e),
+                        'exception_message' => $e->getMessage(),
+                    ]
+                ));
+                throw $e;
             }
 
             $result = DB::transaction(function () use (
@@ -231,10 +263,13 @@ class BookingController extends Controller
                     'tickets_count'                 => $ticketsCount,
                     'total_price'                   => $locked->ticket_price * $ticketsCount,
                     'transfer_screenshot_path'      => $upload['secure_url'],
-                    'transfer_screenshot_public_id' => $upload['public_id'],
                     'status'                        => 'pending',
                     'reference_code'                => 'SRC-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6)),
                 ];
+
+                if (Schema::hasColumn('bookings', 'transfer_screenshot_public_id')) {
+                    $bookingData['transfer_screenshot_public_id'] = $upload['public_id'];
+                }
 
                 if (Booking::supportsPublicNumbers()) {
                     // Allocate the public-facing booking number only
@@ -256,6 +291,13 @@ class BookingController extends Controller
                     ]);
                 }
 
+                // Decrement inventory on booking creation
+                $locked->available_tickets = max(0, (int) $locked->available_tickets - $ticketsCount);
+                if ($locked->available_tickets <= 0 || ($locked->total_tickets !== null && ($locked->total_tickets - ($reserved + $ticketsCount) <= 0))) {
+                    $locked->is_sold_out = true;
+                }
+                $locked->save();
+
                 return ['booking' => $b];
             });
 
@@ -266,6 +308,18 @@ class BookingController extends Controller
             }
 
             $bookingSucceeded = true;
+
+            Log::info('BOOKING_CREATED', LogContext::base(
+                'BOOKING_CREATED',
+                'booking.store',
+                [
+                    'booking_id' => $result['booking']->id,
+                    'reference_code' => $result['booking']->reference_code,
+                    'tickets_count' => $ticketsCount,
+                    'show_time_id' => $showTime->id,
+                    'phone_masked' => LogContext::maskPhone($normalizedPhones[0] ?? null),
+                ]
+            ));
 
             // PRG (Post-Redirect-Get): redirect to a dedicated GET
             // route so the thank-you page has its own URL, a refresh

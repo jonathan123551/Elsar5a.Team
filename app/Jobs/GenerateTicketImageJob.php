@@ -10,6 +10,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use App\Support\LogContext;
 
 /**
  * Per-ticket image-build job: QR + composite onto the show template +
@@ -44,29 +46,80 @@ class GenerateTicketImageJob implements ShouldQueue
 
     public function handle(TicketRenderer $renderer): void
     {
+        $jobRunId = (string) Str::uuid();
+
         $ticket = Ticket::with(['booking.showTime.show'])->find($this->ticketId);
 
         if (! $ticket) {
-            Log::warning('GenerateTicketImageJob: ticket not found', ['ticket_id' => $this->ticketId]);
+            Log::warning('NON_FATAL_RECOVERY', LogContext::base(
+                'NON_FATAL_RECOVERY',
+                'jobs.generate_ticket_image.not_found',
+                [
+                    'job_run_id' => $jobRunId,
+                    'ticket_id' => $this->ticketId,
+                    'reason' => 'ticket_not_found',
+                ]
+            ));
 
             return;
         }
 
-        $url = $renderer->renderAndUpload($ticket);
+        try {
+            $url = $renderer->renderAndUpload($ticket);
 
-        if (! $url) {
-            // No ticket template configured on the show yet — same fail-soft
-            // behaviour as the original guard in approve(). The send job will
-            // try to render again when the customer taps, so nothing is lost.
-            Log::info('GenerateTicketImageJob: skipped (no template)', ['ticket_id' => $this->ticketId]);
+            if (! $url) {
+                // No ticket template configured on the show yet — same fail-soft
+                // behaviour as the original guard in approve(). The send job will
+                // try to render again when the customer taps, so nothing is lost.
+                Log::info('NON_FATAL_RECOVERY', LogContext::base(
+                    'NON_FATAL_RECOVERY',
+                    'jobs.generate_ticket_image.no_template',
+                    [
+                        'job_run_id' => $jobRunId,
+                        'ticket_id' => $this->ticketId,
+                        'reason' => 'no_ticket_template',
+                    ]
+                ));
+
+                return;
+            }
+
+            Log::info('TICKET_GENERATED', LogContext::base(
+                'TICKET_GENERATED',
+                'jobs.generate_ticket_image',
+                [
+                    'job_run_id' => $jobRunId,
+                    'ticket_id' => $this->ticketId,
+                    'booking_id' => $ticket->booking_id,
+                    'ticket_code' => $ticket->ticket_code,
+                ]
+            ));
+        } catch (\Throwable $e) {
+            Log::error('TICKET_GENERATION_FAILED', LogContext::base(
+                'TICKET_GENERATION_FAILED',
+                'jobs.generate_ticket_image',
+                [
+                    'job_run_id' => $jobRunId,
+                    'ticket_id' => $this->ticketId,
+                    'exception_class' => get_class($e),
+                    'exception_message' => $e->getMessage(),
+                ]
+            ));
+
+            throw $e;
         }
     }
 
     public function failed(\Throwable $e): void
     {
-        Log::error('GenerateTicketImageJob: failed', [
-            'ticket_id' => $this->ticketId,
-            'error' => $e->getMessage(),
-        ]);
+        Log::error('TICKET_GENERATION_FAILED', LogContext::base(
+            'TICKET_GENERATION_FAILED',
+            'jobs.generate_ticket_image.exhausted',
+            [
+                'ticket_id' => $this->ticketId,
+                'exception_class' => get_class($e),
+                'exception_message' => $e->getMessage(),
+            ]
+        ));
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Ticket;
 use App\Support\CloudinaryUrl;
+use App\Support\LogContext;
 use Carbon\Carbon;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -45,7 +46,7 @@ class TicketDeliveryService
         );
 
         Log::info('WA OUTBOUND TEMPLATE', [
-            'phone' => $phone,
+            'phone_masked' => LogContext::maskPhone($phone),
             'status' => $response->status(),
             'ok' => $response->successful(),
             'body' => $response->json(),
@@ -86,7 +87,7 @@ class TicketDeliveryService
         );
 
         Log::info('WA OUTBOUND IMAGE', [
-            'phone' => $phone,
+            'phone_masked' => LogContext::maskPhone($phone),
             'status' => $response->status(),
             'ok' => $response->successful(),
             'body' => $response->json(),
