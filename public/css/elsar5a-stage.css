@@ -288,6 +288,13 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   line-height:1.85;
   text-wrap:pretty;
 }
+.opening-manifesto .opening-motto {
+  color:#f1c77f;
+  font-size:clamp(18px,4.7vw,25px);
+  font-weight:700;
+  line-height:1.65;
+  text-shadow:0 2px 18px rgba(239,177,82,.2);
+}
 .opening-scroll {
   display:inline-flex;
   flex-direction:column;
@@ -490,7 +497,6 @@ body[data-intro-state="complete"] .opening-copy > * { opacity:1;transform:none; 
   justify-self:center;border:1px solid rgba(214,164,91,.6);background:rgba(10,7,6,.84);
   color:#c9b69b;font-size:12px;box-shadow:0 24px 60px rgba(0,0,0,.65);
 }
-.production-poster-missing img { width:56px;height:56px;object-fit:contain;opacity:.75;filter:invert(1) brightness(1.2); }
 .production-information { align-self:center;max-width:470px;text-shadow:0 3px 17px rgba(0,0,0,.85); }
 .production-kicker { margin:0 0 11px;color:#edc78e;font-size:12px;letter-spacing:.08em; }
 .production-information h2 { margin:0;color:#fff8ed;font:800 clamp(30px,5vw,54px)/1.24 var(--font-display,serif);text-wrap:balance; }

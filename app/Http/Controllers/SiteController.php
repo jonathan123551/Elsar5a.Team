@@ -15,6 +15,8 @@ class SiteController extends Controller
         $shows = Show::where('is_active', true)
             ->with(['showTimes' => fn ($query) => $query
                 ->whereDate('date', '>=', $now->toDateString())
+                ->withSum(['bookings as homepage_reserved_tickets' => fn ($bookings) => $bookings
+                    ->whereIn('status', ['approved', 'pending'])], 'tickets_count')
                 ->orderBy('date')
                 ->orderBy('time')])
             ->latest()
@@ -41,18 +43,35 @@ class SiteController extends Controller
                         return false;
                     }
                 })
+                ->each(function ($showTime) {
+                    // Match BookingController's authoritative capacity rule:
+                    // pending and approved reservations consume inventory.
+                    $reserved = (int) ($showTime->homepage_reserved_tickets ?? 0);
+                    $showTime->setAttribute(
+                        'homepage_remaining_tickets',
+                        max(0, (int) $showTime->total_tickets - $reserved)
+                    );
+                })
                 ->values();
 
             // The public homepage lists only future performances and chooses
-            // its lead production from the earliest real upcoming slot.
+            // its lead production from the earliest still-bookable slot.
             $show->setRelation('showTimes', $upcomingTimes);
         }
 
         $featuredShow = $shows
-            ->filter(fn ($show) => $show->showTimes->isNotEmpty())
-            ->sortBy(fn ($show) => Carbon::parse(
-                $show->showTimes->first()->date->format('Y-m-d') . ' ' . ($show->showTimes->first()->time ?? '00:00:00')
-            )->timestamp)
+            ->filter(fn ($show) => $show->showTimes->contains(fn ($time) =>
+                !$time->is_sold_out && $time->homepage_remaining_tickets > 0
+            ))
+            ->sortBy(function ($show) {
+                $nextBookableTime = $show->showTimes->first(fn ($time) =>
+                    !$time->is_sold_out && $time->homepage_remaining_tickets > 0
+                );
+
+                return Carbon::parse(
+                    $nextBookableTime->date->format('Y-m-d') . ' ' . ($nextBookableTime->time ?? '00:00:00')
+                )->timestamp;
+            })
             ->first();
 
         return view('shows.index', compact('shows', 'featuredShow'));
