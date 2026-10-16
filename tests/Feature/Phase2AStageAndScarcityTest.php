@@ -50,13 +50,18 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('images/cinematic/theatre/empty-stage.webp', false);
         $response->assertSee('فريق الصرخة المسرحي', false);
         $response->assertDontSee('فرقة الصرخة المسرحية', false);
+        $response->assertSee('class="sr-only">فريق الصرخة المسرحي</h1>', false);
+        $response->assertDontSee('<h1 id="team-title" data-reveal="title">', false);
+        $response->assertSee('فنحن لا نريد سوى حواسكم.', false);
         $response->assertSee('class="opening-motto"', false);
+        $response->assertSee('نجول نصرخ فيزداد العقل وعياً', false);
+        $response->assertDontSee('❤ نجول نصرخ فيزداد العقل وعياً ❤', false);
+        $response->assertSee('❤ نجول نصرخ فيزداد العقل وعيا ❤', false);
         $response->assertSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا, ذلك هو ما نريد تغيره, فقط بالصراخ, الصراخ هنا و هناك.', false);
         $response->assertSee('ثم نصرخ نبحث فى مدخلاتكم لنخرج ما هو فاسد و نزرع بدلا منه ثمرا صالحنا, لا نريد سو عقولكم.', false);
         $response->assertSee('والان نصرخ بالتعاليم الصاحه لنغير ما فسد .', false);
         $response->assertSee('و فقط ما نحتاجه من الجميع هو المجيئ الى مصدر الصراخ, فدائما يكون على المسرح.', false);
         $response->assertSee('و قد كان سيدنا و معلمنا و الهنا وهو على الارض يجول يصنع خيرا و نحن على خطاه.', false);
-        $response->assertSee('❤ نجول نصرخ فيزداد العقل وعيا ❤', false);
     }
 
     public function test_shows_index_route_does_not_render_curtain_overlay(): void
@@ -99,6 +104,33 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertDontSee('Fhszh', false);
         $response->assertDontSee('test-assessment.jpg', false);
         $response->assertSee('خشبة المسرح تستعد للعرض القادم', false);
+    }
+
+    public function test_public_shows_listing_and_detail_do_not_advertise_test_placeholders(): void
+    {
+        $show = Show::create([
+            'title' => 'Test',
+            'description' => 'Fhszh',
+            'poster_path' => 'https://res.cloudinary.com/example/image/upload/test-assessment.jpg',
+            'is_active' => true,
+        ]);
+        ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::tomorrow()->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 100,
+            'total_tickets' => 50,
+            'available_tickets' => 50,
+            'is_sold_out' => false,
+        ]);
+
+        $this->get('/shows')
+            ->assertOk()
+            ->assertDontSee('Fhszh', false)
+            ->assertDontSee('test-assessment.jpg', false)
+            ->assertSee('لا توجد عروض متاحة في الوقت الحالي.', false);
+
+        $this->get(route('shows.show', $show))->assertNotFound();
     }
 
     public function test_inactive_and_test_productions_are_not_featured(): void

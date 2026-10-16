@@ -16,6 +16,7 @@
         'و قد كان سيدنا و معلمنا و الهنا وهو على الارض يجول يصنع خيرا و نحن على خطاه.',
         '❤ نجول نصرخ فيزداد العقل وعيا ❤',
     ];
+    $openingMotto = 'نجول نصرخ فيزداد العقل وعياً';
     $featuredShow = $featuredShow ?? null;
     $featuredPoster = $featuredShow?->poster_path
         ? \App\Support\CloudinaryUrl::forDisplay($featuredShow->poster_path)
@@ -48,11 +49,11 @@
         </div>
         <div class="opening-scrim" aria-hidden="true"></div>
         <div class="opening-copy">
+            <h1 id="team-title" class="sr-only">فريق الصرخة المسرحي</h1>
             <div class="logo-reveal"><img src="{{ asset('images/sarkha-logo.png') }}" alt="شعار فريق الصرخة المسرحي" width="112" height="112" fetchpriority="high"></div>
-            <p class="opening-overline" data-reveal="name">فريق الصرخة المسرحي</p>
-            <h1 id="team-title" data-reveal="title">فريق الصرخة المسرحي</h1>
-            <div class="opening-manifesto" aria-label="من بيان الفريق">
-                <p class="opening-motto" data-reveal="manifesto-1">{{ $manifesto[6] }}</p>
+            <div class="opening-identity" aria-label="من بيان الفريق">
+                <p class="opening-line" data-reveal="manifesto-1">فنحن لا نريد سوى حواسكم.</p>
+                <p class="opening-motto" data-reveal="manifesto-2">{{ $openingMotto }}</p>
             </div>
             <a class="opening-scroll" href="#camera-journey" data-reveal="scroll">
                 <span class="opening-scroll-mark" aria-hidden="true"></span>
@@ -123,7 +124,7 @@
                 <div class="stage-intermission" id="stage-intermission">
                     <p class="intermission-kicker">الخشبة جاهزة</p>
                     <p class="intermission-title">خشبة المسرح تستعد للعرض القادم</p>
-                    <p class="intermission-copy">سنعلن تفاصيل العرض هنا فور اعتماده.</p>
+                    <p class="intermission-copy">لا يوجد عرض حقيقي مُعلن ومتاح للحجز في الوقت الحالي.</p>
                     <a href="{{ route('archive') }}">اكتشف العروض السابقة <span aria-hidden="true">↗</span></a>
                 </div>
             @endif
@@ -178,7 +179,7 @@
 
     <section class="team-signoff" aria-label="عن الفريق">
         <img src="{{ asset('images/sarkha-logo.png') }}" alt="" width="56" height="56" loading="lazy">
-        <div><p>فريق الصرخة المسرحي</p><span>❤ نجول نصرخ فيزداد العقل وعيا ❤</span></div>
+        <div><p>فريق الصرخة المسرحي</p><span>{{ $manifesto[6] }}</span></div>
         <a href="{{ route('about') }}">عن الفريق <span aria-hidden="true">↗</span></a>
     </section>
 </div>
