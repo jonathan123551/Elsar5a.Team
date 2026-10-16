@@ -70,10 +70,19 @@
                 <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" decoding="async">
                 <div class="camera-grade"></div>
             </div>
+            <div class="camera-plane camera-auditorium" id="camera-auditorium" aria-hidden="true"></div>
+            <div class="camera-plane camera-aisle" id="camera-aisle" aria-hidden="true"></div>
+            <div class="camera-plane camera-spotlight" id="camera-spotlight" aria-hidden="true"></div>
+            <div class="camera-plane camera-proscenium" id="camera-proscenium" aria-hidden="true"></div>
             <div class="camera-identity" id="camera-identity" aria-hidden="true">
-                <img src="{{ asset('images/sarkha-logo.png') }}" alt="" width="74" height="74">
-                <p>فريق الصرخة المسرحي</p>
-                <span>❤ نجول نصرخ فيزداد العقل وعيا ❤</span>
+                <p class="identity-overline">من بيان الفريق</p>
+                <div class="identity-manifesto">
+                    <p>{{ $manifesto[2] }}</p>
+                    <p>{{ $manifesto[3] }}</p>
+                    <p>{{ $manifesto[4] }}</p>
+                    <p>{{ $manifesto[5] }}</p>
+                </div>
+                <p class="identity-signoff">{{ $manifesto[6] }}</p>
             </div>
 
             @if($featuredShow && $featuredTime)
@@ -116,7 +125,8 @@
             @else
                 <div class="stage-intermission" id="stage-intermission">
                     <p class="intermission-kicker">الخشبة جاهزة</p>
-                    <p class="intermission-title">لا يوجد عرض قادم معلن الآن</p>
+                    <p class="intermission-title">خشبة المسرح تستعد للعرض القادم</p>
+                    <p class="intermission-copy">سنعلن تفاصيل العرض هنا فور اعتماده.</p>
                     <a href="{{ route('archive') }}">اكتشف العروض السابقة <span aria-hidden="true">↗</span></a>
                 </div>
             @endif

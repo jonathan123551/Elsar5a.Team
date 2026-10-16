@@ -42,11 +42,19 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('js/elsar5a-stage.js', false);
         $response->assertSee('class="camera-track"', false);
         $response->assertSee('class="camera-world"', false);
+        $response->assertSee('class="camera-plane camera-auditorium"', false);
+        $response->assertSee('class="camera-plane camera-aisle"', false);
+        $response->assertSee('class="camera-plane camera-spotlight"', false);
+        $response->assertSee('class="camera-plane camera-proscenium"', false);
         $response->assertSee('images/cinematic/curtain/closed-velvet.webp', false);
         $response->assertSee('images/cinematic/theatre/empty-stage.webp', false);
         $response->assertSee('فريق الصرخة المسرحي', false);
         $response->assertDontSee('فرقة الصرخة المسرحية', false);
         $response->assertSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا, ذلك هو ما نريد تغيره, فقط بالصراخ, الصراخ هنا و هناك.', false);
+        $response->assertSee('ثم نصرخ نبحث فى مدخلاتكم لنخرج ما هو فاسد و نزرع بدلا منه ثمرا صالحنا, لا نريد سو عقولكم.', false);
+        $response->assertSee('والان نصرخ بالتعاليم الصاحه لنغير ما فسد .', false);
+        $response->assertSee('و فقط ما نحتاجه من الجميع هو المجيئ الى مصدر الصراخ, فدائما يكون على المسرح.', false);
+        $response->assertSee('و قد كان سيدنا و معلمنا و الهنا وهو على الارض يجول يصنع خيرا و نحن على خطاه.', false);
         $response->assertSee('❤ نجول نصرخ فيزداد العقل وعيا ❤', false);
     }
 
@@ -89,7 +97,7 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('Fhszh', false);
         $response->assertDontSee('test-assessment.jpg', false);
-        $response->assertSee('لا يوجد عرض قادم معلن الآن', false);
+        $response->assertSee('خشبة المسرح تستعد للعرض القادم', false);
     }
 
     public function test_reduced_motion_uses_static_content_and_releases_hidden_playbill(): void
