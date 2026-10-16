@@ -10,7 +10,7 @@ class SiteController extends Controller
 {
     public function home()
     {
-        $shows = Show::where('is_active', true)->latest()->get();
+        $shows = Show::where('is_active', true)->with('showTimes')->latest()->get();
         return view('shows.index', compact('shows'));
     }
 
