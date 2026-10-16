@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
 use App\Models\Show;
 use App\Models\ShowTime;
 use Carbon\Carbon;
@@ -31,7 +32,6 @@ class Phase2AStageAndScarcityTest extends TestCase
         ]);
 
         $response = $this->get('/');
-
         $response->assertOk();
         $response->assertSee('id="cinema-curtain"', false);
         $response->assertSee('id="cinema-skip"', false);
@@ -50,6 +50,7 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('images/cinematic/theatre/empty-stage.webp', false);
         $response->assertSee('فريق الصرخة المسرحي', false);
         $response->assertDontSee('فرقة الصرخة المسرحية', false);
+        $response->assertSee('class="opening-motto"', false);
         $response->assertSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا, ذلك هو ما نريد تغيره, فقط بالصراخ, الصراخ هنا و هناك.', false);
         $response->assertSee('ثم نصرخ نبحث فى مدخلاتكم لنخرج ما هو فاسد و نزرع بدلا منه ثمرا صالحنا, لا نريد سو عقولكم.', false);
         $response->assertSee('والان نصرخ بالتعاليم الصاحه لنغير ما فسد .', false);
@@ -100,6 +101,32 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('خشبة المسرح تستعد للعرض القادم', false);
     }
 
+    public function test_inactive_and_test_productions_are_not_featured(): void
+    {
+        foreach ([['Test', true], ['عرض غير نشط', false]] as [$title, $active]) {
+            $show = Show::create([
+                'title' => $title,
+                'is_active' => $active,
+            ]);
+            ShowTime::create([
+                'show_id' => $show->id,
+                'date' => Carbon::tomorrow()->toDateString(),
+                'time' => '19:00:00',
+                'ticket_price' => 100,
+                'total_tickets' => 20,
+                'available_tickets' => 20,
+                'is_sold_out' => false,
+            ]);
+        }
+
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertDontSee('id="featured-title"', false);
+        $response->assertSee('خشبة المسرح تستعد للعرض القادم', false);
+        $response->assertDontSee('عرض غير نشط', false);
+    }
+
     public function test_reduced_motion_uses_static_content_and_releases_hidden_playbill(): void
     {
         $css = file_get_contents(public_path('css/elsar5a-stage.css'));
@@ -147,7 +174,7 @@ class Phase2AStageAndScarcityTest extends TestCase
             'is_active' => true,
         ]);
 
-        ShowTime::create([
+        $time = ShowTime::create([
             'show_id' => $show->id,
             'date' => Carbon::tomorrow()->toDateString(),
             'time' => '19:00:00',
@@ -155,6 +182,16 @@ class Phase2AStageAndScarcityTest extends TestCase
             'total_tickets' => 100,
             'available_tickets' => 20,
             'is_sold_out' => false,
+        ]);
+
+        Booking::create([
+            'show_time_id' => $time->id,
+            'full_name' => 'حجز معلّق',
+            'phone' => '01000000000',
+            'tickets_count' => 80,
+            'total_price' => 9600,
+            'reference_code' => 'HOMEPAGE-LOW-1',
+            'status' => 'pending',
         ]);
 
         $response = $this->get('/');
@@ -173,7 +210,7 @@ class Phase2AStageAndScarcityTest extends TestCase
             'is_active' => true,
         ]);
 
-        ShowTime::create([
+        $time = ShowTime::create([
             'show_id' => $show->id,
             'date' => Carbon::tomorrow()->toDateString(),
             'time' => '19:00:00',
@@ -181,6 +218,16 @@ class Phase2AStageAndScarcityTest extends TestCase
             'total_tickets' => 100,
             'available_tickets' => 4,
             'is_sold_out' => false,
+        ]);
+
+        Booking::create([
+            'show_time_id' => $time->id,
+            'full_name' => 'حجز معلّق',
+            'phone' => '01000000000',
+            'tickets_count' => 96,
+            'total_price' => 11520,
+            'reference_code' => 'HOMEPAGE-CRITICAL-1',
+            'status' => 'pending',
         ]);
 
         $response = $this->get('/');
@@ -255,6 +302,136 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('https://res.cloudinary.com/example/image/upload/c_limit,w_960,h_1440,q_auto:good,f_auto,fl_progressive/v123456/shows/first.jpg', false);
         $response->assertSee(route('bookings.create', $firstTime), false);
         $this->assertLessThan(strpos($response->getContent(), 'العرض اللاحق'), strpos($response->getContent(), 'id="featured-title"'));
+    }
+
+    public function test_stage_uses_real_booking_reservations_instead_of_cached_available_count(): void
+    {
+        $show = Show::create([
+            'title' => 'العرض المتاح بالحجز الحقيقي',
+            'is_active' => true,
+        ]);
+        $time = ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::tomorrow()->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 120,
+            'total_tickets' => 30,
+            'available_tickets' => 0,
+            'is_sold_out' => false,
+        ]);
+
+        Booking::create([
+            'show_time_id' => $time->id,
+            'full_name' => 'حجز معلّق',
+            'phone' => '01000000000',
+            'tickets_count' => 8,
+            'total_price' => 960,
+            'reference_code' => 'HOMEPAGE-PENDING-1',
+            'status' => 'pending',
+        ]);
+        Booking::create([
+            'show_time_id' => $time->id,
+            'full_name' => 'حجز مرفوض',
+            'phone' => '01000000001',
+            'tickets_count' => 10,
+            'total_price' => 1200,
+            'reference_code' => 'HOMEPAGE-REJECTED-1',
+            'status' => 'rejected',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertSee('id="featured-title"', false);
+        $response->assertSee(route('bookings.create', $time), false);
+        $response->assertSee('متبقي عدد محدود من التذاكر', false);
+        $response->assertDontSee('22 تذكرة', false);
+    }
+
+    public function test_showtime_selection_excludes_earlier_times_today_and_uses_next_bookable_time(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-17 18:00:00'));
+        $show = Show::create([
+            'title' => 'عرض اليوم',
+            'is_active' => true,
+        ]);
+        ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::today()->toDateString(),
+            'time' => '17:30:00',
+            'ticket_price' => 100,
+            'total_tickets' => 20,
+            'available_tickets' => 20,
+            'is_sold_out' => false,
+        ]);
+        $nextTime = ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::today()->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 100,
+            'total_tickets' => 20,
+            'available_tickets' => 20,
+            'is_sold_out' => false,
+        ]);
+
+        $response = $this->get('/');
+        Carbon::setTestNow();
+
+        $response->assertOk();
+        $response->assertSee(route('bookings.create', $nextTime), false);
+        $response->assertDontSee(route('bookings.create', 1), false);
+    }
+
+    public function test_booking_stage_is_empty_when_all_future_showtimes_are_closed_or_sold_out(): void
+    {
+        $show = Show::create([
+            'title' => 'عرض مغلق للحجز',
+            'is_active' => true,
+        ]);
+        ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::tomorrow()->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 120,
+            'total_tickets' => 20,
+            'available_tickets' => 20,
+            'is_sold_out' => true,
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertDontSee('id="featured-title"', false);
+        $response->assertDontSee(route('bookings.create', 1), false);
+        $response->assertSee('خشبة المسرح تستعد للعرض القادم', false);
+        $response->assertSee('اكتملت التذاكر', false);
+    }
+
+    public function test_missing_production_poster_does_not_reuse_the_team_logo_as_artwork(): void
+    {
+        $show = Show::create([
+            'title' => 'عرض بلا ملصق',
+            'is_active' => true,
+        ]);
+        ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::tomorrow()->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 100,
+            'total_tickets' => 20,
+            'available_tickets' => 20,
+            'is_sold_out' => false,
+        ]);
+
+        $response = $this->get('/');
+        $html = $response->getContent();
+        $posterStateStart = strpos($html, 'class="production-poster-missing"');
+        $posterStateEnd = strpos($html, '</div>', $posterStateStart);
+
+        $response->assertOk();
+        $response->assertSee('ملصق العرض لم يُنشر بعد', false);
+        $this->assertNotFalse($posterStateStart);
+        $this->assertStringNotContainsString('sarkha-logo.png', substr($html, $posterStateStart, $posterStateEnd - $posterStateStart));
     }
 
     public function test_past_performances_do_not_appear_as_upcoming_or_get_fake_countdowns(): void

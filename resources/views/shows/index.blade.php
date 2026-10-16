@@ -20,9 +20,8 @@
     $featuredPoster = $featuredShow?->poster_path
         ? \App\Support\CloudinaryUrl::forDisplay($featuredShow->poster_path)
         : null;
-    $featuredTime = $featuredShow?->showTimes->first(fn ($time) => !$time->is_sold_out && (int) $time->available_tickets > 0)
-        ?? $featuredShow?->showTimes->first();
-    $featuredRemaining = $featuredTime ? max(0, (int) $featuredTime->available_tickets) : 0;
+    $featuredTime = $featuredShow?->showTimes->first(fn ($time) => !$time->is_sold_out && (int) $time->homepage_remaining_tickets > 0);
+    $featuredRemaining = $featuredTime ? (int) $featuredTime->homepage_remaining_tickets : 0;
     $featuredDate = $featuredTime?->date?->format('d/m/Y');
     $featuredClock = $featuredTime?->time ? \Carbon\Carbon::parse($featuredTime->time) : null;
     $featuredSoldOut = !$featuredTime || $featuredTime->is_sold_out || $featuredRemaining <= 0;
@@ -53,8 +52,7 @@
             <p class="opening-overline" data-reveal="name">فريق الصرخة المسرحي</p>
             <h1 id="team-title" data-reveal="title">فريق الصرخة المسرحي</h1>
             <div class="opening-manifesto" aria-label="من بيان الفريق">
-                <p data-reveal="manifesto-1">{{ $manifesto[0] }}</p>
-                <p data-reveal="manifesto-2">{{ $manifesto[1] }}</p>
+                <p class="opening-motto" data-reveal="manifesto-1">{{ $manifesto[6] }}</p>
             </div>
             <a class="opening-scroll" href="#camera-journey" data-reveal="scroll">
                 <span class="opening-scroll-mark" aria-hidden="true"></span>
@@ -96,7 +94,6 @@
                         </div>
                     @else
                         <div class="production-poster-missing" role="img" aria-label="لم ينشر الفريق ملصق هذا العرض بعد">
-                            <img src="{{ asset('images/sarkha-logo.png') }}" alt="" width="56" height="56">
                             <span>ملصق العرض لم يُنشر بعد</span>
                         </div>
                     @endif
@@ -107,7 +104,7 @@
                         <dl class="production-meta">
                             <div><dt>التاريخ</dt><dd>{{ $featuredDate }}</dd></div>
                             @if($featuredClock)<div><dt>الوقت</dt><dd>{{ $featuredClock->format('g:i') }} {{ $featuredClock->format('A') === 'PM' ? 'م' : 'ص' }}</dd></div>@endif
-                            <div><dt>التذكرة</dt><dd>{{ number_format((float) $featuredTime->ticket_price, 0) }} ج.م</dd></div>
+                            @if($featuredTime->ticket_price !== null)<div><dt>التذكرة</dt><dd>{{ number_format((float) $featuredTime->ticket_price, 0) }} ج.م</dd></div>@endif
                         </dl>
                         @if($featuredSoldOut)
                             <p class="ticket-state ticket-state--soldout" role="status">اكتملت التذاكر</p>
@@ -154,8 +151,8 @@
                 @foreach($shows as $show)
                     @php
                         $showPoster = $show->poster_path ? \App\Support\CloudinaryUrl::forDisplay($show->poster_path) : null;
-                        $nextTime = $show->showTimes->first(fn ($item) => !$item->is_sold_out && (int) $item->available_tickets > 0) ?? $show->showTimes->first();
-                        $remaining = $nextTime ? max(0, (int) $nextTime->available_tickets) : 0;
+                        $nextTime = $show->showTimes->first(fn ($item) => !$item->is_sold_out && (int) $item->homepage_remaining_tickets > 0) ?? $show->showTimes->first();
+                        $remaining = $nextTime ? (int) $nextTime->homepage_remaining_tickets : 0;
                         $clock = $nextTime?->time ? \Carbon\Carbon::parse($nextTime->time) : null;
                         $soldOut = !$nextTime || $nextTime->is_sold_out || $remaining <= 0;
                         $critical = !$soldOut && $remaining <= 10;
