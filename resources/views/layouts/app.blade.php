@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="no-js">
 <head>
     <meta charset="UTF-8">
     <title>@yield('title', 'فريق الصرخة المسرحي')</title>
@@ -12,6 +12,8 @@
     <meta name="description" content="@yield('meta_description', 'فريق الصرخة المسرحي — حجز تذاكر العروض أونلاين.')">
     <link rel="icon" type="image/png" href="{{ asset('images/sarkha-logo.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/sarkha-logo.png') }}">
+
+    <script>document.documentElement.classList.replace('no-js', 'js');</script>
 
     {{-- Tailwind CSS CDN --}}
     <script src="https://cdn.tailwindcss.com"></script>
@@ -301,7 +303,7 @@ body.has-sticky-action main {
 </style>
 
 </head>
-<body class="stage-bg min-h-screen text-gray-100">
+<body class="stage-bg min-h-screen text-gray-100 @yield('body_class')">
 
     {{-- Stage Cyclorama & Volumetric Overhead Rig --}}
     <div class="stage-light-rig" aria-hidden="true">
@@ -372,7 +374,7 @@ body.has-sticky-action main {
 
 
     {{-- المحتوى الرئيسي --}}
-    <main class="max-w-5xl mx-auto px-4 py-6 md:py-10">
+    <main class="@yield('main_class', 'max-w-5xl mx-auto px-4 py-6 md:py-10')">
         @yield('content')
     </main>
 
@@ -403,7 +405,7 @@ body.has-sticky-action main {
                     Elsar5a Theatre Team
                 </p>
                 <p class="mt-2 text-[13px] sm:text-sm text-gray-300/90 italic">
-                    نجول، نصرخ… فيزداد العقل وعيًا
+                    ❤ نجول نصرخ فيزداد العقل وعيا ❤
                 </p>
                 <p class="mt-3 text-[10px] sm:text-[11px] text-gray-500">
                     © {{ now()->year }} فريق الصرخة المسرحي

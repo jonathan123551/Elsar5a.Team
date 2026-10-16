@@ -1,142 +1,146 @@
 /**
- * ELSAR5A THEATRE — PHASE 2A STAGE CHOREOGRAPHY & SCROLL ENGINE
- * Zero external runtime dependencies. 60-120fps GPU compositor-friendly.
+ * Elsar5a homepage overture and forward theatre camera.
+ * No external dependencies. Scroll reads are passive and DOM updates are
+ * coalesced into one animation frame; reduced-motion skips both sequences.
  */
 (function () {
   'use strict';
 
-  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var curtainOverlay = document.getElementById('elsar5a-curtain-overlay');
-  var skipBtn = document.getElementById('elsar5a-curtain-skip');
-  var isCurtainFinished = false;
-  var curtainTimers = [];
+  var motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var reducedMotion = !!(motionQuery && motionQuery.matches);
+  var curtain = document.getElementById('elsar5a-curtain-overlay');
+  var skipButton = document.getElementById('elsar5a-curtain-skip');
+  var journey = document.querySelector('.camera-journey');
+  var playbill = document.querySelector('.journey-playbill');
+  var finished = false;
+  var timers = [];
+  var framePending = false;
+  var lastProgress = -1;
 
-  function finishCurtainImmediately() {
-    if (isCurtainFinished) return;
-    isCurtainFinished = true;
-    curtainTimers.forEach(function (id) { clearTimeout(id); });
+  function clearTimers() {
+    timers.forEach(function (timer) { window.clearTimeout(timer); });
+    timers = [];
+  }
+
+  function finish(skip) {
+    if (finished) return;
+    finished = true;
+    clearTimers();
     document.body.classList.remove('curtain-is-closed', 'curtain-is-opening');
     document.body.classList.add('curtain-is-open');
-    if (curtainOverlay) {
-      curtainOverlay.setAttribute('data-curtain-state', 'open');
+
+    if (curtain) {
+      if (skip) curtain.classList.add('is-skipped');
+      curtain.setAttribute('data-curtain-state', 'open');
     }
-    if (skipBtn) {
-      skipBtn.classList.add('is-hidden');
-    }
+    if (skipButton) skipButton.classList.add('is-hidden');
   }
 
-  // 1. Curtain Overture Sequence on Homepage
-  if (curtainOverlay && curtainOverlay.getAttribute('data-curtain-enabled') === 'true' && !prefersReducedMotion) {
+  function startOverture() {
+    if (!curtain || reducedMotion) {
+      finish(false);
+      return;
+    }
+
     document.body.classList.add('curtain-is-closed');
+    timers.push(window.setTimeout(function () {
+      if (!finished) curtain.setAttribute('data-curtain-state', 'igniting');
+    }, 140));
+    timers.push(window.setTimeout(function () {
+      if (finished) return;
+      curtain.setAttribute('data-curtain-state', 'opening');
+      document.body.classList.remove('curtain-is-closed');
+      document.body.classList.add('curtain-is-opening');
+    }, 560));
+    timers.push(window.setTimeout(function () {
+      if (finished) return;
+      curtain.setAttribute('data-curtain-state', 'open');
+      document.body.classList.remove('curtain-is-opening');
+      document.body.classList.add('curtain-is-open');
+    }, 2660));
+    // Hold on the revealed identity before the scroll hint appears.
+    timers.push(window.setTimeout(function () { finish(false); }, 4650));
 
-    // Beat 1 (80ms): Ignite golden center seam
-    curtainTimers.push(setTimeout(function () {
-      if (!isCurtainFinished) {
-        curtainOverlay.setAttribute('data-curtain-state', 'igniting');
-      }
-    }, 80));
+    if (skipButton) skipButton.addEventListener('click', function () { finish(true); });
 
-    // Beat 2 (420ms): Part curtains in 3D & push camera forward onto stage
-    curtainTimers.push(setTimeout(function () {
-      if (!isCurtainFinished) {
-        curtainOverlay.setAttribute('data-curtain-state', 'opening');
-        document.body.classList.remove('curtain-is-closed');
-        document.body.classList.add('curtain-is-opening');
-      }
-    }, 420));
+    // The first intentional gesture continues the intro and keeps its native
+    // scroll/touch behavior. Nothing is trapped or prevented.
+    window.addEventListener('wheel', function () { finish(true); }, { passive: true, once: true });
+    window.addEventListener('touchmove', function () { finish(true); }, { passive: true, once: true });
+    window.addEventListener('keydown', function (event) {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      var target = event.target;
+      if (target && target.closest && target.closest('a,button,input,textarea,select,[contenteditable="true"]')) return;
+      if (event.key === 'Escape' || event.key === 'ArrowDown' || event.key === ' ') finish(true);
+    });
+  }
 
-    // Beat 3 (1850ms): Settle into open proscenium state
-    curtainTimers.push(setTimeout(function () {
-      finishCurtainImmediately();
-    }, 1850));
+  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
 
-    // Allow instant skip via button, Escape/Space key, wheel, or touch swipe
-    if (skipBtn) {
-      skipBtn.addEventListener('click', function () {
-        finishCurtainImmediately();
-        var showsTarget = document.getElementById('shows');
-        if (showsTarget) {
-          showsTarget.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
+  function updateJourney() {
+    framePending = false;
+    if (!journey || reducedMotion) return;
+
+    var rect = journey.getBoundingClientRect();
+    var travel = Math.max(1, journey.offsetHeight - window.innerHeight);
+    var progress = clamp(-rect.top / travel, 0, 1);
+    if (Math.abs(progress - lastProgress) < 0.002) return;
+    lastProgress = progress;
+    journey.style.setProperty('--journey-progress', progress.toFixed(4));
+    var viewportHeight = window.innerHeight;
+    var world = journey.querySelector('.journey-world');
+    var identity = journey.querySelector('.journey-identity');
+    if (world) {
+      world.style.setProperty('--journey-scale', (0.88 + progress * 0.68).toFixed(4));
+      world.style.setProperty('--journey-y', (-Math.round(progress * viewportHeight * 0.03)) + 'px');
+    }
+    if (identity) {
+      identity.style.setProperty('--identity-y', (-Math.round(progress * viewportHeight * 0.18)) + 'px');
+      identity.style.setProperty('--identity-opacity', clamp(1 - progress * 3.2, 0, 1).toFixed(4));
     }
 
-    window.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' || e.key === ' ' || e.key === 'ArrowDown') {
-        finishCurtainImmediately();
+    if (playbill) {
+      var posterProgress = clamp((progress - 0.43) / 0.34, 0, 1);
+      playbill.style.setProperty('--poster-progress', posterProgress.toFixed(4));
+      playbill.style.setProperty('--poster-y', Math.round((1 - posterProgress) * viewportHeight * 0.17) + 'px');
+      playbill.style.setProperty('--poster-scale', (0.82 + posterProgress * 0.18).toFixed(4));
+      playbill.style.visibility = posterProgress > 0.04 ? 'visible' : 'hidden';
+      if (posterProgress > 0.04) {
+        playbill.removeAttribute('inert');
+      } else {
+        playbill.setAttribute('inert', '');
       }
-    }, { passive: true });
-
-    window.addEventListener('wheel', function () {
-      if (!isCurtainFinished) finishCurtainImmediately();
-    }, { passive: true, once: true });
-
-    window.addEventListener('touchmove', function () {
-      if (!isCurtainFinished) finishCurtainImmediately();
-    }, { passive: true, once: true });
-  } else {
-    finishCurtainImmediately();
-  }
-
-  // 2. Scroll Storyboard Reveal Engine (IntersectionObserver)
-  var revealNodes = document.querySelectorAll('.stage-scene-reveal');
-  if ('IntersectionObserver' in window && !prefersReducedMotion) {
-    var sceneObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-in-scene');
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-
-    revealNodes.forEach(function (node) {
-      sceneObserver.observe(node);
-    });
-  } else {
-    revealNodes.forEach(function (node) {
-      node.classList.add('is-in-scene');
-    });
-  }
-
-  // 3. Desktop-Only 3D Playbill Card Tilt
-  var supportsHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
-  if (supportsHover && !prefersReducedMotion) {
-    var cards = document.querySelectorAll('.scream-card');
-    cards.forEach(function (card) {
-      card.addEventListener('pointermove', function (e) {
-        var rect = card.getBoundingClientRect();
-        var nx = (e.clientX - rect.left) / rect.width - 0.5;
-        var ny = (e.clientY - rect.top) / rect.height - 0.5;
-        card.style.setProperty('--tilt-x', (-ny * 5).toFixed(2) + 'deg');
-        card.style.setProperty('--tilt-y', (nx * 5).toFixed(2) + 'deg');
-      }, { passive: true });
-
-      card.addEventListener('pointerleave', function () {
-        card.style.setProperty('--tilt-x', '0deg');
-        card.style.setProperty('--tilt-y', '0deg');
-      }, { passive: true });
-    });
-  }
-
-  // 4. Honest Curtain Countdown Timer (Only runs if real future timestamp exists)
-  var countdownEl = document.querySelector('[data-next-curtain-iso]');
-  if (countdownEl) {
-    var targetTime = Date.parse(countdownEl.getAttribute('data-next-curtain-iso'));
-    if (!isNaN(targetTime) && targetTime > Date.now()) {
-      var daysNode = countdownEl.querySelector('[data-cd-days]');
-      var hoursNode = countdownEl.querySelector('[data-cd-hours]');
-      var minsNode = countdownEl.querySelector('[data-cd-mins]');
-      var updateClock = function () {
-        var diffSec = Math.max(0, Math.floor((targetTime - Date.now()) / 1000));
-        var d = Math.floor(diffSec / 86400);
-        var h = Math.floor((diffSec % 86400) / 3600);
-        var m = Math.floor((diffSec % 3600) / 60);
-        if (daysNode) daysNode.textContent = String(d).padStart(2, '0') + 'd';
-        if (hoursNode) hoursNode.textContent = String(h).padStart(2, '0') + 'h';
-        if (minsNode) minsNode.textContent = String(m).padStart(2, '0') + 'm';
-      };
-      updateClock();
-      setInterval(updateClock, 30000);
     }
+  }
+
+  function requestJourneyUpdate() {
+    if (framePending || reducedMotion || !journey) return;
+    framePending = true;
+    window.requestAnimationFrame(updateJourney);
+  }
+
+  if (motionQuery) {
+    var motionPreferenceChanged = function (event) {
+      if (!event.matches) return;
+      reducedMotion = true;
+      finish(false);
+      if (playbill) {
+        playbill.removeAttribute('inert');
+        playbill.style.visibility = 'visible';
+      }
+    };
+    if (motionQuery.addEventListener) {
+      motionQuery.addEventListener('change', motionPreferenceChanged);
+    } else if (motionQuery.addListener) {
+      motionQuery.addListener(motionPreferenceChanged);
+    }
+  }
+
+  startOverture();
+  if (journey && !reducedMotion) {
+    if (playbill) playbill.setAttribute('inert', '');
+    window.addEventListener('scroll', requestJourneyUpdate, { passive: true });
+    window.addEventListener('resize', requestJourneyUpdate, { passive: true });
+    requestJourneyUpdate();
   }
 })();
