@@ -24,4 +24,9 @@ class Show extends Model
     {
         return $this->hasMany(ShowTime::class);
     }
+
+    public function isPublicPlaceholder(): bool
+    {
+        return preg_match('/^(?:test|demo|sample|placeholder)(?:\b|[-_ ]|$)/i', trim((string) $this->title)) === 1;
+    }
 }

@@ -25,10 +25,7 @@ class SiteController extends Controller
         // Test/demo records can be accidentally left active in production.
         // Keep them out of the public homepage without changing the stored
         // records or any booking/admin behavior.
-        $shows = $shows->reject(fn ($show) => preg_match(
-            '/^(?:test|demo|sample|placeholder)(?:\b|[-_ ]|$)/i',
-            trim((string) $show->title)
-        ))->values();
+        $shows = $shows->reject(fn ($show) => $show->isPublicPlaceholder())->values();
 
         foreach ($shows as $show) {
             $upcomingTimes = $show->showTimes
