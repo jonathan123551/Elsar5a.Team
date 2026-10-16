@@ -17,6 +17,32 @@ namespace App\Support;
 class CloudinaryUrl
 {
     /**
+     * Build a responsive web-display variant for posters and gallery art.
+     * Cloudinary negotiates AVIF/WebP from the browser's Accept header and
+     * limits the delivered long edge to a size suitable for a phone screen.
+     */
+    public static function forDisplay(string $url): string
+    {
+        if ($url === '' || !str_contains($url, '/image/upload/')) {
+            return $url;
+        }
+
+        $needle = '/image/upload/';
+        $pos = strpos($url, $needle);
+        $afterUpload = substr($url, $pos + strlen($needle));
+        $firstSegment = strtok($afterUpload, '/');
+
+        // Leave existing Cloudinary transformations untouched.
+        if ($firstSegment !== false && !preg_match('/^v\d+$/', $firstSegment) && $firstSegment !== '') {
+            return $url;
+        }
+
+        $transform = 'c_limit,w_960,h_1440,q_auto:good,f_auto,fl_progressive';
+
+        return substr_replace($url, $needle . $transform . '/', $pos, strlen($needle));
+    }
+
+    /**
      * Build a WhatsApp-safe variant of a Cloudinary image URL.
      *
      * WhatsApp Cloud API silently drops images that are:

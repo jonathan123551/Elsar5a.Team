@@ -34,18 +34,18 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('id="elsar5a-curtain-overlay"', false);
-        $response->assertSee('data-curtain-enabled="true"', false);
         $response->assertSee('id="elsar5a-curtain-skip"', false);
-        $response->assertSee('تخطي الافتتاحية', false);
+        $response->assertSee('تخطّي الافتتاحية', false);
         $response->assertSee('Alexandria:wght@700;800;900', false);
         $response->assertSee('Readex+Pro:wght@400;500;600;700', false);
         $response->assertSee('css/elsar5a-stage.css', false);
         $response->assertSee('js/elsar5a-stage.js', false);
-        $response->assertSee('id="elsar5a-stage-world"', false);
-        $response->assertSee('class="stage-light-rig"', false);
-        $response->assertSee('فرقة الصرخة المسرحية', false);
-        $response->assertSee('عروض مسرحية حية تجمع بين', false);
-        $response->assertSee('مسرح يصنع الأثر، وصوت ينبض بالحياة', false);
+        $response->assertSee('class="camera-journey"', false);
+        $response->assertSee('class="journey-world"', false);
+        $response->assertSee('فريق الصرخة المسرحي', false);
+        $response->assertDontSee('فرقة الصرخة المسرحية', false);
+        $response->assertSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا, ذلك هو ما نريد تغيره, فقط بالصراخ, الصراخ هنا و هناك.', false);
+        $response->assertSee('❤ نجول نصرخ فيزداد العقل وعيا ❤', false);
     }
 
     public function test_shows_index_route_does_not_render_curtain_overlay(): void
@@ -61,6 +61,18 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('id="elsar5a-curtain-overlay"', false);
         $response->assertDontSee('id="elsar5a-curtain-skip"', false);
+    }
+
+    public function test_reduced_motion_uses_static_content_and_releases_hidden_playbill(): void
+    {
+        $css = file_get_contents(public_path('css/elsar5a-stage.css'));
+        $script = file_get_contents(public_path('js/elsar5a-stage.js'));
+
+        $this->assertStringContainsString('prefers-reduced-motion: reduce', $css);
+        $this->assertStringContainsString('.no-js .stage-overture-section .stage-identity>*', $css);
+        $this->assertStringContainsString("window.matchMedia('(prefers-reduced-motion: reduce)')", $script);
+        $this->assertStringContainsString("playbill.removeAttribute('inert')", $script);
+        $this->assertStringContainsString("playbill.style.visibility = 'visible'", $script);
     }
 
     public function test_progressive_scarcity_healthy_inventory(): void
@@ -166,36 +178,49 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('scarcity-badge--soldout', false);
     }
 
-    public function test_curtain_countdown_renders_only_when_future_showtime_exists(): void
+    public function test_first_stage_playbill_uses_earliest_future_show_and_its_booking_route(): void
     {
-        $show = Show::create([
-            'title' => 'عرض مستقبلي',
-            'description' => 'وصف العرض',
+        $laterShow = Show::create([
+            'title' => 'العرض اللاحق',
+            'description' => 'وصف العرض اللاحق',
+            'is_active' => true,
+        ]);
+        $firstShow = Show::create([
+            'title' => 'العرض الأقرب',
+            'description' => 'وصف العرض الأقرب',
+            'poster_path' => 'https://res.cloudinary.com/example/image/upload/v123456/shows/first.jpg',
             'is_active' => true,
         ]);
 
-        $futureDate = Carbon::now()->addDays(3);
         ShowTime::create([
-            'show_id' => $show->id,
-            'date' => $futureDate->toDateString(),
+            'show_id' => $laterShow->id,
+            'date' => Carbon::now()->addDays(5)->toDateString(),
             'time' => '20:00:00',
             'ticket_price' => 100,
             'total_tickets' => 50,
             'available_tickets' => 50,
             'is_sold_out' => false,
         ]);
+        $firstTime = ShowTime::create([
+            'show_id' => $firstShow->id,
+            'date' => Carbon::now()->addDays(2)->toDateString(),
+            'time' => '19:30:00',
+            'ticket_price' => 150,
+            'total_tickets' => 40,
+            'available_tickets' => 40,
+            'is_sold_out' => false,
+        ]);
 
         $response = $this->get('/');
 
         $response->assertOk();
-        $response->assertSee('data-next-curtain-iso', false);
-        $response->assertSee('يرفع الستار للعرض القادم خلال', false);
-        $response->assertSee('data-cd-days', false);
-        $response->assertSee('data-cd-hours', false);
-        $response->assertSee('data-cd-mins', false);
+        $response->assertSee('العرض الأقرب', false);
+        $response->assertSee('https://res.cloudinary.com/example/image/upload/c_limit,w_960,h_1440,q_auto:good,f_auto,fl_progressive/v123456/shows/first.jpg', false);
+        $response->assertSee(route('bookings.create', $firstTime), false);
+        $this->assertLessThan(strpos($response->getContent(), 'العرض اللاحق'), strpos($response->getContent(), 'id="featured-title"'));
     }
 
-    public function test_curtain_countdown_does_not_render_when_no_future_showtimes(): void
+    public function test_past_performances_do_not_appear_as_upcoming_or_get_fake_countdowns(): void
     {
         $show = Show::create([
             'title' => 'عرض سابق فقط',
@@ -218,6 +243,7 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('data-next-curtain-iso', false);
-        $response->assertDontSee('يرفع الستار للعرض القادم خلال', false);
+        $response->assertDontSee('id="featured-title"', false);
+        $response->assertSee('لا يوجد موعد قادم', false);
     }
 }
