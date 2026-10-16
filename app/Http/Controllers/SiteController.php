@@ -20,6 +20,14 @@ class SiteController extends Controller
             ->latest()
             ->get();
 
+        // Test/demo records can be accidentally left active in production.
+        // Keep them out of the public homepage without changing the stored
+        // records or any booking/admin behavior.
+        $shows = $shows->reject(fn ($show) => preg_match(
+            '/^(?:test|demo|sample|placeholder)(?:\b|[-_ ]|$)/i',
+            trim((string) $show->title)
+        ))->values();
+
         foreach ($shows as $show) {
             $upcomingTimes = $show->showTimes
                 ->filter(function ($showTime) use ($now) {
@@ -35,9 +43,8 @@ class SiteController extends Controller
                 })
                 ->values();
 
-            // The public homepage lists only future performances. Keep every
-            // active show so the archive-like list still reflects admin state,
-            // and choose its lead playbill from the earliest upcoming slot.
+            // The public homepage lists only future performances and chooses
+            // its lead production from the earliest real upcoming slot.
             $show->setRelation('showTimes', $upcomingTimes);
         }
 

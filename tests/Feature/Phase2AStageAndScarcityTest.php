@@ -33,15 +33,17 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk();
-        $response->assertSee('id="elsar5a-curtain-overlay"', false);
-        $response->assertSee('id="elsar5a-curtain-skip"', false);
+        $response->assertSee('id="cinema-curtain"', false);
+        $response->assertSee('id="cinema-skip"', false);
         $response->assertSee('تخطّي الافتتاحية', false);
         $response->assertSee('Alexandria:wght@700;800;900', false);
         $response->assertSee('Readex+Pro:wght@400;500;600;700', false);
         $response->assertSee('css/elsar5a-stage.css', false);
         $response->assertSee('js/elsar5a-stage.js', false);
-        $response->assertSee('class="camera-journey"', false);
-        $response->assertSee('class="journey-world"', false);
+        $response->assertSee('class="camera-track"', false);
+        $response->assertSee('class="camera-world"', false);
+        $response->assertSee('images/cinematic/curtain/closed-velvet.webp', false);
+        $response->assertSee('images/cinematic/theatre/empty-stage.webp', false);
         $response->assertSee('فريق الصرخة المسرحي', false);
         $response->assertDontSee('فرقة الصرخة المسرحية', false);
         $response->assertSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا, ذلك هو ما نريد تغيره, فقط بالصراخ, الصراخ هنا و هناك.', false);
@@ -59,8 +61,35 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response = $this->get('/shows');
 
         $response->assertOk();
-        $response->assertDontSee('id="elsar5a-curtain-overlay"', false);
-        $response->assertDontSee('id="elsar5a-curtain-skip"', false);
+        $response->assertDontSee('id="cinema-curtain"', false);
+        $response->assertDontSee('id="cinema-skip"', false);
+    }
+
+    public function test_obvious_test_shows_are_not_exposed_as_homepage_productions(): void
+    {
+        $show = Show::create([
+            'title' => 'Test',
+            'description' => 'Fhszh',
+            'poster_path' => 'https://res.cloudinary.com/example/image/upload/test-assessment.jpg',
+            'is_active' => true,
+        ]);
+
+        ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::tomorrow()->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 100,
+            'total_tickets' => 50,
+            'available_tickets' => 50,
+            'is_sold_out' => false,
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertDontSee('Fhszh', false);
+        $response->assertDontSee('test-assessment.jpg', false);
+        $response->assertSee('لا يوجد عرض قادم معلن الآن', false);
     }
 
     public function test_reduced_motion_uses_static_content_and_releases_hidden_playbill(): void
@@ -69,10 +98,10 @@ class Phase2AStageAndScarcityTest extends TestCase
         $script = file_get_contents(public_path('js/elsar5a-stage.js'));
 
         $this->assertStringContainsString('prefers-reduced-motion: reduce', $css);
-        $this->assertStringContainsString('.no-js .stage-overture-section .stage-identity>*', $css);
+        $this->assertStringContainsString('.no-js .camera-track { height:auto; }', $css);
         $this->assertStringContainsString("window.matchMedia('(prefers-reduced-motion: reduce)')", $script);
-        $this->assertStringContainsString("playbill.removeAttribute('inert')", $script);
-        $this->assertStringContainsString("playbill.style.visibility = 'visible'", $script);
+        $this->assertStringContainsString("panel.removeAttribute('inert')", $script);
+        $this->assertStringContainsString("panel.style.setProperty('--production-opacity', '1')", $script);
     }
 
     public function test_progressive_scarcity_healthy_inventory(): void
@@ -97,7 +126,7 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('متاح للحجز الآن', false);
-        $response->assertSee('scarcity-badge--healthy', false);
+        $response->assertSee('ticket-state--healthy', false);
         // Verify healthy inventory does not expose raw inventory numbers
         $response->assertDontSee('85 تذكرة', false);
     }
@@ -124,7 +153,7 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('متبقي عدد محدود من التذاكر', false);
-        $response->assertSee('scarcity-badge--low', false);
+        $response->assertSee('ticket-state--low', false);
         $response->assertDontSee('20 تذكرة', false);
     }
 
@@ -150,7 +179,7 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('متبقي 4 تذاكر فقط', false);
-        $response->assertSee('scarcity-badge--critical', false);
+        $response->assertSee('ticket-state--critical', false);
     }
 
     public function test_progressive_scarcity_sold_out(): void
@@ -175,7 +204,7 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('اكتملت التذاكر', false);
-        $response->assertSee('scarcity-badge--soldout', false);
+        $response->assertSee('ticket-state--soldout', false);
     }
 
     public function test_first_stage_playbill_uses_earliest_future_show_and_its_booking_route(): void

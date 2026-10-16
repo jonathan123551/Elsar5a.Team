@@ -12,6 +12,10 @@
     <meta name="description" content="@yield('meta_description', 'فريق الصرخة المسرحي — حجز تذاكر العروض أونلاين.')">
     <link rel="icon" type="image/png" href="{{ asset('images/sarkha-logo.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/sarkha-logo.png') }}">
+    @if(request()->routeIs('home'))
+        <link rel="preload" as="image" href="{{ asset('images/cinematic/curtain/closed-velvet.webp') }}" fetchpriority="high">
+        <link rel="preload" as="image" href="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" fetchpriority="high">
+    @endif
 
     <script>document.documentElement.classList.replace('no-js', 'js');</script>
 
@@ -529,7 +533,9 @@ body.has-sticky-action main {
         }
     })();
     </script>
-    {{-- Elsar5a Stage Choreography & Scroll Storyboard Engine --}}
-    <script src="{{ asset('js/elsar5a-stage.js') }}?v={{ file_exists(public_path('js/elsar5a-stage.js')) ? filemtime(public_path('js/elsar5a-stage.js')) : '1.0' }}"></script>
+    {{-- Homepage-only cinematic choreography --}}
+    @if(request()->routeIs('home'))
+        <script src="{{ asset('js/elsar5a-stage.js') }}?v={{ file_exists(public_path('js/elsar5a-stage.js')) ? filemtime(public_path('js/elsar5a-stage.js')) : '1.0' }}" defer></script>
+    @endif
 </body>
 </html>
