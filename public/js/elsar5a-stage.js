@@ -14,6 +14,10 @@
   var skip = document.getElementById('cinema-skip');
   var track = document.getElementById('camera-journey');
   var world = document.getElementById('camera-world');
+  var auditorium = document.getElementById('camera-auditorium');
+  var aisle = document.getElementById('camera-aisle');
+  var spotlight = document.getElementById('camera-spotlight');
+  var proscenium = document.getElementById('camera-proscenium');
   var identity = document.getElementById('camera-identity');
   var production = document.getElementById('stage-production');
   var intermission = document.getElementById('stage-intermission');
@@ -82,18 +86,39 @@
     lastProgress = progress;
 
     var viewport = window.innerHeight;
-    var reveal = clamp((progress - 0.16) / 0.29, 0, 1);
+    var reveal = clamp((progress - 0.55) / 0.34, 0, 1);
     if (world) {
-      world.style.setProperty('--world-scale', (1 + progress * 0.48).toFixed(4));
-      world.style.setProperty('--world-y', (-Math.round(progress * viewport * 0.055)) + 'px');
+      world.style.setProperty('--world-scale', (1.12 + progress * 0.22).toFixed(4));
+      world.style.setProperty('--world-z', (-120 + Math.round(progress * 88)) + 'px');
+      world.style.setProperty('--world-y', (-Math.round(progress * viewport * 0.024)) + 'px');
+    }
+    if (auditorium) {
+      auditorium.style.setProperty('--auditorium-scale', (1.04 + progress * 0.12).toFixed(4));
+      auditorium.style.setProperty('--auditorium-y', Math.round(progress * viewport * 0.045) + 'px');
+    }
+    if (aisle) {
+      aisle.style.setProperty('--aisle-scale', (1.02 + progress * 0.24).toFixed(4));
+      aisle.style.setProperty('--aisle-y', Math.round(progress * viewport * 0.13) + 'px');
+    }
+    if (spotlight) {
+      spotlight.style.setProperty('--spotlight-opacity', (0.18 + progress * 0.48).toFixed(4));
+      spotlight.style.setProperty('--spotlight-scale', (1 + progress * 0.42).toFixed(4));
+      spotlight.style.setProperty('--spotlight-y', Math.round(progress * viewport * 0.025) + 'px');
+    }
+    if (proscenium) {
+      proscenium.style.setProperty('--proscenium-scale', (1 + progress * 0.19).toFixed(4));
+      proscenium.style.setProperty('--proscenium-y', Math.round(progress * viewport * 0.06) + 'px');
+      proscenium.style.setProperty('--proscenium-opacity', clamp(1 - (progress - 0.82) / 0.18, 0, 1).toFixed(4));
     }
     if (identity) {
-      identity.style.setProperty('--identity-opacity', clamp(1 - progress * 3.15, 0, 1).toFixed(4));
-      identity.style.setProperty('--identity-y', (-Math.round(progress * viewport * 0.16)) + 'px');
+      identity.style.setProperty('--identity-opacity', clamp(1 - (progress - 0.22) / 0.38, 0, 1).toFixed(4));
+      identity.style.setProperty('--identity-scale', (1 + progress * 0.46).toFixed(4));
+      identity.style.setProperty('--identity-z', Math.round(progress * 105) + 'px');
+      identity.style.setProperty('--identity-y', (-Math.round(progress * viewport * 0.3)) + 'px');
     }
     if (production) {
-      var posterProgress = clamp((progress - 0.31) / 0.3, 0, 1);
-      var informationProgress = clamp((progress - 0.53) / 0.27, 0, 1);
+      var posterProgress = clamp((progress - 0.56) / 0.24, 0, 1);
+      var informationProgress = clamp((progress - 0.73) / 0.19, 0, 1);
       production.style.setProperty('--production-opacity', reveal.toFixed(4));
       production.style.setProperty('--production-y', Math.round((1 - reveal) * viewport * 0.035) + 'px');
       production.style.setProperty('--production-scale', (0.97 + reveal * 0.03).toFixed(4));
@@ -113,6 +138,7 @@
     }
     var cue = document.querySelector('.camera-cue');
     if (cue) cue.style.setProperty('--cue-opacity', clamp(1 - progress * 2.5, 0, 1).toFixed(4));
+    if (curtain) curtain.classList.toggle('is-passed', progress > 0.97);
     document.querySelector('.cinema-home').style.setProperty('--camera-progress', progress.toFixed(4));
   }
 
