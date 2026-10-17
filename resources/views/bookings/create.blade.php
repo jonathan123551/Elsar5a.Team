@@ -3,1090 +3,737 @@
 @section('title', 'حجز تذاكر - ' . $showTime->show->title)
 
 @section('content')
-{{--
-    Public booking flow — mobile-first, cinematic refresh.
+@php
+    $show = $showTime->show;
+    $playTitle = $show->title;
+    $playDescription = $show->description ?? 'عرض مسرحي حي من تقديم فريق الصرخة المسرحي — تجربة فنية تلامس الوعي وتفتح آفاق الفكر على خشبة المسرح.';
+    $playLocation = 'مسرح فريق الصرخة';
 
-    JS / submission contract (PR #9) preserved verbatim:
-      - Form id="bookingForm", novalidate, multipart/form-data.
-      - Hidden inputs name="idempotency_token" (id=idempotencyToken)
-        and name="tickets_count" (id=tickets_count) keep their
-        exact names + ids — the server validates them, the client
-        regenerates the idempotency token per page-load via
-        sessionStorage["booking_token_show_{id}"].
-      - Counter UI: ids #ticketsCount, #maxHint, #totalPriceHint
-        and window.changeCount(±1) (called inline from the +/−
-        buttons) are unchanged.
-      - Names/phones inputs are rendered into #namesContainer by
-        the inline script — input attrs (name=names[]|phones[],
-        required, autocomplete, inputmode, pattern) are unchanged
-        so the server validator still matches.
-      - Screenshot dropzone: ids #screenshot, #screenshotDropzone,
-        #screenshotEmptyState, #screenshotPreviewWrap,
-        #screenshotPreview, #screenshotFileName, #screenshotError
-        with the same hidden/show toggling.
-      - Submit: id="submitBtn" (with the original gray→amber
-        class swap classes preserved so recomputeSubmitState()
-        still flips colours), id="submitLabel", id="submitHint".
-        The submit button itself sits inside a single
-        [data-sticky-action] wrapper so the layout's sticky CTA
-        bootstrapper clones it into the floating footer — the
-        hint stays OUTSIDE that wrapper so it never duplicates.
-      - Tap-to-copy on [data-copy] payment buttons with
-        .copy-hint child — unchanged.
-      - bfcache reset on pageshow — unchanged.
-      - Server-side: BookingController::store uses Cache::add
-        on both the idempotency token AND a per-showtime lock,
-        with FOR UPDATE + aggregate capacity recheck inside the
-        transaction (PR #9). No controller / route change.
-
-    What's new (presentation only):
-      - Step rail at the top (Transfer · Fill · Confirm).
-      - Cinematic aside card with gradient show title and a
-        polished step-1 transfer panel.
-      - Ticket counter with a subtle "stage glow" pulse on +/−.
-      - Person cards with index pill + soft amber accent.
-      - Screenshot dropzone with a clearer drag-and-tap CTA.
-      - Trust strip under the form (secure / fast / QR).
-      - iOS keyboard: html `scroll-padding-bottom` so the sticky
-        CTA never covers the focused input.
-      - prefers-reduced-motion honoured throughout.
---}}
-
-<style>
-[data-booking] {
-    --bk-radius:   1.5rem;
-    --bk-radius-lg:2rem;
-    --bk-border:   rgba(255,255,255,0.10);
-    --bk-text:     #f1f5fb;
-    --bk-text-2:   rgba(229,231,235,0.82);
-    --bk-text-3:   rgba(229,231,235,0.55);
-    --bk-amber:    #fbbf24;
-    --bk-ease:     cubic-bezier(.2,.7,.2,1);
-}
-
-/* iOS Safari: when an input is focused the OS keyboard slides
-   up. Without this, the sticky CTA can cover the focused field. */
-html { scroll-padding-bottom: 140px; }
-
-/* ============================================================
-   PROGRESS RAIL — three steps at the top of the page so the
-   user immediately understands the flow shape. */
-.bk-rail {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: .55rem;
-    margin-bottom: 1.1rem;
-}
-.bk-step {
-    position: relative;
-    padding: .65rem .7rem;
-    border-radius: 1rem;
-    background: rgba(15,23,42,.55);
-    border: 1px solid var(--bk-border);
-    text-align: center;
-    transition: border-color .3s, background .3s;
-}
-.bk-step.is-active {
-    border-color: rgba(250,204,21,.55);
-    background:
-        linear-gradient(180deg, rgba(250,204,21,.10), rgba(250,204,21,.02));
-    box-shadow: 0 0 24px -8px rgba(250,204,21,.4);
-}
-.bk-step-no {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 9999px;
-    font-size: 11px;
-    font-weight: 800;
-    background: rgba(255,255,255,.06);
-    color: var(--bk-text-2);
-    margin-bottom: .25rem;
-}
-.bk-step.is-active .bk-step-no {
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-}
-.bk-step-label {
-    display: block;
-    font-size: 11px;
-    line-height: 1.2;
-    color: var(--bk-text-2);
-    letter-spacing: .02em;
-}
-.bk-step.is-active .bk-step-label {
-    color: #fde68a;
-    font-weight: 700;
-}
-
-/* ============================================================
-   ASIDE — premium "ticket-stub" card. */
-.bk-aside {
-    position: relative;
-    background:
-        linear-gradient(180deg, rgba(2,6,23,.7), rgba(2,6,23,.85));
-    border: 1px solid rgba(250,204,21,.32);
-    border-radius: var(--bk-radius-lg);
-    padding: 1.25rem;
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.04),
-        0 30px 60px -28px rgba(250,204,21,.18);
-    isolation: isolate;
-}
-.bk-aside::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(180deg, rgba(250,204,21,.45), transparent 65%);
-    -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-    pointer-events: none;
-    z-index: -1;
-}
-.bk-aside-eyebrow {
-    font-size: 11px;
-    letter-spacing: .22em;
-    text-transform: uppercase;
-    color: rgba(252,211,77,.85);
-    font-weight: 700;
-}
-.bk-aside-title {
-    font-size: clamp(1.05rem, 3.6vw, 1.2rem);
-    font-weight: 800;
-    line-height: 1.3;
-    margin-top: .35rem;
-    background: linear-gradient(135deg, #fde68a 0%, #fbbf24 50%, #f87171 100%);
-    -webkit-background-clip: text;
-            background-clip: text;
-    color: transparent;
-}
-.bk-aside-meta {
-    margin-top: .85rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .55rem;
-}
-.bk-meta-cell {
-    background: rgba(255,255,255,.04);
-    border: 1px solid var(--bk-border);
-    border-radius: .85rem;
-    padding: .55rem .65rem;
-}
-.bk-meta-cell-label {
-    font-size: 10px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--bk-text-3);
-}
-.bk-meta-cell-value {
-    margin-top: .1rem;
-    font-size: 13px;
-    color: var(--bk-text);
-    font-weight: 700;
-}
-.bk-meta-cell.is-price .bk-meta-cell-value {
-    color: #fde68a;
-}
-
-.bk-step-panel {
-    margin-top: 1rem;
-    background:
-        linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,.7));
-    border: 1px solid rgba(250,204,21,.22);
-    border-radius: 1.25rem;
-    padding: 1rem;
-}
-.bk-step-panel h3 {
-    display: flex;
-    align-items: center;
-    gap: .45rem;
-    font-size: 12px;
-    color: #fde68a;
-    font-weight: 800;
-    letter-spacing: .04em;
-}
-.bk-step-panel h3 .pip {
-    width: 18px;
-    height: 18px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-    font-size: 10px;
-    font-weight: 900;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.bk-step-panel-desc {
-    margin-top: .45rem;
-    color: var(--bk-text-2);
-    font-size: 12px;
-    line-height: 1.65;
-}
-
-.bk-pay {
-    width: 100%;
-    text-align: right;
-    background: rgba(255,255,255,.04);
-    border: 1px solid var(--bk-border);
-    border-radius: .9rem;
-    padding: .65rem .7rem;
-    margin-top: .55rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-    transition: background .25s, border-color .25s, transform .2s;
-    min-height: 56px;
-}
-.bk-pay:hover,
-.bk-pay:focus-visible {
-    background: rgba(255,255,255,.08);
-    border-color: rgba(250,204,21,.55);
-}
-.bk-pay:active { transform: scale(.985); }
-.bk-pay-label {
-    font-size: 10px;
-    letter-spacing: .14em;
-    color: var(--bk-text-3);
-    text-transform: uppercase;
-}
-.bk-pay-value {
-    margin-top: .1rem;
-    font-size: 14px;
-    font-weight: 800;
-    color: #fff;
-    letter-spacing: -.005em;
-}
-.bk-pay .copy-hint {
-    flex-shrink: 0;
-    font-size: 11px;
-    font-weight: 700;
-    color: #fde68a;
-    padding: .25rem .55rem;
-    border-radius: 9999px;
-    background: rgba(250,204,21,.10);
-    border: 1px solid rgba(250,204,21,.4);
-    transition: color .25s, background .25s;
-}
-
-/* ============================================================
-   FORM COLUMN — large card with a subtle inner glow. */
-.bk-form {
-    background:
-        linear-gradient(180deg, rgba(2,6,23,.65), rgba(2,6,23,.78));
-    border: 1px solid var(--bk-border);
-    border-radius: var(--bk-radius-lg);
-    padding: 1.25rem;
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.04),
-        0 30px 60px -28px rgba(0,0,0,.8);
-}
-@media (min-width: 640px) {
-    .bk-form { padding: 1.5rem; }
-}
-.bk-form-h {
-    display: flex;
-    align-items: center;
-    gap: .55rem;
-}
-.bk-form-h .pip {
-    width: 22px;
-    height: 22px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-    font-size: 11px;
-    font-weight: 900;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.bk-form-h h2 {
-    font-size: 13px;
-    font-weight: 800;
-    color: #fde68a;
-    letter-spacing: .04em;
-}
-
-.bk-error {
-    margin-top: 1rem;
-    padding: .9rem 1rem;
-    border-radius: 1rem;
-    background:
-        radial-gradient(120% 100% at 0% 0%, rgba(248,113,113,.18), transparent 50%),
-        rgba(127,29,29,.18);
-    border: 1px solid rgba(248,113,113,.45);
-    color: #fecaca;
-    font-size: 13px;
-    line-height: 1.65;
-}
-.bk-error ul { margin: 0; padding: 0; list-style: none; }
-.bk-error li { display: flex; gap: .35rem; }
-.bk-error li::before { content: "•"; color: #fca5a5; }
-
-/* Generic field card */
-.bk-field {
-    background: rgba(255,255,255,.04);
-    border: 1px solid var(--bk-border);
-    border-radius: 1.25rem;
-    padding: 1rem;
-    transition: border-color .3s, background .3s, box-shadow .3s;
-}
-.bk-field:focus-within {
-    border-color: rgba(250,204,21,.55);
-    background: rgba(250,204,21,.04);
-    box-shadow: 0 0 0 4px rgba(250,204,21,.06);
-}
-.bk-field-h {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .55rem;
-}
-.bk-field-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--bk-text);
-}
-
-/* Tickets counter visuals */
-.bk-counter {
-    display: flex;
-    align-items: center;
-    gap: .9rem;
-    margin-top: .85rem;
-}
-.bk-counter-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 1rem;
-    background: rgba(255,255,255,.06);
-    border: 1px solid var(--bk-border);
-    color: #fff;
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: background .2s, transform .15s;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-}
-.bk-counter-btn:hover { background: rgba(255,255,255,.12); }
-.bk-counter-btn:active { transform: scale(.94); }
-.bk-counter-num {
-    flex: 1;
-    text-align: center;
-    font-size: 36px;
-    font-weight: 900;
-    color: #fff;
-    font-variant-numeric: tabular-nums;
-    background: linear-gradient(180deg, #fff, #d1d5db);
-    -webkit-background-clip: text;
-            background-clip: text;
-    color: transparent;
-    line-height: 1.1;
-}
-.bk-counter-total {
-    margin-top: .65rem;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 800;
-    color: #fde68a;
-    letter-spacing: .01em;
-}
-
-/* Person cards (template strings in JS still produce
-   "space-y-2 bg-black/40 border border-white/10 rounded-2xl p-3"
-   wrappers — those Tailwind classes already exist in the
-   compiled CSS so we keep them as-is. We layer additional
-   visual treatment via the parent .bk-people-list when the
-   JS injects them.) */
-.bk-people-list > div {
-    position: relative;
-    padding-top: 2.4rem !important;
-}
-.bk-people-list > div::before {
-    counter-increment: bk-person;
-    content: counter(bk-person);
-    position: absolute;
-    top: .7rem;
-    right: .8rem;
-    width: 26px;
-    height: 26px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-    font-size: 11px;
-    font-weight: 900;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.bk-people-list > div > p:first-of-type { display: none; }
-.bk-people-list { counter-reset: bk-person; }
-
-/* Inputs (booking-input class on inputs rendered by JS) */
-.booking-input {
-    font-size: 16px !important; /* iOS auto-zoom prevention */
-    transition: border-color .25s, background .25s, box-shadow .25s;
-}
-.booking-input:focus {
-    outline: none;
-    border-color: rgba(250,204,21,.6) !important;
-    background: rgba(2,6,23,.85) !important;
-    box-shadow: 0 0 0 3px rgba(250,204,21,.12);
-}
-
-/* Screenshot dropzone polish */
-.bk-drop {
-    display: block;
-    cursor: pointer;
-    border: 2px dashed rgba(255,255,255,.22);
-    border-radius: 1rem;
-    background:
-        radial-gradient(circle at top, rgba(250,204,21,.06), transparent 60%),
-        rgba(2,6,23,.55);
-    padding: 1.2rem 1rem;
-    text-align: center;
-    transition: border-color .3s, background .3s, transform .3s;
-    -webkit-tap-highlight-color: transparent;
-}
-.bk-drop:hover,
-.bk-drop:focus-within {
-    border-color: rgba(250,204,21,.55);
-    background:
-        radial-gradient(circle at top, rgba(250,204,21,.10), transparent 60%),
-        rgba(2,6,23,.5);
-    transform: translateY(-1px);
-}
-.bk-drop-glyph {
-    font-size: 34px;
-    line-height: 1;
-    margin-bottom: .35rem;
-}
-.bk-drop-cta {
-    font-size: 13px;
-    font-weight: 800;
-    color: #fff;
-}
-.bk-drop-sub {
-    font-size: 11px;
-    color: var(--bk-text-3);
-    margin-top: .25rem;
-}
-#screenshotPreview {
-    max-height: 13rem;
-    margin-inline: auto;
-    border-radius: .9rem;
-    border: 1px solid var(--bk-border);
-    object-fit: contain;
-}
-
-/* Submit area */
-.bk-submit-wrap { padding-top: .3rem; }
-.bk-submit-wrap [data-sticky-action] { display: block; }
-
-/* The submit button keeps the original class-set so
-   recomputeSubmitState()'s class swap still works without
-   any JS change. The CSS below only sharpens the visuals
-   in the *enabled* state. */
-#submitBtn {
-    width: 100%;
-    padding: 1rem 1.5rem;
-    border-radius: 1.25rem;
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: .01em;
-    transition: transform .25s var(--bk-ease),
-                box-shadow .35s ease,
-                background .35s ease,
-                color .35s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: .55rem;
-    min-height: 52px;
-    -webkit-tap-highlight-color: transparent;
-}
-#submitBtn:not([disabled]):hover {
-    transform: translateY(-2px);
-    box-shadow:
-        0 18px 36px -10px rgba(250,204,21,.55),
-        0 0 22px rgba(251,191,36,.35) !important;
-}
-#submitBtn:disabled {
-    transform: none;
-    box-shadow: none;
-    background: rgba(255,255,255,.07) !important;
-    color: rgba(229,231,235,.55) !important;
-    border: 1px dashed rgba(255,255,255,.16);
-}
-.bk-submit-hint {
-    text-align: center;
-    font-size: 11px;
-    color: var(--bk-text-3);
-    margin-top: .55rem;
-}
-
-/* Trust strip */
-.bk-trust {
-    margin-top: 1rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: .55rem;
-}
-.bk-trust-cell {
-    background: rgba(255,255,255,.03);
-    border: 1px solid var(--bk-border);
-    border-radius: .85rem;
-    padding: .55rem;
-    text-align: center;
-    font-size: 11px;
-    color: var(--bk-text-2);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: .2rem;
-    line-height: 1.3;
-}
-.bk-trust-cell .glyph {
-    font-size: 16px;
-    line-height: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .bk-pay,
-    .bk-counter-btn,
-    .bk-drop,
-    #submitBtn,
-    .bk-step,
-    .bk-field {
-        transition: none !important;
+    // Resolve Poster safely
+    $posterUrl = asset('images/logo.png');
+    if ($show->poster_path) {
+        if (\Illuminate\Support\Str::startsWith($show->poster_path, ['http://', 'https://', 'data:image'])) {
+            $posterUrl = $show->poster_path;
+        } elseif (\Illuminate\Support\Str::startsWith($show->poster_path, 'storage/')) {
+            $posterUrl = asset($show->poster_path);
+        } else {
+            $posterUrl = asset('storage/' . ltrim($show->poster_path, '/'));
+        }
     }
-}
-</style>
 
+    $unitPrice = (float) ($showTime->ticket_price ?: 100);
+    $initialQty = (int) old('tickets_count', 1);
+    if ($remaining > 0 && $initialQty > $remaining) {
+        $initialQty = $remaining;
+    }
+    $initialTotal = $initialQty * $unitPrice;
 
-<section data-booking class="max-w-5xl mx-auto px-4 sm:px-6">
+    // Show date and time formatting
+    $showDateCarbon = \Carbon\Carbon::parse($showTime->date);
+    $showDateFormatted = $showDateCarbon->locale('ar')->translatedFormat('l j F Y');
+    $showTimeFormatted = \Carbon\Carbon::parse($showTime->time)->locale('ar')->translatedFormat('g:i A');
 
-    {{-- Progress rail --}}
-    <ol class="bk-rail" aria-label="مراحل الحجز">
-        <li class="bk-step">
-            <span class="bk-step-no">١</span>
-            <span class="bk-step-label">حوّل المبلغ</span>
-        </li>
-        <li class="bk-step is-active">
-            <span class="bk-step-no">٢</span>
-            <span class="bk-step-label">بياناتك</span>
-        </li>
-        <li class="bk-step">
-            <span class="bk-step-no">٣</span>
-            <span class="bk-step-label">تأكيد</span>
-        </li>
-    </ol>
+    // Other showtimes for the same production (if multiple exist)
+    $otherShowTimes = $show->showTimes()
+        ->where('is_sold_out', false)
+        ->where('id', '!=', $showTime->id)
+        ->orderBy('date')
+        ->orderBy('time')
+        ->get();
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+    // Payment methods resolution
+    $paymentMethods = collect();
+    if (!empty($transferWallet)) {
+        $cleanPhone = preg_replace('/[^0-9]/', '', $transferWallet);
+        $isPhone = preg_match('/^01[0125][0-9]{8}$/', $cleanPhone) || preg_match('/^201[0125][0-9]{8}$/', $cleanPhone);
+        $waUrl = null;
+        if ($isPhone) {
+            $normalizedPhone = \Illuminate\Support\Str::startsWith($cleanPhone, '20') ? $cleanPhone : ('20' . ltrim($cleanPhone, '0'));
+            $waMsg = rawurlencode("مرحباً، أود الاستفسار بخصوص تحويل حجز مسرحية: {$playTitle}");
+            $waUrl = "https://wa.me/{$normalizedPhone}?text={$waMsg}";
+        }
 
-        {{-- ============================================================
-             ASIDE — DETAILS + TRANSFER (Step 1)
-        ============================================================ --}}
-        <aside class="md:col-span-1 bk-aside md:sticky md:top-24 md:self-start">
+        $paymentMethods->push([
+            'id' => 'wallet',
+            'label' => 'محفظة إلكترونية (فودافون كاش / أورانج / اتصالات / وي)',
+            'number' => $transferWallet,
+            'whatsapp_url' => $waUrl,
+            'type' => 'wallet',
+        ]);
+    }
 
-            <p class="bk-aside-eyebrow">عرض مسرحي · تفاصيل</p>
-            <h1 class="bk-aside-title">{{ $showTime->show->title }}</h1>
+    if (!empty($transferInsta)) {
+        $paymentMethods->push([
+            'id' => 'instapay',
+            'label' => 'تطبيق إنستاباي (InstaPay)',
+            'number' => $transferInsta,
+            'whatsapp_url' => null,
+            'type' => 'instapay',
+        ]);
+    }
+@endphp
 
-            <div class="bk-aside-meta">
-                <div class="bk-meta-cell">
-                    <div class="bk-meta-cell-label">📅 التاريخ</div>
-                    <div class="bk-meta-cell-value">
-                        {{ \Carbon\Carbon::parse($showTime->date)->format('d-m-Y') }}
-                    </div>
+<link rel="stylesheet" href="{{ asset('css/elsar5a-booking.css') }}?v={{ file_exists(public_path('css/elsar5a-booking.css')) ? filemtime(public_path('css/elsar5a-booking.css')) : '1.0' }}">
+
+<div class="booking-experience-shell" dir="rtl">
+
+    {{-- FIXED THEATRICAL AMBIENT BACKDROP --}}
+    <div class="theatre-ambient-backdrop" aria-hidden="true">
+        <div class="theatre-stage-light"></div>
+        <div class="theatre-velvet-glow"></div>
+        <div class="theatre-spotlight-beam"></div>
+        <div class="theatre-ambient-grain"></div>
+    </div>
+
+    <div class="booking-container">
+
+        {{-- THEATRICAL HERO BANNER --}}
+        <section class="booking-hero-banner" aria-labelledby="booking-show-title">
+            <div class="booking-hero-content">
+                <div class="booking-hero-meta-strip">
+                    <span class="booking-status-badge">شباك التذاكر الرسمي</span>
+                    <span class="booking-theatre-badge">{{ $playLocation }}</span>
+                    @if($remaining > 0)
+                        <span class="booking-seats-badge">متبقي {{ $remaining }} مقاعد متاحة</span>
+                    @endif
                 </div>
-                <div class="bk-meta-cell">
-                    <div class="bk-meta-cell-label">⏰ الساعة</div>
-                    <div class="bk-meta-cell-value">
-                        {{ \Carbon\Carbon::parse($showTime->time)->format('g:i A') }}
+
+                <h1 id="booking-show-title" class="booking-hero-title">{{ $playTitle }}</h1>
+                <p class="booking-hero-description">{{ $playDescription }}</p>
+
+                <div class="booking-hero-tags">
+                    <div class="hero-tag-item">
+                        <span class="tag-icon" aria-hidden="true">📅</span>
+                        <span class="tag-text">{{ $showDateFormatted }}</span>
                     </div>
-                </div>
-                <div class="bk-meta-cell is-price" style="grid-column: 1 / -1;">
-                    <div class="bk-meta-cell-label">🎟️ سعر التذكرة</div>
-                    <div class="bk-meta-cell-value">
-                        {{ $showTime->ticket_price }} جنيه
+                    <div class="hero-tag-item">
+                        <span class="tag-icon" aria-hidden="true">⏰</span>
+                        <span class="tag-text">{{ $showTimeFormatted }}</span>
+                    </div>
+                    <div class="hero-tag-item is-highlight">
+                        <span class="tag-icon" aria-hidden="true">🎟️</span>
+                        <span class="tag-text">{{ number_format($unitPrice, 0) }} جنيه للتذكرة</span>
                     </div>
                 </div>
             </div>
 
-            <div class="bk-step-panel">
-                <h3>
-                    <span class="pip">١</span>
-                    حوّل قيمة التذكرة
-                </h3>
-                <p class="bk-step-panel-desc">
-                    حوّل المبلغ المطلوب على أحد الأرقام التالية، ثم ارفع لقطة شاشة من التحويل في الخطوة ٢.
-                    اضغط على الرقم لنسخه.
-                </p>
-
-                {{-- Each payment number is tappable: tap to copy. The
-                     [data-copy] + .copy-hint contract is preserved
-                     so the page-script handles the copy flow. --}}
-                <button type="button"
-                        data-copy="{{ $transferWallet }}"
-                        aria-label="نسخ رقم محفظة الدفع"
-                        class="bk-pay">
-                    <div class="min-w-0 flex-1 text-right">
-                        <p class="bk-pay-label">📱 محفظة</p>
-                        <p class="bk-pay-value truncate" dir="ltr">{{ $transferWallet }}</p>
-                    </div>
-                    <span class="copy-hint">نسخ</span>
-                </button>
-
-                <button type="button"
-                        data-copy="{{ $transferInsta }}"
-                        aria-label="نسخ حساب InstaPay"
-                        class="bk-pay">
-                    <div class="min-w-0 flex-1 text-right">
-                        <p class="bk-pay-label">⚡ InstaPay</p>
-                        <p class="bk-pay-value truncate" dir="ltr">{{ $transferInsta }}</p>
-                    </div>
-                    <span class="copy-hint">نسخ</span>
-                </button>
-            </div>
-        </aside>
-
-        {{-- ============================================================
-             FORM — Step 2
-        ============================================================ --}}
-        <div class="md:col-span-2 bk-form">
-
-            <div class="bk-form-h">
-                <span class="pip">٢</span>
-                <h2>ارفع لقطة الشاشة وكمّل بياناتك</h2>
-            </div>
-
-            @if ($errors->any())
-                <div role="alert" class="bk-error">
-                    <ul>
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
+            <div class="booking-hero-poster-wrap">
+                <div class="poster-card-frame">
+                    <img src="{{ $posterUrl }}" alt="بوستر مسرحية {{ $playTitle }}" class="booking-poster-img" loading="eager">
+                    <div class="poster-shine-layer" aria-hidden="true"></div>
                 </div>
-            @endif
+            </div>
+        </section>
 
-            <form action="{{ route('bookings.store', $showTime) }}"
-                  method="POST"
-                  enctype="multipart/form-data"
-                  id="bookingForm"
-                  novalidate
-                  class="space-y-4 mt-4">
-                @csrf
-
-                {{-- Idempotency token (PR #9). Client-generated +
-                     stashed in sessionStorage so a refresh re-uses
-                     it and is rejected by the server cache. --}}
-                <input type="hidden" name="idempotency_token" id="idempotencyToken" value="">
-
-                {{-- 👥 عدد التذاكر --}}
-                <div class="bk-field">
-                    <div class="bk-field-h">
-                        <label class="bk-field-label">
-                            <span aria-hidden="true">👥</span>
-                            عدد التذاكر
-                        </label>
-                        <span id="maxHint" class="text-[11px] text-gray-400"></span>
-                    </div>
-
-                    <div class="bk-counter">
-                        <button type="button"
-                                aria-label="إنقاص"
-                                onclick="changeCount(-1)"
-                                class="bk-counter-btn">−</button>
-
-                        <span id="ticketsCount" class="bk-counter-num">1</span>
-
-                        <button type="button"
-                                aria-label="زيادة"
-                                onclick="changeCount(1)"
-                                class="bk-counter-btn">+</button>
-                    </div>
-
-                    <p id="totalPriceHint" class="bk-counter-total"></p>
-
-                    <input type="hidden" name="tickets_count" id="tickets_count" value="1">
-                </div>
-
-                {{-- 👤 الأشخاص (rendered by JS into #namesContainer) --}}
-                <div id="namesContainer" class="bk-people-list space-y-3"></div>
-
-                {{-- Screenshot --}}
-                <div class="bk-field">
-                    <div class="bk-field-h">
-                        <label for="screenshot" class="bk-field-label">
-                            <span aria-hidden="true">📸</span>
-                            لقطة شاشة من التحويل
-                        </label>
-                        <span class="text-[10px] uppercase tracking-widest text-gray-500">PNG / JPG</span>
-                    </div>
-
-                    <label for="screenshot"
-                           id="screenshotDropzone"
-                           class="bk-drop mt-3">
-                        <div id="screenshotEmptyState">
-                            <p class="bk-drop-glyph" aria-hidden="true">📎</p>
-                            <p class="bk-drop-cta">اضغط لاختيار صورة من معرض الصور</p>
-                            <p class="bk-drop-sub">حجم أقل من 20MB · لقطات iPhone مدعومة</p>
+        {{-- 4-STAGE VISUAL JOURNEY PROGRESS RAIL --}}
+        <nav class="booking-journey-rail" aria-label="مراحل حجز التذكرة">
+            <ol class="journey-steps-list">
+                <li class="journey-step-item">
+                    <a href="#stage-01" data-jump-stage="stage-01" class="journey-step-link is-active" data-step-indicator="1">
+                        <span class="step-indicator-pill">01</span>
+                        <div class="step-meta">
+                            <span class="step-milestone">موعد وتذاكر</span>
+                            <span class="step-action-tag">تحديد الكمية</span>
                         </div>
-                        <div id="screenshotPreviewWrap" class="hidden">
-                            <img id="screenshotPreview" alt="">
-                            <p id="screenshotFileName" class="text-[11px] text-gray-300 mt-2 truncate"></p>
-                            <p class="text-[11px] text-amber-300 mt-1">اضغط لاستبدال الصورة</p>
+                    </a>
+                </li>
+                <li class="journey-step-connector" aria-hidden="true"></li>
+
+                <li class="journey-step-item">
+                    <a href="#stage-02" data-jump-stage="stage-02" class="journey-step-link" data-step-indicator="2">
+                        <span class="step-indicator-pill">02</span>
+                        <div class="step-meta">
+                            <span class="step-milestone">التحويل والدفع</span>
+                            <span class="step-action-tag">أرقام التحويل</span>
                         </div>
-                    </label>
+                    </a>
+                </li>
+                <li class="journey-step-connector" aria-hidden="true"></li>
 
-                    <input type="file"
-                           name="payment_screenshot"
-                           id="screenshot"
-                           accept="image/*"
-                           class="hidden">
+                <li class="journey-step-item">
+                    <a href="#stage-03" data-jump-stage="stage-03" class="journey-step-link" data-step-indicator="3">
+                        <span class="step-indicator-pill">03</span>
+                        <div class="step-meta">
+                            <span class="step-milestone">إثبات الدفع والبيانات</span>
+                            <span class="step-action-tag">الإيصال والواتساب</span>
+                        </div>
+                    </a>
+                </li>
+                <li class="journey-step-connector" aria-hidden="true"></li>
 
-                    <p id="screenshotError"
-                       class="hidden text-[12px] text-red-300 mt-2"></p>
-                </div>
+                <li class="journey-step-item">
+                    <a href="#stage-04" data-jump-stage="stage-04" class="journey-step-link" data-step-indicator="4">
+                        <span class="step-indicator-pill">04</span>
+                        <div class="step-meta">
+                            <span class="step-milestone">مراجعة وإرسال</span>
+                            <span class="step-action-tag">التأكيد النهائي</span>
+                        </div>
+                    </a>
+                </li>
+            </ol>
+        </nav>
 
-                {{-- Natural-position submit (also drives the sticky
-                     footer clone). The submit button itself is wrapped
-                     in data-sticky-action; the hint sits OUTSIDE so it
-                     never duplicates into the floating footer. The
-                     button's initial Tailwind classes are preserved
-                     verbatim so recomputeSubmitState() can still flip
-                     them. --}}
-                <div class="bk-submit-wrap">
-                    <div data-sticky-action>
-                        <button type="submit"
-                                id="submitBtn"
+        {{-- BOOKING WORKSPACE (STAGES COLUMN + DESKTOP STICKY SUMMARY COLUMN) --}}
+        <div class="booking-workspace-grid">
+
+            {{-- PRIMARY FORM & STAGES --}}
+            <div class="booking-stages-column">
+
+                {{-- SERVER VALIDATION ERRORS --}}
+                @if ($errors->any())
+                    <div class="booking-flash-banner is-error" role="alert">
+                        <div class="flash-icon" aria-hidden="true">⚠️</div>
+                        <div class="flash-content">
+                            <h4 class="font-bold text-sm mb-1">يرجى تصحيح الملاحظات التالية:</h4>
+                            <ul class="text-xs space-y-1 list-disc list-inside">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                @endif
+
+                <form
+                    action="{{ route('bookings.store', $showTime) }}"
+                    method="POST"
+                    enctype="multipart/form-data"
+                    id="elsar5a-booking-form"
+                    novalidate
+                    data-unit-price="{{ $unitPrice }}"
+                    data-max-tickets="{{ min(20, $remaining) }}"
+                    data-showtime-id="{{ $showTime->id }}"
+                >
+                    @csrf
+                    <input type="hidden" name="idempotency_token" id="idempotencyToken" value="">
+                    <input type="hidden" name="tickets_count" id="ticket-quantity-input" value="{{ $initialQty }}">
+
+                    {{-- ===================================================
+                         STAGE 01 — SELECT TICKET QUANTITY & SHOWTIME
+                         =================================================== --}}
+                    <section id="stage-01" class="booking-stage-card is-focused" data-stage-section="1" aria-labelledby="stage-01-heading">
+                        <header class="stage-card-header">
+                            <div class="stage-badge-wrap">
+                                <span class="stage-number-pill">01</span>
+                                <span class="stage-status-tag" id="stage-01-status">الخطوة الحالية</span>
+                            </div>
+                            <h2 id="stage-01-heading" class="stage-card-title">عدد التذاكر وموعد العرض</h2>
+                            <p class="stage-card-subtitle">حدد عدد التذاكر المطلوبة ليتم حساب إجمالي قيمة الحجز فوراً.</p>
+                        </header>
+
+                        {{-- Multiple Showtimes Switcher (if other dates exist for this production) --}}
+                        @if($otherShowTimes->isNotEmpty())
+                            <div class="showtime-selector-block mb-5">
+                                <label class="booking-field-label">مواعيد العرض المتاحة لهذه المسرحية:</label>
+                                <div class="showtime-pills-grid" role="group" aria-label="مواعيد العرض">
+                                    <div class="showtime-option-card is-selected" aria-current="true">
+                                        <span class="showtime-option-date">{{ $showDateFormatted }}</span>
+                                        <span class="showtime-option-time">{{ $showTimeFormatted }}</span>
+                                        <span class="showtime-option-capacity">الموعد المحدد حالياً ✓</span>
+                                    </div>
+                                    @foreach($otherShowTimes as $otherSt)
+                                        @php
+                                            $otherDate = \Carbon\Carbon::parse($otherSt->date)->locale('ar')->translatedFormat('l j F');
+                                            $otherTime = \Carbon\Carbon::parse($otherSt->time)->locale('ar')->translatedFormat('g:i A');
+                                        @endphp
+                                        <a href="{{ route('bookings.create', $otherSt) }}" class="showtime-option-card" title="التبديل إلى هذا الموعد">
+                                            <span class="showtime-option-date">{{ $otherDate }}</span>
+                                            <span class="showtime-option-time">{{ $otherTime }}</span>
+                                            <span class="showtime-option-capacity">اضغط للتبديل</span>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Tactile Quick-Select Ticket Quantity Deck --}}
+                        <div class="ticket-selector-vault">
+                            <label class="booking-field-label mb-2 block">اختر عدد التذاكر:</label>
+                            <div class="ticket-preset-grid" role="group" aria-label="اختيار سريع لعدد التذاكر">
+                                @for($i = 1; $i <= min(5, max(1, $remaining)); $i++)
+                                    <button
+                                        type="button"
+                                        class="ticket-preset-card {{ $initialQty === $i ? 'is-active' : '' }}"
+                                        data-qty-preset="{{ $i }}"
+                                        aria-pressed="{{ $initialQty === $i ? 'true' : 'false' }}"
+                                    >
+                                        <span class="preset-stub-notch" aria-hidden="true"></span>
+                                        <span class="preset-count-num">{{ $i }}</span>
+                                        <span class="preset-count-label">
+                                            @if($i === 1) تذكرة واحدة
+                                            @elseif($i === 2) تذكرتان
+                                            @else {{ $i }} تذاكر
+                                            @endif
+                                        </span>
+                                        <span class="preset-price-tag">
+                                            {{ number_format($i * $unitPrice, 0) }} ج.م
+                                        </span>
+                                    </button>
+                                @endfor
+                            </div>
+
+                            {{-- Tactile Stepper Controller (+ / -) --}}
+                            <div class="ticket-stepper-row">
+                                <div class="stepper-caption">
+                                    <span class="stepper-caption-title">التحكم الدقيق في العدد:</span>
+                                    <span class="stepper-caption-sub">الحد الأقصى لكل حجز {{ min(20, $remaining) }} تذكرة</span>
+                                </div>
+
+                                <div class="tactile-stepper" aria-label="تعديل عدد التذاكر">
+                                    <button
+                                        type="button"
+                                        id="qty-decrease-btn"
+                                        class="stepper-action-btn is-decrease"
+                                        aria-label="إنقاص تذكرة واحدة"
+                                        {{ $initialQty <= 1 ? 'disabled' : '' }}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                    </button>
+
+                                    <div class="stepper-readout-dial" aria-live="polite">
+                                        <span class="stepper-readout-num js-sync-qty">{{ $initialQty }}</span>
+                                        <span class="stepper-readout-unit">تذاكر</span>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        id="qty-increase-btn"
+                                        class="stepper-action-btn is-increase"
+                                        aria-label="إضافة تذكرة واحدة"
+                                        {{ $remaining > 0 && $initialQty >= $remaining ? 'disabled' : '' }}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Live Price Calculation Ledger --}}
+                            <div class="stage-01-price-ledger" aria-live="polite">
+                                <div class="ledger-equation">
+                                    <span class="ledger-item">
+                                        <strong id="ledger-qty-num" class="js-sync-qty">{{ $initialQty }}</strong>
+                                        <small>تذاكر</small>
+                                    </span>
+                                    <span class="ledger-operator" aria-hidden="true">×</span>
+                                    <span class="ledger-item">
+                                        <strong id="ledger-unit-price">{{ number_format($unitPrice, 0) }}</strong>
+                                        <small>جنيه / تذكرة</small>
+                                    </span>
+                                </div>
+
+                                <div class="ledger-total-highlight">
+                                    <span class="ledger-total-label">المبلغ الإجمالي المستحق:</span>
+                                    <div class="ledger-total-value-wrap">
+                                        <strong id="stage-01-total-amount" class="ledger-total-number js-sync-total">{{ number_format($initialTotal, 0) }}</strong>
+                                        <span class="ledger-currency">جنيه مصري</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {{-- ===================================================
+                         STAGE 02 — PAYMENT & TRANSFER NUMBERS + WHATSAPP
+                         =================================================== --}}
+                    <section id="stage-02" class="booking-stage-card" data-stage-section="2" aria-labelledby="stage-02-heading">
+                        <header class="stage-card-header">
+                            <div class="stage-badge-wrap">
+                                <span class="stage-number-pill">02</span>
+                                <span class="stage-status-tag" id="stage-02-status">الدفع والتحويل</span>
+                            </div>
+                            <h2 id="stage-02-heading" class="stage-card-title">حوّل قيمة الحجز على أحد الأرقام التالية</h2>
+                            <p class="stage-card-subtitle">
+                                قم بتحويل مبلغ <strong class="gold-inline-amount"><span class="js-sync-total">{{ number_format($initialTotal, 0) }}</span> جنيه</strong> على رقم المحفظة أو إنستاباي أدناه. اضغط لنسخ الرقم فوراً.
+                            </p>
+                        </header>
+
+                        @if($paymentMethods->isNotEmpty())
+                            <div class="payment-vault-grid" role="list" aria-label="أرقام التحويل والدفع">
+                                @foreach($paymentMethods as $idx => $method)
+                                    <article
+                                        class="payment-vault-card {{ $idx === 0 ? 'is-selected' : '' }}"
+                                        data-payment-card
+                                        data-payment-number="{{ $method['number'] }}"
+                                        role="listitem"
+                                    >
+                                        <div class="payment-card-top">
+                                            <div class="flex items-center gap-2">
+                                                @if($method['type'] === 'wallet')
+                                                    <span class="text-xl" aria-hidden="true">📱</span>
+                                                @else
+                                                    <span class="text-xl" aria-hidden="true">⚡</span>
+                                                @endif
+                                                <span class="payment-provider-title">{{ $method['label'] }}</span>
+                                            </div>
+
+                                            <span class="payment-verified-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                    <path d="M9 12L11 14L15 10M12 3L4 7V11C4 16.55 7.4 21.74 12 23C16.6 21.74 20 16.55 20 11V7L12 3Z"/>
+                                                </svg>
+                                                رقم معتمد
+                                            </span>
+                                        </div>
+
+                                        {{-- Number Display --}}
+                                        <div class="payment-number-showcase">
+                                            <div class="payment-number-digits" dir="ltr">{{ $method['number'] }}</div>
+                                        </div>
+
+                                        {{-- Copy & WhatsApp Actions --}}
+                                        <div class="payment-card-actions">
+                                            <button
+                                                type="button"
+                                                class="payment-action-btn is-copy js-copy-number-btn"
+                                                data-copy-value="{{ $method['number'] }}"
+                                                aria-label="نسخ رقم التحويل {{ $method['number'] }}"
+                                            >
+                                                <svg class="icon-copy" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" stroke-linejoin="round"/>
+                                                    <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5"/>
+                                                </svg>
+                                                <span class="btn-copy-text">نسخ الرقم</span>
+                                            </button>
+
+                                            @if(!empty($method['whatsapp_url']))
+                                                <a
+                                                    href="{{ $method['whatsapp_url'] }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="payment-action-btn is-whatsapp"
+                                                    aria-label="التواصل عبر واتساب مع رقم التحويل"
+                                                >
+                                                    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.06-1.144-.085-.3-.097-.687-.234-1.189-.452-2.127-.925-3.513-3.08-3.619-3.223-.105-.14-862-1.148-.862-2.189 0-1.04.544-1.552.738-1.764.193-.211.423-.264.563-.264.14 0 .281.002.404.008.131.007.306-.05.479.366.176.423.6 1.464.653 1.57.053.107.088.232.018.374-.07.141-.106.23-.211.353-.106.124-.222.277-.317.372-.106.105-.216.219-.093.43.123.21.547.904 1.173 1.462.806.719 1.485.942 1.696 1.048.211.105.334.088.457-.053.123-.141.528-.616.669-.828.14-.21.281-.176.474-.105.193.07 1.229.58 1.44.685.211.106.351.159.404.247.053.088.053.512-.091.917z"/>
+                                                    </svg>
+                                                    <span>تواصل واتساب</span>
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="payment-vault-empty text-center p-6 border border-white/10 rounded-2xl bg-black/40">
+                                <p class="text-sm text-stone-300">
+                                    يرجى التواصل مع إدارة الفريق لتأكيد حساب التحويل قبل رفع الإيصال.
+                                </p>
+                            </div>
+                        @endif
+
+                        <div class="payment-instruction-strip">
+                            <span class="instruction-icon" aria-hidden="true">💡</span>
+                            <p>
+                                بعد إتمام التحويل على أي من الأرقام أعلاه، التقط صورة شاشة (Screenshot) لعملية التحويل الناجحة، ثم ارفعها في الخطوة التالية.
+                            </p>
+                        </div>
+                    </section>
+
+                    {{-- ===================================================
+                         STAGE 03 — SCREENSHOT UPLOAD + USER BOOKING DATA
+                         =================================================== --}}
+                    <section id="stage-03" class="booking-stage-card" data-stage-section="3" aria-labelledby="stage-03-heading">
+                        <header class="stage-card-header">
+                            <div class="stage-badge-wrap">
+                                <span class="stage-number-pill">03</span>
+                                <span class="stage-status-tag" id="stage-03-status">إثبات الدفع والبيانات</span>
+                            </div>
+                            <h2 id="stage-03-heading" class="stage-card-title">إيصال التحويل وبيانات استلام التذكرة</h2>
+                            <p class="stage-card-subtitle">ارفع صورة التحويل وأدخل اسمك ورقم الواتساب الذي ستصل عليه التذكرة برمز QR.</p>
+                        </header>
+
+                        {{-- Interactive Screenshot Upload Zone --}}
+                        <div class="upload-section-wrapper">
+                            <label class="booking-field-label">صورة إيصال التحويل (Screenshot) <span class="required-indicator">*</span></label>
+
+                            <input
+                                type="file"
+                                name="payment_screenshot"
+                                id="payment-screenshot-input"
+                                accept="image/*"
+                                class="sr-only"
+                                required
+                            >
+
+                            <div
+                                id="screenshot-dropzone"
+                                class="upload-dropzone"
+                                role="button"
+                                tabindex="0"
+                                aria-label="منطقة رفع صورة إيصال التحويل"
+                                onclick="document.getElementById('payment-screenshot-input').click()"
+                            >
+                                {{-- Empty State --}}
+                                <div id="upload-empty-state" class="upload-empty-state">
+                                    <div class="upload-emblem-ring" aria-hidden="true">
+                                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15"/>
+                                            <polyline points="17 8 12 3 7 8"/>
+                                            <line x1="12" y1="3" x2="12" y2="15"/>
+                                        </svg>
+                                    </div>
+                                    <p class="upload-primary-prompt">اضغط لاختيار صورة التحويل أو اسحبها هنا</p>
+                                    <p class="upload-secondary-prompt">صور PNG، JPG، أو لقطات iPhone حتى 20 ميجابايت</p>
+                                    <span class="upload-formats-badge">معاينة فورية للإيصال</span>
+                                </div>
+
+                                {{-- Preview State --}}
+                                <div id="upload-preview-state" class="upload-preview-state" hidden onclick="event.stopPropagation()">
+                                    <div class="preview-thumbnail-frame">
+                                        <img id="upload-preview-img" src="" alt="معاينة إيصال التحويل" class="preview-image-element">
+                                    </div>
+                                    <div class="preview-meta-details">
+                                        <div class="file-name-wrap">
+                                            <span class="file-success-icon" aria-hidden="true">✓</span>
+                                            <strong id="upload-filename" class="file-name-text">receipt.jpg</strong>
+                                        </div>
+                                        <span id="upload-filesize" class="file-size-text">0 كيلوبايت</span>
+                                        <div class="preview-control-buttons">
+                                            <button type="button" id="change-screenshot-btn" class="preview-btn-modify">
+                                                استبدال الصورة
+                                            </button>
+                                            <button type="button" id="remove-screenshot-btn" class="preview-btn-remove">
+                                                حذف
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p id="error-screenshot" class="field-error-msg" role="alert"></p>
+                        </div>
+
+                        {{-- Primary Customer Information Fields --}}
+                        <div class="customer-fields-grid mt-6">
+                            <div class="booking-field-group">
+                                <label for="customer-name-input" class="booking-field-label">
+                                    <span>الاسم بالكامل <span class="required-indicator">*</span></span>
+                                    <small class="field-label-hint">(الاسم الأساسي لحاجز التذاكر)</small>
+                                </label>
+                                <div class="booking-input-shell">
+                                    <span class="input-leading-icon" aria-hidden="true">👤</span>
+                                    <input
+                                        type="text"
+                                        id="customer-name-input"
+                                        name="names[]"
+                                        value="{{ old('names.0') }}"
+                                        placeholder="الاسم الثلاثي أو الرباعي"
+                                        autocomplete="name"
+                                        inputmode="text"
+                                        class="booking-text-input"
+                                        required
+                                    >
+                                </div>
+                                <p id="error-name" class="field-error-msg" role="alert"></p>
+                            </div>
+
+                            <div class="booking-field-group">
+                                <div class="whatsapp-field-header">
+                                    <label for="customer-whatsapp-input" class="booking-field-label">
+                                        <span>رقم الواتساب <span class="required-indicator">*</span></span>
+                                        <small class="field-label-hint">(تصلك التذكرة عليه)</small>
+                                    </label>
+                                    <span class="whatsapp-secure-pill">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771z"/>
+                                        </svg>
+                                        إرسال آلي للـ QR
+                                    </span>
+                                </div>
+                                <div class="booking-input-shell">
+                                    <span class="input-leading-icon" aria-hidden="true">📱</span>
+                                    <input
+                                        type="tel"
+                                        id="customer-whatsapp-input"
+                                        name="phones[]"
+                                        value="{{ old('phones.0') }}"
+                                        placeholder="010XXXXXXXX"
+                                        autocomplete="tel"
+                                        inputmode="tel"
+                                        dir="ltr"
+                                        class="booking-text-input text-left"
+                                        required
+                                    >
+                                </div>
+                                <p id="error-whatsapp" class="field-error-msg" role="alert"></p>
+                            </div>
+                        </div>
+
+                        {{-- Additional Attendees Container (rendered dynamically if tickets > 1) --}}
+                        <div id="attendees-container" class="space-y-3" hidden></div>
+
+                        {{-- Trust / WhatsApp Note --}}
+                        <div class="whatsapp-delivery-guarantee mt-4">
+                            <span class="guarantee-icon" aria-hidden="true">🎫</span>
+                            <p>
+                                <strong>تنبيه هام:</strong> بعد مراجعة إيصال التحويل من قِبل إدارة المسرح، ستصلك رسالة واتساب رسمية تحتوي على بطاقة الدخول الذكية ورمز الـ QR Code الخاص بحجزك.
+                            </p>
+                        </div>
+                    </section>
+
+                    {{-- ===================================================
+                         STAGE 04 — SEND BOOKING & FINAL READINESS CHECK
+                         =================================================== --}}
+                    <section id="stage-04" class="booking-stage-card is-final-stage" data-stage-section="4" aria-labelledby="stage-04-heading">
+                        <header class="stage-card-header">
+                            <div class="stage-badge-wrap">
+                                <span class="stage-number-pill">04</span>
+                                <span class="stage-status-tag" id="stage-04-status">التأكيد النهائي</span>
+                            </div>
+                            <h2 id="stage-04-heading" class="stage-card-title">مراجعة جاهزية الحجز وإرسال الطلب</h2>
+                            <p class="stage-card-subtitle">تأكد من اكتمال عناصر حجزك قبل الضغط على زر إرسال الحجز.</p>
+                        </header>
+
+                        {{-- Live Readiness Checklist --}}
+                        <ul class="readiness-checklist" aria-label="حالة اكتمال بيانات الحجز">
+                            <li class="readiness-item is-done" id="ready-check-tickets">
+                                <span class="readiness-icon" aria-hidden="true">✓</span>
+                                <span>تم تحديد عدد التذاكر (<strong class="js-sync-qty">{{ $initialQty }}</strong> تذكرة — <strong class="js-sync-total">{{ number_format($initialTotal, 0) }}</strong> ج.م)</span>
+                            </li>
+                            <li class="readiness-item" id="ready-check-screenshot">
+                                <span class="readiness-icon" aria-hidden="true">○</span>
+                                <span>إرفاق صورة إيصال التحويل (Screenshot)</span>
+                            </li>
+                            <li class="readiness-item" id="ready-check-user">
+                                <span class="readiness-icon" aria-hidden="true">○</span>
+                                <span>كتابة الاسم بالكامل ورقم الواتساب لاستلام التذكرة</span>
+                            </li>
+                        </ul>
+
+                        {{-- 3D Tactile Master Submit CTA --}}
+                        <div class="final-cta-wrapper">
+                            <button
+                                type="submit"
+                                id="submit-booking-cta"
+                                class="booking-master-cta"
                                 disabled
-                                class="w-full px-6 py-3.5 rounded-2xl
-                                       bg-gray-600 text-black/80 text-sm font-bold
-                                       disabled:cursor-not-allowed transition
-                                       shadow-[0_8px_30px_rgba(250,204,21,0.0)]
-                                       flex items-center justify-center gap-2">
-                            <span id="submitLabel">
-                                <span aria-hidden="true">🎟️</span>
-                                إرسال طلب الحجز
-                            </span>
-                        </button>
-                    </div>
-                    <p id="submitHint" class="bk-submit-hint">
-                        أكمل البيانات وارفع لقطة الشاشة لتفعيل زر الإرسال
-                    </p>
-                </div>
-            </form>
+                            >
+                                <span class="cta-content-default">
+                                    <span class="cta-main-label">إرسال طلب الحجز 🎟️</span>
+                                    <span class="cta-sub-pill">
+                                        <span class="js-sync-qty">{{ $initialQty }}</span> تذكرة • <span class="js-sync-total">{{ number_format($initialTotal, 0) }}</span> ج.م
+                                    </span>
+                                </span>
 
-            {{-- Trust strip --}}
-            <div class="bk-trust" aria-hidden="true">
-                <div class="bk-trust-cell">
-                    <span class="glyph">🔒</span>
-                    <span>دفع آمن</span>
+                                <span class="cta-content-loading" hidden aria-hidden="true">
+                                    <span class="cta-spinner"></span>
+                                    <span>جاري تسجيل الحجز ورفع الإيصال...</span>
+                                </span>
+                            </button>
+
+                            <p class="cta-reassurance-foot">
+                                🔒 بمجرد مراجعة التحويل، تصلك تذكرتك الرسمية المزودة برمز الدخول QR على رقم الواتساب المسجل.
+                            </p>
+                        </div>
+                    </section>
+                </form>
+            </div>
+
+            {{-- =======================================================
+                 DESKTOP STICKY SUMMARY COLUMN (THEATRICAL TICKET STUB)
+                 ======================================================= --}}
+            <aside class="booking-summary-column" aria-label="ملخص الحجز المباشر">
+                <div class="booking-ticket-summary-card">
+                    <div class="ticket-summary-header">
+                        <span class="summary-kicker">ملخص التذكرة</span>
+                        <h3 class="summary-play-title">{{ $playTitle }}</h3>
+                        <span class="summary-play-venue">{{ $playLocation }}</span>
+                    </div>
+
+                    <div class="ticket-perforation-divider" aria-hidden="true">
+                        <span class="notch-right"></span>
+                        <span class="perforation-line"></span>
+                        <span class="notch-left"></span>
+                    </div>
+
+                    <dl class="ticket-summary-list">
+                        <div class="summary-row">
+                            <dt>العرض</dt>
+                            <dd>{{ $playTitle }}</dd>
+                        </div>
+                        <div class="summary-row">
+                            <dt>الموعد</dt>
+                            <dd id="summary-date-display">{{ $showDateFormatted }}</dd>
+                        </div>
+                        <div class="summary-row">
+                            <dt>الساعة</dt>
+                            <dd>{{ $showTimeFormatted }}</dd>
+                        </div>
+                        <div class="summary-row">
+                            <dt>عدد التذاكر</dt>
+                            <dd><strong id="summary-qty-display" class="js-sync-qty">{{ $initialQty }}</strong></dd>
+                        </div>
+                        <div class="summary-row">
+                            <dt>سعر التذكرة</dt>
+                            <dd><span id="summary-unit-display">{{ number_format($unitPrice, 0) }}</span> ج.م</dd>
+                        </div>
+                        <div class="summary-row">
+                            <dt>حالة الإيصال</dt>
+                            <dd id="summary-receipt-status" class="status-pending">بانتظار الإرفاق</dd>
+                        </div>
+                    </dl>
+
+                    <div class="ticket-summary-total-box">
+                        <span class="total-box-label">المجموع المستحق</span>
+                        <div class="total-box-amount">
+                            <strong id="summary-total-display" class="js-sync-total">{{ number_format($initialTotal, 0) }}</strong>
+                            <span class="currency">جنيه مصري</span>
+                        </div>
+                    </div>
+
+                    <a href="#stage-04" data-jump-stage="stage-04" class="summary-jump-cta">
+                        <span>متابعة إلى الإرسال</span>
+                        <span class="jump-arrow" aria-hidden="true">↓</span>
+                    </a>
+
+                    <div class="summary-trust-strip">
+                        <div class="trust-badge-item">
+                            <span class="trust-icon" aria-hidden="true">🔒</span>
+                            <span>مراجعة يدوية آمنة</span>
+                        </div>
+                        <div class="trust-badge-item">
+                            <span class="trust-icon" aria-hidden="true">⚡</span>
+                            <span>تأكيد عبر واتساب</span>
+                        </div>
+                        <div class="trust-badge-item">
+                            <span class="trust-icon" aria-hidden="true">🎟️</span>
+                            <span>تذكرة QR ذكية</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="bk-trust-cell">
-                    <span class="glyph">⚡</span>
-                    <span>تأكيد سريع</span>
+            </aside>
+        </div>
+
+        {{-- MOBILE STICKY BOTTOM SUMMARY BAR --}}
+        <div id="mobile-sticky-summary" class="mobile-sticky-summary" role="region" aria-label="شريط ملخص الحجز السريع">
+            <div class="mobile-sticky-content">
+                <div class="mobile-sticky-figures">
+                    <span class="mobile-sticky-label">الإجمالي:</span>
+                    <strong id="mobile-total-display" class="mobile-sticky-total js-sync-total">{{ number_format($initialTotal, 0) }} ج.م</strong>
+                    <span id="mobile-qty-count" class="mobile-sticky-count js-sync-qty">{{ $initialQty }} تذاكر</span>
                 </div>
-                <div class="bk-trust-cell">
-                    <span class="glyph">📱</span>
-                    <span>تذكرة QR على واتساب</span>
-                </div>
+                <button type="button" id="mobile-sticky-action-btn" class="mobile-sticky-cta-btn">
+                    متابعة الحجز ↓
+                </button>
             </div>
         </div>
 
+        {{-- FLOATING TOAST NOTIFICATION --}}
+        <div id="booking-toast" class="booking-toast" role="status" aria-live="polite" hidden>
+            <span class="toast-check">✓</span>
+            <span id="booking-toast-text">تم نسخ رقم التحويل بنجاح</span>
+        </div>
+
     </div>
-</section>
+</div>
 
-
-{{-- ======================
-| SCRIPT (preserved verbatim from PR #9)
-====================== --}}
 <script>
-(function () {
-    // --- Tickets state ---------------------------------------------
-    var count = {{ (int) old('tickets_count', 1) }};
-    var maxTickets = {{ max(0, $showTime->total_tickets - $showTime->bookings()
-        ->whereIn('status', ['approved', 'pending'])
-        ->sum('tickets_count')) }};
-    var ticketPrice = {{ (int) $showTime->ticket_price }};
-
-    var namesContainer = document.getElementById('namesContainer');
-    var ticketsInput   = document.getElementById('tickets_count');
-    var countDisplay   = document.getElementById('ticketsCount');
-    var maxHint        = document.getElementById('maxHint');
-    var totalPriceHint = document.getElementById('totalPriceHint');
-
-    // Preserve old() values when the server bounced the form back
-    // with validation errors so the user doesn't have to retype.
-    var oldNames  = @json(old('names', []));
-    var oldPhones = @json(old('phones', []));
-
-    function renderNames() {
-        namesContainer.innerHTML = '';
-        for (var i = 1; i <= count; i++) {
-            var idx = i - 1;
-            var nameVal  = String(oldNames[idx]  || '').replace(/"/g, '&quot;');
-            var phoneVal = String(oldPhones[idx] || '').replace(/"/g, '&quot;');
-
-            namesContainer.insertAdjacentHTML('beforeend',
-                '<div class="space-y-2 bg-black/40 border border-white/10 rounded-2xl p-3">' +
-                  '<p class="text-[11px] text-gray-400">شخص ' + i + '</p>' +
-                  '<input type="text" name="names[]" value="' + nameVal + '"' +
-                    ' placeholder="الاسم بالكامل"' +
-                    ' autocomplete="name"' +
-                    ' inputmode="text"' +
-                    ' class="booking-input w-full rounded-xl bg-black/60 border border-white/15 px-3 py-3 text-white"' +
-                    ' required>' +
-                  '<input type="tel" name="phones[]" value="' + phoneVal + '"' +
-                    ' placeholder="رقم واتساب (مثال 01012345678)"' +
-                    ' autocomplete="tel"' +
-                    ' inputmode="tel"' +
-                    ' pattern="[0-9+\\s\\-]{8,16}"' +
-                    ' class="booking-input w-full rounded-xl bg-black/60 border border-white/15 px-3 py-3 text-white"' +
-                    ' required>' +
-                '</div>'
-            );
-        }
-        wireInputs();
-        recomputeSubmitState();
-    }
-
-    function changeCount(val) {
-        var prev = count;
-        count += val;
-        if (count < 1) count = 1;
-        if (count > maxTickets) {
-            count = Math.max(1, maxTickets);
-            flashMax();
-        }
-        if (count === prev) {
-            updatePriceHint();
-            return;
-        }
-
-        // Stash what the user typed so re-rendering doesn't blow away
-        // valid entries when they tap +/− mid-flow.
-        var existingNames  = namesContainer.querySelectorAll('input[name="names[]"]');
-        var existingPhones = namesContainer.querySelectorAll('input[name="phones[]"]');
-        oldNames  = Array.prototype.map.call(existingNames,  function (n) { return n.value; });
-        oldPhones = Array.prototype.map.call(existingPhones, function (n) { return n.value; });
-
-        countDisplay.innerText = count;
-        ticketsInput.value     = count;
-        updatePriceHint();
-        renderNames();
-    }
-    window.changeCount = changeCount;
-
-    function updatePriceHint() {
-        totalPriceHint.innerText =
-            'الإجمالي: ' + (count * ticketPrice).toLocaleString('ar-EG') + ' جنيه';
-        maxHint.innerText = maxTickets > 0
-            ? 'المتاح: ' + maxTickets + ' تذكرة'
-            : 'لا تذاكر متاحة حاليًا';
-    }
-
-    function flashMax() {
-        if (!countDisplay.animate) return;
-        countDisplay.animate(
-            [{ transform: 'scale(1)' }, { transform: 'scale(1.18)' }, { transform: 'scale(1)' }],
-            { duration: 260 }
-        );
-    }
-
-    // --- Submit gate -----------------------------------------------
-    var screenshotInput  = document.getElementById('screenshot');
-    var previewWrap      = document.getElementById('screenshotPreviewWrap');
-    var emptyState       = document.getElementById('screenshotEmptyState');
-    var previewImg       = document.getElementById('screenshotPreview');
-    var fileNameEl       = document.getElementById('screenshotFileName');
-    var screenshotError  = document.getElementById('screenshotError');
-    var submitBtn        = document.getElementById('submitBtn');
-    var submitLabel      = document.getElementById('submitLabel');
-    var submitHint       = document.getElementById('submitHint');
-    var bookingForm      = document.getElementById('bookingForm');
-
-    var isSubmitting = false;
-
-    function fieldsValid() {
-        var ok = true;
-        namesContainer.querySelectorAll('input').forEach(function (el) {
-            if (!el.value.trim()) ok = false;
-        });
-        return ok;
-    }
-
-    function screenshotReady() {
-        return screenshotInput.files && screenshotInput.files.length > 0;
-    }
-
-    function recomputeSubmitState() {
-        if (isSubmitting) return;
-        var ready = fieldsValid() && screenshotReady() && maxTickets > 0;
-        submitBtn.disabled = !ready;
-        if (ready) {
-            submitBtn.classList.remove('bg-gray-600', 'text-black/80');
-            submitBtn.classList.add('bg-amber-400', 'text-black',
-                'shadow-[0_10px_40px_rgba(250,204,21,0.35)]');
-            submitHint.classList.add('hidden');
-        } else {
-            submitBtn.classList.add('bg-gray-600', 'text-black/80');
-            submitBtn.classList.remove('bg-amber-400', 'text-black',
-                'shadow-[0_10px_40px_rgba(250,204,21,0.35)]');
-            submitHint.classList.remove('hidden');
-        }
-    }
-
-    function wireInputs() {
-        namesContainer.querySelectorAll('input').forEach(function (el) {
-            el.addEventListener('input', recomputeSubmitState);
-            el.addEventListener('blur',  recomputeSubmitState);
-        });
-    }
-
-    screenshotInput.addEventListener('change', function () {
-        screenshotError.classList.add('hidden');
-        var file = screenshotInput.files[0];
-        if (!file) {
-            previewWrap.classList.add('hidden');
-            emptyState.classList.remove('hidden');
-            recomputeSubmitState();
-            return;
-        }
-        if (file.size > 20 * 1024 * 1024) {
-            screenshotError.innerText = 'حجم الصورة أكبر من 20MB — جرّب صورة أصغر.';
-            screenshotError.classList.remove('hidden');
-            screenshotInput.value = '';
-            previewWrap.classList.add('hidden');
-            emptyState.classList.remove('hidden');
-            recomputeSubmitState();
-            return;
-        }
-        var url = URL.createObjectURL(file);
-        previewImg.src = url;
-        previewImg.onload = function () { URL.revokeObjectURL(url); };
-        fileNameEl.innerText = file.name;
-        emptyState.classList.add('hidden');
-        previewWrap.classList.remove('hidden');
-        recomputeSubmitState();
-    });
-
-    // --- Idempotency token ----------------------------------------
-    // We stash a random token per page load in sessionStorage,
-    // scoped to this showtime. A refresh re-uses the same token,
-    // which the server uses as a Cache::add() key to reject the
-    // duplicate POST cleanly. Cleared on successful submit.
-    var tokenKey = 'booking_token_show_{{ $showTime->id }}';
-    var tokenEl  = document.getElementById('idempotencyToken');
-
-    function makeToken() {
-        try {
-            var buf = new Uint8Array(16);
-            (window.crypto || window.msCrypto).getRandomValues(buf);
-            return Array.prototype.map.call(buf, function (b) {
-                return ('0' + b.toString(16)).slice(-2);
-            }).join('');
-        } catch (e) {
-            return Date.now() + '-' + Math.random().toString(36).slice(2);
-        }
-    }
-
-    var token = null;
-    try { token = sessionStorage.getItem(tokenKey); } catch (e) {}
-    if (!token) {
-        token = makeToken();
-        try { sessionStorage.setItem(tokenKey, token); } catch (e) {}
-    }
-    tokenEl.value = token;
-
-    // --- Submit handling ------------------------------------------
-    bookingForm.addEventListener('submit', function (e) {
-        if (isSubmitting) {
-            e.preventDefault();
-            return false;
-        }
-        if (submitBtn.disabled) {
-            e.preventDefault();
-            return false;
-        }
-        isSubmitting = true;
-        submitBtn.disabled = true;
-        submitBtn.classList.add('is-loading');
-        submitLabel.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>جاري الإرسال…';
-        submitHint.innerText = 'لا تغلق الصفحة حتى يكتمل الرفع';
-        submitHint.classList.remove('hidden');
-    });
-
-    // Reset state if the user navigates back via bfcache (iOS Safari).
-    window.addEventListener('pageshow', function (e) {
-        if (e.persisted) {
-            isSubmitting = false;
-            submitBtn.classList.remove('is-loading');
-            submitLabel.innerText = 'إرسال طلب الحجز';
-            recomputeSubmitState();
-        }
-    });
-
-    // --- Tap-to-copy on payment numbers ---------------------------
-    document.querySelectorAll('[data-copy]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var value = btn.getAttribute('data-copy') || '';
-            var hint  = btn.querySelector('.copy-hint');
-            var done = function () {
-                if (!hint) return;
-                var prev = hint.innerText;
-                hint.innerText = 'تم النسخ ✓';
-                hint.classList.add('text-emerald-300');
-                setTimeout(function () {
-                    hint.innerText = prev;
-                    hint.classList.remove('text-emerald-300');
-                }, 1200);
-            };
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(value).then(done, done);
-            } else {
-                // iOS Safari fallback
-                var ta = document.createElement('textarea');
-                ta.value = value;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                try { document.execCommand('copy'); } catch (err) {}
-                document.body.removeChild(ta);
-                done();
-            }
-        });
-    });
-
-    // --- Init ------------------------------------------------------
-    if (maxTickets === 0) {
-        count = 0;
-        countDisplay.innerText = '0';
-        ticketsInput.value = 0;
-    } else {
-        if (count > maxTickets) count = maxTickets;
-        countDisplay.innerText = count;
-        ticketsInput.value = count;
-    }
-    updatePriceHint();
-    renderNames();
-})();
+    window.__oldNames = @json(old('names', []));
+    window.__oldPhones = @json(old('phones', []));
 </script>
-
+<script src="{{ asset('js/elsar5a-booking.js') }}?v={{ file_exists(public_path('js/elsar5a-booking.js')) ? filemtime(public_path('js/elsar5a-booking.js')) : '1.0' }}" defer></script>
 @endsection
