@@ -204,8 +204,6 @@
                     <a href="{{ route('archive') }}" class="intermission-archive-link">اكتشف العروض السابقة <span aria-hidden="true">↗</span></a>
                 </div>
             @endif
-
-            <p class="camera-cue" aria-hidden="true">تقدّم نحو الخشبة</p>
         </div>
     </section>
 

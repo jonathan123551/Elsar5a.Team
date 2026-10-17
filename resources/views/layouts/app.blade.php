@@ -415,7 +415,7 @@ body.has-sticky-action main {
                     </span>
                 </div>
 
-                <p class="text-lg sm:text-2xl md:text-3xl font-extrabold text-amber-100/90 tracking-wide font-['Alexandria',sans-serif] drop-shadow-[0_2px_14px_rgba(214,164,91,0.25)]">
+                <p class="text-xl sm:text-2xl md:text-3xl font-extrabold text-amber-100 tracking-wide font-['Alexandria',sans-serif] drop-shadow-[0_2px_18px_rgba(214,164,91,0.35)]">
                     نجول نصرخ فيزداد العقل وعياً
                 </p>
 

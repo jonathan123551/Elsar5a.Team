@@ -88,93 +88,104 @@
 
     var viewport = window.innerHeight;
 
+    // 0. Curtains dissolve immediately from the start of scrolling (0.00 -> 0.18):
+    var curtainScrollOpacity = clamp(1 - (progress / 0.18), 0, 1);
+    var curtainScrollShift = (progress * 50).toFixed(2);
+    if (curtain) {
+      curtain.style.setProperty('--curtain-scroll-opacity', curtainScrollOpacity.toFixed(4));
+      curtain.style.setProperty('--curtain-scroll-shift', curtainScrollShift + 'vw');
+      if (curtainScrollOpacity <= 0.001) {
+        curtain.style.display = 'none';
+      } else {
+        curtain.style.display = '';
+      }
+      curtain.classList.toggle('is-passed', progress > 0.18);
+    }
+
     // 1. Camera forward journey through the theatre into website space:
-    // From 0.00 to 0.60: The physical stage zooms forward.
-    // Between 0.32 and 0.60: The physical theatre environment (stage photo, aisle, auditorium)
+    // From 0.00 to 0.45: The physical stage zooms forward into the proscenium.
+    // Between 0.06 and 0.38: The physical theatre environment (stage photo, aisle, auditorium)
     // dissolves naturally into the deep cosmic website gradient (#020617 with crimson/gold ambients).
-    var theatreDissolve = clamp(1 - (progress - 0.32) / 0.28, 0, 1);
-    var spaceGradient = clamp((progress - 0.28) / 0.32, 0, 1);
+    var theatreDissolve = clamp(1 - (progress - 0.06) / 0.32, 0, 1);
+    var spaceGradient = clamp((progress - 0.04) / 0.34, 0, 1);
 
     if (world) {
-      world.style.setProperty('--world-scale', (1.10 + progress * 0.48).toFixed(4));
-      world.style.setProperty('--world-z', (-120 + Math.round(progress * 180)) + 'px');
-      world.style.setProperty('--world-y', (-Math.round(progress * viewport * 0.035)) + 'px');
+      world.style.setProperty('--world-scale', (1.10 + progress * 0.58).toFixed(4));
+      world.style.setProperty('--world-z', (-120 + Math.round(progress * 240)) + 'px');
+      world.style.setProperty('--world-y', (-Math.round(progress * viewport * 0.04)) + 'px');
       world.style.setProperty('--world-opacity', theatreDissolve.toFixed(4));
     }
     if (auditorium) {
-      auditorium.style.setProperty('--auditorium-scale', (1.02 + progress * 0.30).toFixed(4));
-      auditorium.style.setProperty('--auditorium-y', Math.round(progress * viewport * 0.075) + 'px');
+      auditorium.style.setProperty('--auditorium-scale', (1.02 + progress * 0.36).toFixed(4));
+      auditorium.style.setProperty('--auditorium-y', Math.round(progress * viewport * 0.08) + 'px');
       auditorium.style.setProperty('--auditorium-opacity', theatreDissolve.toFixed(4));
     }
     if (aisle) {
-      aisle.style.setProperty('--aisle-scale', (1.00 + progress * 0.52).toFixed(4));
-      aisle.style.setProperty('--aisle-y', Math.round(progress * viewport * 0.17) + 'px');
+      aisle.style.setProperty('--aisle-scale', (1.00 + progress * 0.60).toFixed(4));
+      aisle.style.setProperty('--aisle-y', Math.round(progress * viewport * 0.18) + 'px');
       aisle.style.setProperty('--aisle-opacity', theatreDissolve.toFixed(4));
     }
     if (spotlight) {
-      spotlight.style.setProperty('--spotlight-scale', (1 + progress * 0.68).toFixed(4));
-      spotlight.style.setProperty('--spotlight-opacity', (0.16 + (1 - theatreDissolve) * 0.38).toFixed(4));
+      spotlight.style.setProperty('--spotlight-scale', (1 + progress * 0.78).toFixed(4));
+      spotlight.style.setProperty('--spotlight-opacity', (0.16 + (1 - theatreDissolve) * 0.42).toFixed(4));
     }
     if (proscenium) {
-      proscenium.style.setProperty('--proscenium-scale', (1 + progress * 0.38).toFixed(4));
-      proscenium.style.setProperty('--proscenium-opacity', clamp(1 - (progress - 0.22) / 0.26, 0, 1).toFixed(4));
+      proscenium.style.setProperty('--proscenium-scale', (1 + progress * 0.44).toFixed(4));
+      proscenium.style.setProperty('--proscenium-opacity', clamp(1 - (progress - 0.10) / 0.24, 0, 1).toFixed(4));
     }
 
     if (spaceLayer) {
       spaceLayer.style.setProperty('--space-opacity', spaceGradient.toFixed(4));
     }
 
-    // 2. Identity text zooms forward past the camera and fades out early (0.06 -> 0.30)
-    if (identity) {
-      var idFade = clamp(1 - (progress - 0.06) / 0.24, 0, 1);
-      identity.style.setProperty('--identity-opacity', idFade.toFixed(4));
-      identity.style.setProperty('--identity-scale', (1 + progress * 0.55).toFixed(4));
-      identity.style.setProperty('--identity-z', Math.round(progress * 140) + 'px');
-      identity.style.setProperty('--identity-y', (-Math.round(progress * viewport * 0.28)) + 'px');
-    }
-
-    // 3. Centered Production Poster Reveal (0.46 -> 0.78):
-    // Poster starts smaller, in 3D perspective depth, approaches the camera smoothly,
-    // and settles centered into its final framed composition.
+    // 2. Floating 3D Production Poster Approach (0.12 -> 0.58):
+    // As the physical theatre dissolves into website space, the 3D floating poster
+    // approaches from deep perspective (translateZ -380px, tilt 9.5deg, scale 0.38)
+    // and settles smoothly centered (translateZ 0px, tilt 0deg, scale 1.0).
     if (production) {
-      var posterProgress = clamp((progress - 0.44) / 0.28, 0, 1);
-      var informationProgress = clamp((progress - 0.68) / 0.24, 0, 1);
-      var reveal = clamp((progress - 0.44) / 0.44, 0, 1);
+      var posterProgress = clamp((progress - 0.12) / 0.42, 0, 1);
+      var informationProgress = clamp((progress - 0.52) / 0.26, 0, 1);
+      var reveal = clamp((progress - 0.12) / 0.45, 0, 1);
 
-      var posterScale = (0.58 + posterProgress * 0.42).toFixed(4);
-      var posterZ = Math.round((1 - posterProgress) * -160);
-      var posterY = Math.round((1 - posterProgress) * 44);
-      var posterTilt = ((1 - posterProgress) * 4.5).toFixed(2);
+      // Natural ease-out curve for theatrical perspective
+      var posterEase = Math.sin(posterProgress * Math.PI / 2);
+
+      var posterScale = (0.38 + posterEase * 0.62).toFixed(4);
+      var posterZ = Math.round((1 - posterEase) * -380);
+      var posterY = Math.round((1 - posterEase) * 60);
+      var posterTilt = ((1 - posterEase) * 9.5).toFixed(2);
+      var posterOpacity = clamp((progress - 0.12) / 0.16, 0, 1).toFixed(4);
 
       production.style.setProperty('--production-opacity', reveal.toFixed(4));
       production.style.setProperty('--production-y', Math.round((1 - reveal) * viewport * 0.02) + 'px');
       production.style.setProperty('--production-scale', '1');
 
-      production.style.setProperty('--poster-opacity', clamp(posterProgress * 1.8, 0, 1).toFixed(4));
+      production.style.setProperty('--poster-opacity', posterOpacity);
       production.style.setProperty('--poster-scale', posterScale);
       production.style.setProperty('--poster-z', posterZ + 'px');
       production.style.setProperty('--poster-y', posterY + 'px');
       production.style.setProperty('--poster-tilt', posterTilt + 'deg');
 
       production.style.setProperty('--information-opacity', informationProgress.toFixed(4));
-      production.style.setProperty('--information-y', Math.round((1 - informationProgress) * 20) + 'px');
+      production.style.setProperty('--information-y', Math.round((1 - informationProgress) * 22) + 'px');
 
-      if (informationProgress > 0.04) production.removeAttribute('inert');
-      else production.setAttribute('inert', '');
+      if (informationProgress > 0.05) {
+        production.removeAttribute('inert');
+      } else {
+        production.setAttribute('inert', '');
+      }
     }
 
     if (intermission) {
-      var interReveal = clamp((progress - 0.46) / 0.36, 0, 1);
+      var interReveal = clamp((progress - 0.20) / 0.35, 0, 1);
       intermission.style.setProperty('--intermission-opacity', interReveal.toFixed(4));
       intermission.style.setProperty('--intermission-y', Math.round((1 - interReveal) * viewport * 0.03) + 'px');
-      if (interReveal > 0.04) intermission.removeAttribute('inert');
+      if (interReveal > 0.05) intermission.removeAttribute('inert');
       else intermission.setAttribute('inert', '');
     }
 
-    var cue = document.querySelector('.camera-cue');
-    if (cue) cue.style.setProperty('--cue-opacity', clamp(1 - progress * 3.5, 0, 1).toFixed(4));
-    if (curtain) curtain.classList.toggle('is-passed', progress > 0.95);
-    document.querySelector('.cinema-home').style.setProperty('--camera-progress', progress.toFixed(4));
+    var cinemaHome = document.querySelector('.cinema-home');
+    if (cinemaHome) cinemaHome.style.setProperty('--camera-progress', progress.toFixed(4));
   }
 
   function requestCameraUpdate() {
@@ -202,11 +213,17 @@
       reducedMotion = true;
       finish(false);
       releaseReveal();
+      if (curtain) curtain.style.display = 'none';
       [production, intermission].forEach(function (panel) {
         if (!panel) return;
         panel.style.setProperty('--production-opacity', '1');
         panel.style.setProperty('--poster-opacity', '1');
+        panel.style.setProperty('--poster-scale', '1');
+        panel.style.setProperty('--poster-z', '0px');
+        panel.style.setProperty('--poster-y', '0px');
+        panel.style.setProperty('--poster-tilt', '0deg');
         panel.style.setProperty('--information-opacity', '1');
+        panel.style.setProperty('--information-y', '0px');
         panel.style.setProperty('--intermission-opacity', '1');
       });
     };
