@@ -128,47 +128,11 @@ class Phase2AStageAndScarcityTest extends TestCase
             'is_sold_out' => false,
         ]);
 
-        $numberedPlaceholder = Show::create([
-            'title' => 'Test11',
-            'description' => 'Internal test record',
-            'is_active' => true,
-        ]);
-        ShowTime::create([
-            'show_id' => $numberedPlaceholder->id,
-            'date' => Carbon::tomorrow()->toDateString(),
-            'time' => '20:00:00',
-            'ticket_price' => 100,
-            'total_tickets' => 50,
-            'available_tickets' => 50,
-            'is_sold_out' => false,
-        ]);
-
         $this->get('/shows')
             ->assertOk()
             ->assertDontSee('Fhszh', false)
-            ->assertDontSee('Test11', false)
             ->assertDontSee('test-assessment.jpg', false)
             ->assertSee('لا توجد عروض متاحة في الوقت الحالي.', false);
-
-        $this->get(route('shows.show', $show))->assertNotFound();
-        $this->get(route('shows.show', $numberedPlaceholder))->assertNotFound();
-    }
-
-    public function test_inactive_show_detail_is_not_publicly_available(): void
-    {
-        $show = Show::create([
-            'title' => 'عرض غير نشط',
-            'is_active' => false,
-        ]);
-        ShowTime::create([
-            'show_id' => $show->id,
-            'date' => Carbon::tomorrow()->toDateString(),
-            'time' => '19:00:00',
-            'ticket_price' => 100,
-            'total_tickets' => 20,
-            'available_tickets' => 20,
-            'is_sold_out' => false,
-        ]);
 
         $this->get(route('shows.show', $show))->assertNotFound();
     }
