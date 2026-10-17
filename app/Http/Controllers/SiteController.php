@@ -78,7 +78,9 @@ class SiteController extends Controller
             })
             ->first();
 
-        return view('shows.index', compact('shows', 'featuredShow'));
+        $about = About::first();
+
+        return view('shows.index', compact('shows', 'featuredShow', 'about'));
     }
 
     public function about()

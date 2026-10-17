@@ -31,7 +31,8 @@
     };
     $featuredShow = $featuredShow ?? null;
     $featuredPoster = $resolvePoster($featuredShow?->poster_path ?? $featuredShow?->poster);
-    $featuredTime = $featuredShow?->showTimes->first(fn ($time) => !$time->is_sold_out && (int) $time->homepage_remaining_tickets > 0);
+    $featuredBookableTimes = $featuredShow?->showTimes->filter(fn ($time) => !$time->is_sold_out && (int) $time->homepage_remaining_tickets > 0)->values() ?? collect();
+    $featuredTime = $featuredBookableTimes->first();
     $featuredRemaining = $featuredTime ? (int) $featuredTime->homepage_remaining_tickets : 0;
     $featuredDate = $featuredTime?->date?->format('d/m/Y');
     $featuredClock = $featuredTime?->time ? \Carbon\Carbon::parse($featuredTime->time) : null;
@@ -84,12 +85,10 @@
             <div class="camera-plane camera-spotlight" id="camera-spotlight" aria-hidden="true"></div>
             <div class="camera-plane camera-proscenium" id="camera-proscenium" aria-hidden="true"></div>
             <div class="camera-identity" id="camera-identity" aria-hidden="true">
-                <p class="identity-overline">من بيان الفريق</p>
+                <p class="identity-overline">فريق الصرخة المسرحي</p>
                 <div class="identity-manifesto">
-                    <p>{{ $manifesto[2] }}</p>
-                    <p>{{ $manifesto[3] }}</p>
-                    <p>{{ $manifesto[4] }}</p>
-                    <p>{{ $manifesto[5] }}</p>
+                    <p class="identity-motto">{{ $openingMotto }}</p>
+                    <p class="identity-sub">فنحن لا نريد سوى حواسكم.</p>
                 </div>
                 <p class="identity-signoff">{{ $manifesto[6] }}</p>
             </div>
@@ -126,7 +125,11 @@
                                 @elseif($featuredLow) متبقي عدد محدود من التذاكر
                                 @else متاح للحجز الآن @endif
                             </p>
-                            <a class="booking-cta" href="{{ route('bookings.create', $featuredTime) }}">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
+                            @if($featuredBookableTimes->count() > 1)
+                                <a class="booking-cta" href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" role="button">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
+                            @else
+                                <a class="booking-cta" href="{{ route('bookings.create', $featuredTime) }}">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
+                            @endif
                         @endif
                     </div>
                 </article>
@@ -140,23 +143,6 @@
             @endif
 
             <p class="camera-cue" aria-hidden="true">تقدّم نحو الخشبة</p>
-        </div>
-    </section>
-
-    <section class="manifesto-section" aria-labelledby="manifesto-heading">
-        <header class="section-intro">
-            <div class="manifesto-kicker-badge" aria-hidden="true"><span class="kicker-dot"></span> صوت الفريق</div>
-            <p class="sr-only">صوت الفريق</p>
-            <h2 id="manifesto-heading">رسالتنا</h2>
-            <p class="manifesto-lead">كلمات كُتبت في عتمة المسرح، لتضيء الوعي وترسم الملامح الحقيقية لرسالتنا الإنسانية.</p>
-        </header>
-        <div class="manifesto-lines">
-            @foreach($manifesto as $beat)
-                <p class="manifesto-line{{ $loop->last ? ' manifesto-line--final' : '' }}" data-manifesto-line>{{ $beat }}</p>
-            @endforeach
-        </div>
-        <div class="manifesto-seal">
-            <img class="manifesto-mark" src="{{ asset('images/sarkha-logo.png') }}" alt="" width="72" height="72" loading="lazy">
         </div>
     </section>
 
@@ -184,12 +170,14 @@
                 @foreach($shows as $show)
                     @php
                         $showPoster = $resolvePoster($show->poster_path ?? $show->poster);
-                        $nextTime = $show->showTimes->first(fn ($item) => !$item->is_sold_out && (int) $item->homepage_remaining_tickets > 0) ?? $show->showTimes->first();
+                        $bookableTimes = $show->showTimes->filter(fn ($item) => !$item->is_sold_out && (int) $item->homepage_remaining_tickets > 0)->values();
+                        $nextTime = $bookableTimes->first() ?? $show->showTimes->first();
                         $remaining = $nextTime ? (int) $nextTime->homepage_remaining_tickets : 0;
                         $clock = $nextTime?->time ? \Carbon\Carbon::parse($nextTime->time) : null;
-                        $soldOut = !$nextTime || $nextTime->is_sold_out || $remaining <= 0;
+                        $soldOut = $bookableTimes->isEmpty() || !$nextTime || $nextTime->is_sold_out || $remaining <= 0;
                         $critical = !$soldOut && $remaining <= 10;
                         $low = !$soldOut && !$critical && ($remaining <= 25 || ((int) $nextTime->total_tickets > 0 && $remaining / (int) $nextTime->total_tickets <= .25));
+                        $hasMultipleTimes = $bookableTimes->count() > 1;
                     @endphp
                     <article class="upcoming-production">
                         <div class="upcoming-poster-frame">
@@ -230,6 +218,12 @@
                                             <span>{{ number_format((float) $nextTime->ticket_price, 0) }} ج.م</span>
                                         </span>
                                     @endif
+                                    @if($hasMultipleTimes)
+                                        <span class="meta-chip meta-chip--times">
+                                            <span class="chip-icon" aria-hidden="true">🎭</span>
+                                            <span>{{ $bookableTimes->count() }} مواعيد متاحة</span>
+                                        </span>
+                                    @endif
                                 </div>
                                 <p class="upcoming-date sr-only">{{ $nextTime->date?->format('d/m/Y') }} @if($clock) · {{ $clock->format('g:i') }} {{ $clock->format('A') === 'PM' ? 'م' : 'ص' }} @endif · {{ number_format((float) $nextTime->ticket_price, 0) }} ج.م</p>
                             @else
@@ -242,11 +236,18 @@
                             @elseif($low)<span class="ticket-state ticket-state--low">متبقي عدد محدود من التذاكر</span>
                             @else<span class="ticket-state ticket-state--healthy">متاح للحجز الآن</span>@endif
 
-                            @if($nextTime && !$soldOut)
-                                <a class="upcoming-cta" href="{{ route('bookings.create', $nextTime) }}">
-                                    <span>احجز الآن</span>
-                                    <span class="cta-arrow" aria-hidden="true">←</span>
-                                </a>
+                            @if(!$soldOut)
+                                @if($hasMultipleTimes)
+                                    <a class="upcoming-cta" href="#showtime-modal-{{ $show->id }}" data-open-modal="showtime-modal-{{ $show->id }}" role="button">
+                                        <span>احجز الآن</span>
+                                        <span class="cta-arrow" aria-hidden="true">←</span>
+                                    </a>
+                                @else
+                                    <a class="upcoming-cta" href="{{ route('bookings.create', $nextTime) }}">
+                                        <span>احجز الآن</span>
+                                        <span class="cta-arrow" aria-hidden="true">←</span>
+                                    </a>
+                                @endif
                             @else
                                 <a class="upcoming-cta upcoming-cta--quiet" href="{{ route('shows.show', $show) }}">
                                     <span>تفاصيل العرض</span>
@@ -260,20 +261,146 @@
         @endif
     </section>
 
-    <section class="team-signoff" aria-label="عن الفريق">
-        <div class="signoff-emblem-wrap">
-            <img src="{{ asset('images/sarkha-logo.png') }}" alt="" width="56" height="56" loading="lazy">
-        </div>
-        <div class="signoff-text">
-            <p>فريق الصرخة المسرحي</p>
-            <span>{{ $manifesto[6] }}</span>
-            <p class="signoff-tagline">فرقة مسرحية مستقلة تسعى لتقديم فن يحاكي الوعي الإنساني ويوقظ الفكر على خشبة المسرح.</p>
-        </div>
-        <a class="signoff-action" href="{{ route('about') }}">
-            <span>عن الفريق</span>
-            <span aria-hidden="true">↗</span>
-        </a>
-    </section>
+    {{-- Showtime Selection Modals --}}
+    @php
+        $modalShows = collect([$featuredShow])->filter()->merge($shows)->unique('id');
+    @endphp
+
+    @foreach($modalShows as $modalShow)
+        @if($modalShow->showTimes->count() > 0)
+            <div id="showtime-modal-{{ $modalShow->id }}" class="showtime-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-{{ $modalShow->id }}" hidden>
+                <div class="showtime-modal-backdrop" data-close-modal></div>
+                <div class="showtime-modal-dialog">
+                    <header class="showtime-modal-header">
+                        <div>
+                            <span class="showtime-modal-kicker">
+                                <span class="kicker-dot" aria-hidden="true"></span>
+                                مواعيد العرض المتاحة
+                            </span>
+                            <h3 id="modal-title-{{ $modalShow->id }}" class="showtime-modal-title">
+                                {{ $modalShow->title }}
+                            </h3>
+                        </div>
+                        <a href="#" class="showtime-modal-close" data-close-modal aria-label="إغلاق النافذة" role="button">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </a>
+                    </header>
+
+                    <div class="showtime-modal-body">
+                        <p class="showtime-modal-instructions">
+                            اختر الموعد المناسب لك للمتابعة إلى صفحة حجز التذاكر:
+                        </p>
+                        <ul class="showtime-slot-list" role="list">
+                            @foreach($modalShow->showTimes as $slotTime)
+                                @php
+                                    $slotClock = $slotTime->time ? \Carbon\Carbon::parse($slotTime->time) : null;
+                                    $slotRemaining = (int) ($slotTime->homepage_remaining_tickets ?? $slotTime->available_tickets);
+                                    $slotSoldOut = $slotTime->is_sold_out || $slotRemaining <= 0;
+                                    $slotCritical = !$slotSoldOut && $slotRemaining <= 10;
+                                    $slotLow = !$slotSoldOut && !$slotCritical && ($slotRemaining <= 25 || ((int) $slotTime->total_tickets > 0 && $slotRemaining / (int) $slotTime->total_tickets <= .25));
+                                @endphp
+                                <li class="showtime-slot-card {{ $slotSoldOut ? 'is-soldout' : '' }}">
+                                    <div class="showtime-slot-info">
+                                        <div class="showtime-slot-time-block">
+                                            <span class="slot-date">
+                                                <span class="slot-icon" aria-hidden="true">📅</span>
+                                                <span>{{ $slotTime->date?->format('d/m/Y') }}</span>
+                                            </span>
+                                            @if($slotClock)
+                                                <span class="slot-time">
+                                                    <span class="slot-icon" aria-hidden="true">⏰</span>
+                                                    <span>{{ $slotClock->format('g:i') }} {{ $slotClock->format('A') === 'PM' ? 'م' : 'ص' }}</span>
+                                                </span>
+                                            @endif
+                                            @if($slotTime->ticket_price !== null)
+                                                <span class="slot-price">
+                                                    <span class="slot-icon" aria-hidden="true">🎟️</span>
+                                                    <span>{{ number_format((float) $slotTime->ticket_price, 0) }} ج.م</span>
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <div class="showtime-slot-status">
+                                            @if($slotSoldOut)
+                                                <span class="ticket-state ticket-state--soldout">اكتملت التذاكر</span>
+                                            @elseif($slotCritical)
+                                                <span class="ticket-state ticket-state--critical">متبقي {{ $slotRemaining }} {{ $slotRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط</span>
+                                            @elseif($slotLow)
+                                                <span class="ticket-state ticket-state--low">متبقي عدد محدود</span>
+                                            @else
+                                                <span class="ticket-state ticket-state--healthy">متاح للحجز</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="showtime-slot-action">
+                                        @if(!$slotSoldOut)
+                                            <a href="{{ route('bookings.create', $slotTime) }}" class="showtime-slot-btn">
+                                                <span>حجز هذا الموعد</span>
+                                                <span class="cta-arrow" aria-hidden="true">←</span>
+                                            </a>
+                                        @else
+                                            <button type="button" class="showtime-slot-btn is-disabled" disabled aria-disabled="true">
+                                                <span>اكتملت التذاكر</span>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
+
+    <script>
+    (function () {
+        document.addEventListener('click', function (e) {
+            var trigger = e.target.closest('[data-open-modal]');
+            if (trigger) {
+                e.preventDefault();
+                var modalId = trigger.getAttribute('data-open-modal');
+                var modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.removeAttribute('hidden');
+                    document.body.classList.add('modal-open');
+                    modal._prevFocus = trigger;
+                    var closeBtn = modal.querySelector('.showtime-modal-close');
+                    if (closeBtn) closeBtn.focus();
+                }
+                return;
+            }
+
+            var closeBtn = e.target.closest('[data-close-modal]');
+            if (closeBtn) {
+                e.preventDefault();
+                var modal = closeBtn.closest('.showtime-modal');
+                if (modal) {
+                    modal.setAttribute('hidden', '');
+                    document.body.classList.remove('modal-open');
+                    if (modal._prevFocus && typeof modal._prevFocus.focus === 'function') {
+                        modal._prevFocus.focus();
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                var openModal = document.querySelector('.showtime-modal:not([hidden])');
+                if (openModal) {
+                    openModal.setAttribute('hidden', '');
+                    document.body.classList.remove('modal-open');
+                    if (openModal._prevFocus && typeof openModal._prevFocus.focus === 'function') {
+                        openModal._prevFocus.focus();
+                    }
+                }
+            }
+        });
+    })();
+    </script>
 </div>
 @else
 <section class="public-shows-page" dir="rtl" aria-labelledby="public-shows-title">

@@ -57,11 +57,15 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('نجول نصرخ فيزداد العقل وعياً', false);
         $response->assertDontSee('❤ نجول نصرخ فيزداد العقل وعياً ❤', false);
         $response->assertSee('❤ نجول نصرخ فيزداد العقل وعيا ❤', false);
-        $response->assertSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا, ذلك هو ما نريد تغيره, فقط بالصراخ, الصراخ هنا و هناك.', false);
-        $response->assertSee('ثم نصرخ نبحث فى مدخلاتكم لنخرج ما هو فاسد و نزرع بدلا منه ثمرا صالحنا, لا نريد سو عقولكم.', false);
-        $response->assertSee('والان نصرخ بالتعاليم الصاحه لنغير ما فسد .', false);
-        $response->assertSee('و فقط ما نحتاجه من الجميع هو المجيئ الى مصدر الصراخ, فدائما يكون على المسرح.', false);
-        $response->assertSee('و قد كان سيدنا و معلمنا و الهنا وهو على الارض يجول يصنع خيرا و نحن على خطاه.', false);
+        // The separate manifesto and team-signoff sections have been removed from the homepage
+        $response->assertDontSee('class="manifesto-section"', false);
+        $response->assertDontSee('id="manifesto-heading"', false);
+        $response->assertDontSee('class="team-signoff"', false);
+        $response->assertDontSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا', false);
+        // Essential slogan lines and footer links are present
+        $response->assertSee('class="identity-motto"', false);
+        $response->assertSee('class="identity-sub"', false);
+        $response->assertSee('aria-label="روابط التواصل الاجتماعي"', false);
     }
 
     public function test_shows_index_route_does_not_render_curtain_overlay(): void
@@ -560,5 +564,140 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertOk();
         $response->assertSee('عرض بملصق محلي', false);
         $response->assertSee(asset('storage/posters/local-sample.jpg'), false);
+    }
+
+    public function test_show_with_single_showtime_links_directly_to_booking_create(): void
+    {
+        $show = Show::create([
+            'title' => 'عرض بميعاد واحد',
+            'description' => 'وصف العرض',
+            'is_active' => true,
+        ]);
+
+        $time = ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::now()->addDays(3)->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 120,
+            'total_tickets' => 50,
+            'available_tickets' => 50,
+            'is_sold_out' => false,
+        ]);
+
+        $response = $this->get('/');
+        $response->assertOk();
+        $response->assertSee(route('bookings.create', $time), false);
+        $response->assertDontSee('data-open-modal="showtime-modal-' . $show->id . '"', false);
+    }
+
+    public function test_show_with_multiple_showtimes_renders_selection_modal_with_dates_times_prices(): void
+    {
+        $show = Show::create([
+            'title' => 'عرض بمواعيد متعددة',
+            'description' => 'وصف العرض بمواعيد متعددة',
+            'is_active' => true,
+        ]);
+
+        $time1 = ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::now()->addDays(2)->toDateString(),
+            'time' => '18:00:00',
+            'ticket_price' => 130,
+            'total_tickets' => 50,
+            'available_tickets' => 50,
+            'is_sold_out' => false,
+        ]);
+
+        $time2 = ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::now()->addDays(4)->toDateString(),
+            'time' => '20:30:00',
+            'ticket_price' => 160,
+            'total_tickets' => 60,
+            'available_tickets' => 60,
+            'is_sold_out' => false,
+        ]);
+
+        $response = $this->get('/');
+        $response->assertOk();
+
+        // The card button triggers the modal instead of directly linking to one time
+        $response->assertSee('data-open-modal="showtime-modal-' . $show->id . '"', false);
+        $response->assertSee('id="showtime-modal-' . $show->id . '"', false);
+        $response->assertSee('2 مواعيد متاحة', false);
+
+        // Modal contains both options with their actual date, time, and ticket price
+        $response->assertSee($time1->date->format('d/m/Y'), false);
+        $response->assertSee('130 ج.م', false);
+        $response->assertSee(route('bookings.create', $time1), false);
+
+        $response->assertSee($time2->date->format('d/m/Y'), false);
+        $response->assertSee('160 ج.م', false);
+        $response->assertSee(route('bookings.create', $time2), false);
+    }
+
+    public function test_sold_out_showtime_cannot_be_booked_in_selection_modal(): void
+    {
+        $show = Show::create([
+            'title' => 'عرض بميعاد مكتمل وميعاد متاح',
+            'description' => 'وصف العرض',
+            'is_active' => true,
+        ]);
+
+        $availableTime = ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::now()->addDays(3)->toDateString(),
+            'time' => '19:00:00',
+            'ticket_price' => 140,
+            'total_tickets' => 50,
+            'available_tickets' => 50,
+            'is_sold_out' => false,
+        ]);
+
+        $soldOutTime = ShowTime::create([
+            'show_id' => $show->id,
+            'date' => Carbon::now()->addDays(5)->toDateString(),
+            'time' => '21:00:00',
+            'ticket_price' => 140,
+            'total_tickets' => 50,
+            'available_tickets' => 0,
+            'is_sold_out' => true,
+        ]);
+
+        $response = $this->get('/');
+        $response->assertOk();
+
+        // Available slot has a booking link
+        $response->assertSee(route('bookings.create', $availableTime), false);
+
+        // Sold-out slot must NOT have an active booking link
+        $response->assertDontSee(route('bookings.create', $soldOutTime), false);
+    }
+
+    public function test_homepage_ending_renders_simplified_footer_with_logo_slogan_and_social_links(): void
+    {
+        \App\Models\About::create([
+            'description' => 'وصف الفريق',
+            'founded_year' => '2019',
+            'youtube' => 'https://youtube.com/@test-sarkha',
+            'facebook' => 'https://facebook.com/test-sarkha',
+            'instagram' => 'https://instagram.com/test-sarkha',
+        ]);
+
+        $response = $this->get('/');
+        $response->assertOk();
+
+        // Footer must contain team logo, team name, and short slogan
+        $response->assertSee('images/sarkha-logo.png', false);
+        $response->assertSee('فريق الصرخة المسرحي', false);
+        $response->assertSee('نجول نصرخ فيزداد العقل وعياً', false);
+
+        // Footer must contain configured social links
+        $response->assertSee('https://youtube.com/@test-sarkha', false);
+        $response->assertSee('https://facebook.com/test-sarkha', false);
+        $response->assertSee('https://instagram.com/test-sarkha', false);
+
+        // Oversized separate team-signoff card must NOT exist
+        $response->assertDontSee('class="team-signoff"', false);
     }
 }

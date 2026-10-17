@@ -404,14 +404,59 @@ body.has-sticky-action main {
                  class="pointer-events-none absolute inset-x-0 -top-6 mx-auto h-12 max-w-md
                         bg-gradient-to-t from-transparent via-amber-400/5 to-amber-300/0 blur-2xl"></div>
 
-            <div class="relative max-w-5xl mx-auto px-4 py-6 sm:py-8 text-center">
-                <p class="text-[11px] sm:text-xs tracking-[0.18em] uppercase text-gray-500">
-                    Elsar5a Theatre Team
+            <div class="relative max-w-5xl mx-auto px-4 py-8 text-center flex flex-col items-center gap-3">
+                <div class="flex items-center justify-center gap-3">
+                    <img src="{{ asset('images/sarkha-logo.png') }}"
+                         class="w-10 h-10 object-contain invert brightness-125 drop-shadow-[0_0_12px_rgba(255,255,255,0.45)]"
+                         alt="شعار فريق الصرخة المسرحي"
+                         width="40" height="40" loading="lazy">
+                    <span class="text-base sm:text-lg font-bold text-amber-200/90 tracking-wide font-['Alexandria',sans-serif]">
+                        فريق الصرخة المسرحي
+                    </span>
+                </div>
+
+                <p class="text-[13px] sm:text-sm text-amber-100/80 italic font-['Readex_Pro',serif]">
+                    نجول نصرخ فيزداد العقل وعياً
                 </p>
-                <p class="mt-2 text-[13px] sm:text-sm text-gray-300/90 italic">
-                    ❤ نجول نصرخ فيزداد العقل وعيا ❤
-                </p>
-                <p class="mt-3 text-[10px] sm:text-[11px] text-gray-500">
+
+                @php
+                    $siteAbout = $about ?? \App\Models\About::first();
+                    $ytUrl = $siteAbout?->youtube ?: 'https://youtube.com/@sar5ateam611?si=ioONwMrKfYJx-Bks';
+                    $fbUrl = $siteAbout?->facebook ?: 'https://www.facebook.com/share/17WQUehRZG/?mibextid=wwXIfr';
+                    $igUrl = $siteAbout?->instagram ?: 'https://www.instagram.com/elsar5ateam?igsh=cjc0aG94Nmk1YTBt';
+                @endphp
+
+                <div class="flex items-center justify-center gap-3 mt-2" aria-label="روابط التواصل الاجتماعي">
+                    @if($ytUrl)
+                        <a href="{{ $ytUrl }}" target="_blank" rel="noopener noreferrer"
+                           class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-red-400 hover:border-red-400/40 hover:bg-red-400/10 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                           aria-label="قناة فريق الصرخة على YouTube">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/>
+                            </svg>
+                        </a>
+                    @endif
+                    @if($fbUrl)
+                        <a href="{{ $fbUrl }}" target="_blank" rel="noopener noreferrer"
+                           class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-blue-400 hover:border-blue-400/40 hover:bg-blue-400/10 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                           aria-label="صفحة فريق الصرخة على Facebook">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7v-3.5h3.1V9.4c0-3 1.8-4.7 4.6-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.3h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12"/>
+                            </svg>
+                        </a>
+                    @endif
+                    @if($igUrl)
+                        <a href="{{ $igUrl }}" target="_blank" rel="noopener noreferrer"
+                           class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-pink-400 hover:border-pink-400/40 hover:bg-pink-400/10 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                           aria-label="حساب فريق الصرخة على Instagram">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2 0 1.8.2 2.3.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.5.3 1.1.4 2.3 0 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c0 1.2-.2 1.8-.4 2.3-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.5.2-1.1.3-2.3.4-1.3 0-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2 0-1.8-.2-2.3-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.5-.3-1.1-.4-2.3 0-1.3-.1-1.7-.1-4.9s0-3.6.1-4.9c0-1.2.2-1.8.4-2.3.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.5-.2 1.1-.3 2.3-.4 1.3-.1 1.7-.1 4.9-.1M12 0C8.7 0 8.3 0 7.1.1 5.8.1 5 .3 4.2.6c-.8.3-1.5.7-2.2 1.4C1.3 2.7.9 3.4.6 4.2.3 5 .1 5.8.1 7.1 0 8.3 0 8.7 0 12s0 3.7.1 4.9c.1 1.3.3 2.1.6 2.9.3.8.7 1.5 1.4 2.2.7.7 1.4 1.1 2.2 1.4.8.3 1.6.5 2.9.6 1.2.1 1.6.1 4.9.1s3.7 0 4.9-.1c1.3-.1 2.1-.3 2.9-.6.8-.3 1.5-.7 2.2-1.4.7-.7 1.1-1.4 1.4-2.2.3-.8.5-1.6.6-2.9.1-1.2.1-1.6.1-4.9s0-3.7-.1-4.9c-.1-1.3-.3-2.1-.6-2.9-.3-.8-.7-1.5-1.4-2.2C21.3 1.3 20.6.9 19.8.6 19 .3 18.2.1 16.9.1 15.7 0 15.3 0 12 0zm0 5.8a6.2 6.2 0 1 0 0 12.4 6.2 6.2 0 0 0 0-12.4zm0 10.2a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.8a1.4 1.4 0 1 0 0 2.9 1.4 1.4 0 0 0 0-2.9z"/>
+                            </svg>
+                        </a>
+                    @endif
+                </div>
+
+                <p class="mt-2 text-[10px] sm:text-[11px] text-gray-500">
                     © {{ now()->year }} فريق الصرخة المسرحي
                 </p>
             </div>

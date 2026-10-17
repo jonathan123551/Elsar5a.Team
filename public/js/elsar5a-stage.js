@@ -189,4 +189,51 @@
   }
 
   startOverture();
+
+  // Showtime Selection Modal Controller
+  if (!window.__elsar5aModalInit) {
+    window.__elsar5aModalInit = true;
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest('[data-open-modal]');
+      if (trigger) {
+        e.preventDefault();
+        var modalId = trigger.getAttribute('data-open-modal');
+        var modal = document.getElementById(modalId);
+        if (modal) {
+          modal.removeAttribute('hidden');
+          document.body.classList.add('modal-open');
+          modal._prevFocus = trigger;
+          var closeBtn = modal.querySelector('.showtime-modal-close');
+          if (closeBtn) closeBtn.focus();
+        }
+        return;
+      }
+
+      var closeBtn = e.target.closest('[data-close-modal]');
+      if (closeBtn) {
+        e.preventDefault();
+        var modal = closeBtn.closest('.showtime-modal');
+        if (modal) {
+          modal.setAttribute('hidden', '');
+          document.body.classList.remove('modal-open');
+          if (modal._prevFocus && typeof modal._prevFocus.focus === 'function') {
+            modal._prevFocus.focus();
+          }
+        }
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var openModal = document.querySelector('.showtime-modal:not([hidden])');
+        if (openModal) {
+          openModal.setAttribute('hidden', '');
+          document.body.classList.remove('modal-open');
+          if (openModal._prevFocus && typeof openModal._prevFocus.focus === 'function') {
+            openModal._prevFocus.focus();
+          }
+        }
+      }
+    });
+  }
 })();
