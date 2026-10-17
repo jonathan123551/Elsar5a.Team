@@ -78,7 +78,10 @@
 
   function paintCamera() {
     pendingFrame = false;
-    if (!track || reducedMotion || !done) return;
+    if (!track || reducedMotion) return;
+    if (!done) {
+      finish(true);
+    }
 
     var bounds = track.getBoundingClientRect();
     var travel = Math.max(1, track.offsetHeight - window.innerHeight);
@@ -88,9 +91,9 @@
 
     var viewport = window.innerHeight;
 
-    // 0. Curtains dissolve immediately from the start of scrolling (0.00 -> 0.18):
-    var curtainScrollOpacity = clamp(1 - (progress / 0.18), 0, 1);
-    var curtainScrollShift = (progress * 50).toFixed(2);
+    // 0. Curtains dissolve immediately from the start of scrolling (0.00 -> 0.12):
+    var curtainScrollOpacity = clamp(1 - (progress / 0.12), 0, 1);
+    var curtainScrollShift = (progress * 60).toFixed(2);
     if (curtain) {
       curtain.style.setProperty('--curtain-scroll-opacity', curtainScrollOpacity.toFixed(4));
       curtain.style.setProperty('--curtain-scroll-shift', curtainScrollShift + 'vw');
@@ -99,65 +102,75 @@
       } else {
         curtain.style.display = '';
       }
-      curtain.classList.toggle('is-passed', progress > 0.18);
+      curtain.classList.toggle('is-passed', progress > 0.12);
+    }
+
+    // 0b. Opening Copy fades out and floats upward as user scrolls (0.00 -> 0.10):
+    var openingCopy = document.getElementById('opening-copy');
+    if (openingCopy) {
+      var openingOpacity = clamp(1 - (progress / 0.10), 0, 1);
+      var openingScale = (1 + progress * 0.8).toFixed(4);
+      var openingY = (-progress * 220).toFixed(1) + 'px';
+      openingCopy.style.setProperty('--opening-opacity', openingOpacity.toFixed(4));
+      openingCopy.style.setProperty('--opening-scale', openingScale);
+      openingCopy.style.setProperty('--opening-y', openingY);
+      if (openingOpacity <= 0.001) {
+        openingCopy.style.display = 'none';
+      } else {
+        openingCopy.style.display = 'flex';
+      }
     }
 
     // 1. Camera forward journey through the theatre into website space:
-    // From 0.00 to 0.45: The physical stage zooms forward into the proscenium.
-    // Between 0.06 and 0.38: The physical theatre environment (stage photo, aisle, auditorium)
-    // dissolves naturally into the deep cosmic website gradient (#020617 with crimson/gold ambients).
-    var theatreDissolve = clamp(1 - (progress - 0.06) / 0.32, 0, 1);
-    var spaceGradient = clamp((progress - 0.04) / 0.34, 0, 1);
+    var theatreDissolve = clamp(1 - (progress - 0.02) / 0.24, 0, 1);
+    var spaceGradient = clamp((progress - 0.02) / 0.22, 0, 1);
 
     if (world) {
-      world.style.setProperty('--world-scale', (1.10 + progress * 0.58).toFixed(4));
-      world.style.setProperty('--world-z', (-120 + Math.round(progress * 240)) + 'px');
+      world.style.setProperty('--world-scale', (1.10 + progress * 0.65).toFixed(4));
+      world.style.setProperty('--world-z', (-120 + Math.round(progress * 260)) + 'px');
       world.style.setProperty('--world-y', (-Math.round(progress * viewport * 0.04)) + 'px');
       world.style.setProperty('--world-opacity', theatreDissolve.toFixed(4));
     }
     if (auditorium) {
-      auditorium.style.setProperty('--auditorium-scale', (1.02 + progress * 0.36).toFixed(4));
+      auditorium.style.setProperty('--auditorium-scale', (1.02 + progress * 0.40).toFixed(4));
       auditorium.style.setProperty('--auditorium-y', Math.round(progress * viewport * 0.08) + 'px');
       auditorium.style.setProperty('--auditorium-opacity', theatreDissolve.toFixed(4));
     }
     if (aisle) {
-      aisle.style.setProperty('--aisle-scale', (1.00 + progress * 0.60).toFixed(4));
+      aisle.style.setProperty('--aisle-scale', (1.00 + progress * 0.65).toFixed(4));
       aisle.style.setProperty('--aisle-y', Math.round(progress * viewport * 0.18) + 'px');
       aisle.style.setProperty('--aisle-opacity', theatreDissolve.toFixed(4));
     }
     if (spotlight) {
-      spotlight.style.setProperty('--spotlight-scale', (1 + progress * 0.78).toFixed(4));
-      spotlight.style.setProperty('--spotlight-opacity', (0.16 + (1 - theatreDissolve) * 0.42).toFixed(4));
+      spotlight.style.setProperty('--spotlight-scale', (1 + progress * 0.85).toFixed(4));
+      spotlight.style.setProperty('--spotlight-opacity', (0.16 + (1 - theatreDissolve) * 0.45).toFixed(4));
     }
     if (proscenium) {
-      proscenium.style.setProperty('--proscenium-scale', (1 + progress * 0.44).toFixed(4));
-      proscenium.style.setProperty('--proscenium-opacity', clamp(1 - (progress - 0.10) / 0.24, 0, 1).toFixed(4));
+      proscenium.style.setProperty('--proscenium-scale', (1 + progress * 0.48).toFixed(4));
+      proscenium.style.setProperty('--proscenium-opacity', clamp(1 - (progress - 0.04) / 0.20, 0, 1).toFixed(4));
     }
 
     if (spaceLayer) {
       spaceLayer.style.setProperty('--space-opacity', spaceGradient.toFixed(4));
     }
 
-    // 2. Floating 3D Production Poster Approach (0.12 -> 0.58):
-    // As the physical theatre dissolves into website space, the 3D floating poster
-    // approaches from deep perspective (translateZ -380px, tilt 9.5deg, scale 0.38)
-    // and settles smoothly centered (translateZ 0px, tilt 0deg, scale 1.0).
+    // 2. Floating 3D Production Poster Approach (0.04 -> 0.36):
     if (production) {
-      var posterProgress = clamp((progress - 0.12) / 0.42, 0, 1);
-      var informationProgress = clamp((progress - 0.52) / 0.26, 0, 1);
-      var reveal = clamp((progress - 0.12) / 0.45, 0, 1);
+      var posterProgress = clamp((progress - 0.04) / 0.32, 0, 1);
+      var informationProgress = clamp((progress - 0.24) / 0.20, 0, 1);
+      var reveal = clamp((progress - 0.04) / 0.14, 0, 1);
 
       // Natural ease-out curve for theatrical perspective
       var posterEase = Math.sin(posterProgress * Math.PI / 2);
 
-      var posterScale = (0.38 + posterEase * 0.62).toFixed(4);
-      var posterZ = Math.round((1 - posterEase) * -380);
-      var posterY = Math.round((1 - posterEase) * 60);
-      var posterTilt = ((1 - posterEase) * 9.5).toFixed(2);
-      var posterOpacity = clamp((progress - 0.12) / 0.16, 0, 1).toFixed(4);
+      var posterScale = (0.55 + posterEase * 0.45).toFixed(4);
+      var posterZ = Math.round((1 - posterEase) * -340);
+      var posterY = Math.round((1 - posterEase) * 45);
+      var posterTilt = ((1 - posterEase) * 8.0).toFixed(2);
+      var posterOpacity = reveal.toFixed(4);
 
       production.style.setProperty('--production-opacity', reveal.toFixed(4));
-      production.style.setProperty('--production-y', Math.round((1 - reveal) * viewport * 0.02) + 'px');
+      production.style.setProperty('--production-y', '0px');
       production.style.setProperty('--production-scale', '1');
 
       production.style.setProperty('--poster-opacity', posterOpacity);
@@ -167,7 +180,7 @@
       production.style.setProperty('--poster-tilt', posterTilt + 'deg');
 
       production.style.setProperty('--information-opacity', informationProgress.toFixed(4));
-      production.style.setProperty('--information-y', Math.round((1 - informationProgress) * 22) + 'px');
+      production.style.setProperty('--information-y', Math.round((1 - informationProgress) * 20) + 'px');
 
       if (informationProgress > 0.05) {
         production.removeAttribute('inert');
@@ -177,7 +190,7 @@
     }
 
     if (intermission) {
-      var interReveal = clamp((progress - 0.20) / 0.35, 0, 1);
+      var interReveal = clamp((progress - 0.10) / 0.25, 0, 1);
       intermission.style.setProperty('--intermission-opacity', interReveal.toFixed(4));
       intermission.style.setProperty('--intermission-y', Math.round((1 - interReveal) * viewport * 0.03) + 'px');
       if (interReveal > 0.05) intermission.removeAttribute('inert');
@@ -189,7 +202,10 @@
   }
 
   function requestCameraUpdate() {
-    if (!done || reducedMotion || pendingFrame || !track) return;
+    if (reducedMotion || pendingFrame || !track) return;
+    if (!done) {
+      finish(true);
+    }
     pendingFrame = true;
     window.requestAnimationFrame(paintCamera);
   }
@@ -197,9 +213,10 @@
   function skipAndContinue() { finish(true); }
 
   if (skip) skip.addEventListener('click', skipAndContinue);
-  // Gesture and keyboard continuation preserve the browser's native scroll.
+  // Gesture, scroll, and keyboard continuation preserve the browser's native scroll.
   window.addEventListener('wheel', skipAndContinue, { passive: true, once: true });
   window.addEventListener('touchmove', skipAndContinue, { passive: true, once: true });
+  window.addEventListener('scroll', skipAndContinue, { passive: true, once: true });
   window.addEventListener('keydown', function (event) {
     if (done || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     var target = event.target;

@@ -54,25 +54,10 @@
         تخطّي الافتتاحية <span aria-hidden="true">↓</span>
     </button>
 
-    <section class="cinema-opening" id="opening" aria-labelledby="team-title">
-        <div class="cinema-plate cinema-plate--opening" aria-hidden="true">
-            <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" fetchpriority="high" decoding="async">
-        </div>
-        <div class="opening-scrim" aria-hidden="true"></div>
-        <div class="opening-copy">
-            <h1 id="team-title" class="sr-only">فريق الصرخة المسرحي</h1>
-            <div class="logo-reveal"><img src="{{ asset('images/sarkha-logo.png') }}" alt="شعار فريق الصرخة المسرحي" width="112" height="112" fetchpriority="high"></div>
-            <div class="opening-identity" aria-label="من بيان الفريق">
-                <p class="opening-line" data-reveal="manifesto-1">فنحن لا نريد سوى حواسكم.</p>
-                <p class="opening-motto" data-reveal="manifesto-2">{{ $openingMotto }}</p>
-            </div>
-        </div>
-    </section>
-
     <section class="camera-track" id="camera-journey" aria-label="رحلة إلى داخل المسرح">
         <div class="camera-viewport">
             <div class="camera-world" id="camera-world" aria-hidden="true">
-                <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" decoding="async">
+                <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" fetchpriority="high" decoding="async">
                 <div class="camera-grade"></div>
             </div>
             <div class="camera-plane camera-auditorium" id="camera-auditorium" aria-hidden="true"></div>
@@ -80,6 +65,17 @@
             <div class="camera-plane camera-spotlight" id="camera-spotlight" aria-hidden="true"></div>
             <div class="camera-plane camera-proscenium" id="camera-proscenium" aria-hidden="true"></div>
             <div class="camera-space-layer" id="camera-space-layer" aria-hidden="true"></div>
+
+            {{-- Approved Opening Intro & Team Identity (Initial Scene 0.00 -> 0.12) --}}
+            <div class="opening-copy" id="opening-copy" aria-labelledby="team-title">
+                <h1 id="team-title" class="sr-only">فريق الصرخة المسرحي</h1>
+                <div class="logo-reveal"><img src="{{ asset('images/sarkha-logo.png') }}" alt="شعار فريق الصرخة المسرحي" width="112" height="112" fetchpriority="high"></div>
+                <div class="opening-identity" aria-label="من بيان الفريق">
+                    <p class="opening-line" data-reveal="manifesto-1">فنحن لا نريد سوى حواسكم.</p>
+                    <p class="opening-motto" data-reveal="manifesto-2">{{ $openingMotto }}</p>
+                </div>
+            </div>
+
             <div class="camera-identity" id="camera-identity" aria-hidden="true">
                 <p class="identity-overline">فريق الصرخة المسرحي</p>
                 <div class="identity-manifesto">
@@ -107,7 +103,6 @@
                         @endif
 
                         <div class="production-information">
-                            <p class="production-kicker">العرض القادم على خشبة المسرح</p>
                             <h2 id="featured-title" class="production-title">{{ $featuredShow->title }}</h2>
                             @if($featuredShow->description)
                                 <p class="production-description">{{ $featuredShow->description }}</p>
@@ -130,39 +125,59 @@
                                                 $slotCritical = $slotRemaining > 0 && $slotRemaining <= 10;
                                                 $slotLow = !$slotCritical && ($slotRemaining <= 25 || ((int) $slotTime->total_tickets > 0 && $slotRemaining / (int) $slotTime->total_tickets <= .25));
                                             @endphp
-                                            <div class="showtime-tile">
-                                                <div class="showtime-tile-head">
-                                                    <div class="showtime-tile-timing">
+                                            <div class="showtime-card showtime-tile">
+                                                <div class="showtime-card-body">
+                                                    <div class="showtime-primary">
                                                         @if($slotClock)
-                                                            <span class="tile-clock">
-                                                                <span class="tile-icon" aria-hidden="true">⏰</span>
-                                                                <span>{{ $slotClock->format('g:i') }} {{ $slotClock->format('A') === 'PM' ? 'م' : 'ص' }}</span>
-                                                            </span>
+                                                            <div class="showtime-clock tile-clock">
+                                                                <svg class="showtime-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .2.08.39.22.53l3 3a.75.75 0 001.06-1.06l-2.78-2.78V5z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                                <span class="clock-digits">{{ $slotClock->format('g:i') }}</span>
+                                                                <span class="clock-period">{{ $slotClock->format('A') === 'PM' ? 'م' : 'ص' }}</span>
+                                                            </div>
                                                         @endif
-                                                        <span class="tile-date">
-                                                            <span class="tile-icon" aria-hidden="true">📅</span>
+                                                        <div class="showtime-date tile-date">
+                                                            <svg class="showtime-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                                <path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd"/>
+                                                            </svg>
                                                             <span>{{ $slotTime->date?->format('d/m/Y') }}</span>
-                                                        </span>
+                                                        </div>
                                                     </div>
-                                                    @if($slotTime->ticket_price !== null)
-                                                        <span class="tile-price">
-                                                            <span class="price-val">{{ number_format((float) $slotTime->ticket_price, 0) }}</span>
-                                                            <span class="price-cur">ج.م</span>
-                                                        </span>
-                                                    @endif
+
+                                                    <div class="showtime-secondary">
+                                                        @if($slotTime->ticket_price !== null)
+                                                            <div class="showtime-price-badge tile-price">
+                                                                <span class="price-val">{{ number_format((float) $slotTime->ticket_price, 0) }}</span>
+                                                                <span class="price-cur">ج.م</span>
+                                                            </div>
+                                                        @endif
+                                                        <div class="showtime-status showtime-tile-sub">
+                                                            @if($slotCritical)
+                                                                <span class="status-pill status-pill--critical ticket-state ticket-state--critical" role="status">
+                                                                    <span class="status-dot" aria-hidden="true"></span>
+                                                                    متبقي {{ $slotRemaining }} {{ $slotRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط
+                                                                </span>
+                                                            @elseif($slotLow)
+                                                                <span class="status-pill status-pill--low ticket-state ticket-state--low" role="status">
+                                                                    <span class="status-dot" aria-hidden="true"></span>
+                                                                    متبقي عدد محدود
+                                                                </span>
+                                                            @else
+                                                                <span class="status-pill status-pill--available ticket-state ticket-state--healthy" role="status">
+                                                                    <span class="status-dot" aria-hidden="true"></span>
+                                                                    متاح للحجز الآن
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="showtime-tile-sub">
-                                                    @if($slotCritical)
-                                                        <span class="ticket-state ticket-state--critical" role="status">متبقي {{ $slotRemaining }} {{ $slotRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط</span>
-                                                    @elseif($slotLow)
-                                                        <span class="ticket-state ticket-state--low" role="status">متبقي عدد محدود</span>
-                                                    @else
-                                                        <span class="ticket-state ticket-state--healthy" role="status">متاح للحجز الآن</span>
-                                                    @endif
-                                                </div>
-                                                <a href="{{ route('bookings.create', $slotTime) }}" class="showtime-tile-btn" aria-label="حجز موعد {{ $slotClock ? $slotClock->format('g:i') . ($slotClock->format('A') === 'PM' ? ' م' : ' ص') : '' }} بتاريخ {{ $slotTime->date?->format('d/m/Y') }}">
+
+                                                <a href="{{ route('bookings.create', $slotTime) }}" class="showtime-action-btn showtime-tile-btn" aria-label="حجز موعد {{ $slotClock ? $slotClock->format('g:i') . ($slotClock->format('A') === 'PM' ? ' م' : ' ص') : '' }} بتاريخ {{ $slotTime->date?->format('d/m/Y') }}">
                                                     <span>احجز الآن</span>
-                                                    <span class="cta-arrow" aria-hidden="true">←</span>
+                                                    <svg class="btn-chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd"/>
+                                                    </svg>
                                                 </a>
                                             </div>
                                         @endforeach
