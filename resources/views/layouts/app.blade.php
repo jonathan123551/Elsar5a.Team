@@ -388,7 +388,6 @@ body.has-sticky-action main {
          header, so the footer doesn't need to duplicate it. We keep only
          the brand whisper and a thin amber→red gradient hairline that
          echoes the stage-curtain motif used elsewhere on the site. --}}
-    @if(!request()->routeIs('home') && !request()->is('/'))
     <footer class="mt-12 sm:mt-16" role="contentinfo">
         {{-- Stage-curtain hairline. Three stacked layers so it reads as
              a glowing seam rather than a flat border, but it costs us
@@ -418,7 +417,6 @@ body.has-sticky-action main {
             </div>
         </div>
     </footer>
-    @endif
     </div> {{-- /#elsar5a-stage-world --}}
 
     {{--

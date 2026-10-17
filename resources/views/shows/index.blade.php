@@ -17,10 +17,20 @@
         '❤ نجول نصرخ فيزداد العقل وعيا ❤',
     ];
     $openingMotto = 'نجول نصرخ فيزداد العقل وعياً';
+    $resolvePoster = function (?string $path): ?string {
+        if (!$path) return null;
+        $trimmed = trim($path);
+        if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://') || str_starts_with($trimmed, '//')) {
+            return \App\Support\CloudinaryUrl::forDisplay($trimmed);
+        }
+        $normalized = ltrim($trimmed, '/');
+        if (str_starts_with($normalized, 'images/') || str_starts_with($normalized, 'storage/')) {
+            return asset($normalized);
+        }
+        return asset('storage/' . $normalized);
+    };
     $featuredShow = $featuredShow ?? null;
-    $featuredPoster = $featuredShow?->poster_path
-        ? \App\Support\CloudinaryUrl::forDisplay($featuredShow->poster_path)
-        : null;
+    $featuredPoster = $resolvePoster($featuredShow?->poster_path ?? $featuredShow?->poster);
     $featuredTime = $featuredShow?->showTimes->first(fn ($time) => !$time->is_sold_out && (int) $time->homepage_remaining_tickets > 0);
     $featuredRemaining = $featuredTime ? (int) $featuredTime->homepage_remaining_tickets : 0;
     $featuredDate = $featuredTime?->date?->format('d/m/Y');
@@ -151,7 +161,7 @@
             <div class="upcoming-list">
                 @foreach($shows as $show)
                     @php
-                        $showPoster = $show->poster_path ? \App\Support\CloudinaryUrl::forDisplay($show->poster_path) : null;
+                        $showPoster = $resolvePoster($show->poster_path ?? $show->poster);
                         $nextTime = $show->showTimes->first(fn ($item) => !$item->is_sold_out && (int) $item->homepage_remaining_tickets > 0) ?? $show->showTimes->first();
                         $remaining = $nextTime ? (int) $nextTime->homepage_remaining_tickets : 0;
                         $clock = $nextTime?->time ? \Carbon\Carbon::parse($nextTime->time) : null;
@@ -188,7 +198,7 @@
     <header><p>فريق الصرخة المسرحي</p><h1 id="public-shows-title">العروض المتاحة</h1></header>
     @forelse($shows as $show)
         @php
-            $showPoster = $show->poster_path ? \App\Support\CloudinaryUrl::forDisplay($show->poster_path) : null;
+            $showPoster = $resolvePoster($show->poster_path ?? $show->poster);
             $time = $show->showTimes->first(fn ($item) => !$item->is_sold_out && (int) $item->available_tickets > 0) ?? $show->showTimes->first();
             $remaining = $time ? max(0, (int) $time->available_tickets) : 0;
             $soldOut = !$time || $time->is_sold_out || $remaining <= 0;

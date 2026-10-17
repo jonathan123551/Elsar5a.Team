@@ -1,183 +1,192 @@
-/**
- * ELSAR5A THEATRE — TWO-ACT SCROLL CHOREOGRAPHY
- * Act I (0.00 -> 0.42): Approved Curtain Tie-Back Opening & Team Intro
- * Act II (0.34 -> 1.00): Direct Current Production Playbill Reveal
+/*
+ * Elsar5a photographic curtain overture and forward camera journey.
+ * Scroll handling is passive and paints at most once per animation frame.
  */
 (function () {
-    'use strict';
+  'use strict';
 
-    function clamp(value, min, max) {
-        return Math.min(Math.max(value, min), max);
+  var body = document.body;
+  if (!body || !body.classList.contains('homepage')) return;
+
+  var motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var reducedMotion = !!(motionQuery && motionQuery.matches);
+  var curtain = document.getElementById('cinema-curtain');
+  var skip = document.getElementById('cinema-skip');
+  var track = document.getElementById('camera-journey');
+  var world = document.getElementById('camera-world');
+  var auditorium = document.getElementById('camera-auditorium');
+  var aisle = document.getElementById('camera-aisle');
+  var spotlight = document.getElementById('camera-spotlight');
+  var proscenium = document.getElementById('camera-proscenium');
+  var identity = document.getElementById('camera-identity');
+  var production = document.getElementById('stage-production');
+  var intermission = document.getElementById('stage-intermission');
+  var timers = [];
+  var done = false;
+  var pendingFrame = false;
+  var lastProgress = -1;
+
+  function later(delay, callback) {
+    timers.push(window.setTimeout(callback, delay));
+  }
+
+  function clearTimers() {
+    timers.forEach(function (timer) { window.clearTimeout(timer); });
+    timers = [];
+  }
+
+  function releaseReveal() {
+    var panel = production || intermission;
+    if (panel) panel.removeAttribute('inert');
+  }
+
+  function finish(skipAnimation) {
+    if (done) return;
+    done = true;
+    clearTimers();
+    body.dataset.introState = 'complete';
+    body.classList.remove('cinema-intro-playing');
+    if (curtain) {
+      if (skipAnimation) curtain.classList.add('is-skipped');
+      curtain.dataset.state = 'open';
+    }
+    if (skip) skip.classList.add('is-hidden');
+    requestCameraUpdate();
+  }
+
+  function startOverture() {
+    if (!curtain || reducedMotion) {
+      finish(false);
+      return;
     }
 
-    function invLerp(start, end, value) {
-        if (start === end) return 0;
-        return clamp((value - start) / (end - start), 0, 1);
+    body.classList.add('cinema-intro-playing');
+    body.dataset.introState = 'theatre';
+    later(220, function () { if (!done) curtain.dataset.state = 'ignite'; });
+    later(680, function () { if (!done) curtain.dataset.state = 'draw'; });
+    // The stage receives its moment before any team identity appears.
+    later(2480, function () { if (!done) curtain.dataset.state = 'open'; });
+    later(2740, function () { if (!done) body.dataset.introState = 'logo'; });
+    later(3380, function () { if (!done) body.dataset.introState = 'name'; });
+    later(4020, function () { if (!done) body.dataset.introState = 'manifesto'; });
+    later(4820, function () { if (!done) body.dataset.introState = 'continue'; });
+    later(5600, function () { finish(false); });
+  }
+
+  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+
+  function paintCamera() {
+    pendingFrame = false;
+    if (!track || reducedMotion || !done) return;
+
+    var bounds = track.getBoundingClientRect();
+    var travel = Math.max(1, track.offsetHeight - window.innerHeight);
+    var progress = clamp(-bounds.top / travel, 0, 1);
+    if (Math.abs(progress - lastProgress) < 0.002) return;
+    lastProgress = progress;
+
+    var viewport = window.innerHeight;
+    var reveal = clamp((progress - 0.55) / 0.34, 0, 1);
+    if (world) {
+      world.style.setProperty('--world-scale', (1.12 + progress * 0.22).toFixed(4));
+      world.style.setProperty('--world-z', (-120 + Math.round(progress * 88)) + 'px');
+      world.style.setProperty('--world-y', (-Math.round(progress * viewport * 0.024)) + 'px');
     }
-
-    function easeOutCubic(t) {
-        return 1 - Math.pow(1 - t, 3);
+    if (auditorium) {
+      auditorium.style.setProperty('--auditorium-scale', (1.04 + progress * 0.12).toFixed(4));
+      auditorium.style.setProperty('--auditorium-y', Math.round(progress * viewport * 0.045) + 'px');
     }
-
-    function easeInOutCubic(t) {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    if (aisle) {
+      aisle.style.setProperty('--aisle-scale', (1.02 + progress * 0.24).toFixed(4));
+      aisle.style.setProperty('--aisle-y', Math.round(progress * viewport * 0.13) + 'px');
     }
-
-    function initStageJourney() {
-        var track = document.getElementById('stage-scroll-track');
-        if (!track) return;
-
-        var introScene = document.getElementById('stage-intro-scene');
-        var showScene = document.getElementById('stage-show-scene');
-        var scrollPrompt = document.getElementById('scroll-prompt');
-        var spotlight = document.getElementById('stage-spotlight');
-        var stageFloor = document.getElementById('stage-floor');
-        var pathR = document.getElementById('curtain-path-r');
-        var trimR = document.getElementById('curtain-trim-r');
-        var pathL = document.getElementById('curtain-path-l');
-        var trimL = document.getElementById('curtain-trim-l');
-
-        var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        /**
-         * Approved Parabolic SVG Curtain Tie-Back Geometry
-         * Preserves the exact visual drape opening from the approved intro.
-         */
-        function updateCurtainGeometry(openProgress) {
-            var c = easeInOutCubic(clamp(openProgress, 0, 1));
-
-            // Right curtain panel (pulls right toward x=100)
-            var topEdgeR = c * 74;
-            var pinchXR = c * 88;
-            var pinchYR = 36 - c * 8;
-            var hemXR = c * 95;
-            var ctrl2YR = 58 + c * 14;
-
-            var dPathR = 'M 100,0 L ' + topEdgeR.toFixed(2) + ',0 ' +
-                'C ' + pinchXR.toFixed(2) + ',' + pinchYR.toFixed(2) + ' ' +
-                hemXR.toFixed(2) + ',' + ctrl2YR.toFixed(2) + ' ' +
-                hemXR.toFixed(2) + ',100 L 100,100 Z';
-
-            var dTrimR = 'M ' + topEdgeR.toFixed(2) + ',0 ' +
-                'C ' + pinchXR.toFixed(2) + ',' + pinchYR.toFixed(2) + ' ' +
-                hemXR.toFixed(2) + ',' + ctrl2YR.toFixed(2) + ' ' +
-                hemXR.toFixed(2) + ',100';
-
-            if (pathR) pathR.setAttribute('d', dPathR);
-            if (trimR) trimR.setAttribute('d', dTrimR);
-
-            // Left curtain panel (mirror toward x=0)
-            var topEdgeL = 100 - topEdgeR;
-            var pinchXL = 100 - pinchXR;
-            var hemXL = 100 - hemXR;
-
-            var dPathL = 'M 0,0 L ' + topEdgeL.toFixed(2) + ',0 ' +
-                'C ' + pinchXL.toFixed(2) + ',' + pinchYR.toFixed(2) + ' ' +
-                hemXL.toFixed(2) + ',' + ctrl2YR.toFixed(2) + ' ' +
-                hemXL.toFixed(2) + ',100 L 0,100 Z';
-
-            var dTrimL = 'M ' + topEdgeL.toFixed(2) + ',0 ' +
-                'C ' + pinchXL.toFixed(2) + ',' + pinchYR.toFixed(2) + ' ' +
-                hemXL.toFixed(2) + ',' + ctrl2YR.toFixed(2) + ' ' +
-                hemXL.toFixed(2) + ',100';
-
-            if (pathL) pathL.setAttribute('d', dPathL);
-            if (trimL) trimL.setAttribute('d', dTrimL);
-        }
-
-        function renderProgress(p) {
-            // 1. Curtain tie-back opening: starts at 0.14 open so the emblem glows through,
-            // fully parts by p = 0.42.
-            var curtainProgress = 0.14 + invLerp(0.0, 0.42, p) * 0.86;
-            updateCurtainGeometry(curtainProgress);
-
-            // 2. Scroll prompt fades out immediately as user begins scrolling
-            if (scrollPrompt) {
-                var promptAlpha = 1 - invLerp(0.01, 0.14, p);
-                scrollPrompt.style.opacity = promptAlpha.toFixed(3);
-            }
-
-            // 3. ACT I: Intro Scene holds during initial curtain part, then recedes cleanly (0.24 -> 0.42)
-            if (introScene) {
-                var introExit = easeInOutCubic(invLerp(0.24, 0.42, p));
-                var introAlpha = 1 - introExit;
-                var introY = -36 * introExit;
-                var introScale = 1 - 0.08 * introExit;
-
-                introScene.style.opacity = introAlpha.toFixed(3);
-                introScene.style.transform = 'translate3d(0, ' + introY.toFixed(2) + 'px, 0) scale(' + introScale.toFixed(3) + ')';
-                introScene.style.pointerEvents = introAlpha > 0.35 ? 'auto' : 'none';
-            }
-
-            // 4. ACT II: Current Production Playbill Reveal rises directly into spotlight (0.34 -> 0.56)
-            if (showScene) {
-                var showEnter = easeOutCubic(invLerp(0.34, 0.56, p));
-                var showY = (1 - showEnter) * 42;
-                var showScale = 0.94 + showEnter * 0.06;
-
-                showScene.style.opacity = showEnter.toFixed(3);
-                showScene.style.transform = 'translate3d(0, ' + showY.toFixed(2) + 'px, 0) scale(' + showScale.toFixed(3) + ')';
-
-                if (showEnter >= 0.45) {
-                    showScene.classList.add('is-interactive');
-                } else {
-                    showScene.classList.remove('is-interactive');
-                }
-            }
-
-            // 5. Stage spotlight intensifies as the Playbill takes center stage
-            if (spotlight) {
-                var spotProgress = easeOutCubic(invLerp(0.0, 0.55, p));
-                var spotOpacity = 0.42 + spotProgress * 0.48;
-                var spotScale = 0.92 + spotProgress * 0.16;
-
-                spotlight.style.opacity = spotOpacity.toFixed(3);
-                spotlight.style.transform = 'translateX(-50%) scale(' + spotScale.toFixed(3) + ')';
-            }
-
-            if (stageFloor) {
-                var floorScale = 1 + invLerp(0.0, 0.65, p) * 0.12;
-                stageFloor.style.transform = 'scaleY(' + floorScale.toFixed(3) + ')';
-            }
-        }
-
-        if (prefersReducedMotion) {
-            updateCurtainGeometry(1);
-            if (showScene) {
-                showScene.classList.add('is-interactive');
-            }
-            return;
-        }
-
-        var ticking = false;
-
-        function computeScrollProgress() {
-            var rect = track.getBoundingClientRect();
-            var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 1;
-            var totalScrollable = Math.max(1, track.offsetHeight - viewportHeight);
-            var scrolled = clamp(-rect.top, 0, totalScrollable);
-            return scrolled / totalScrollable;
-        }
-
-        function onScrollOrResize() {
-            if (ticking) return;
-            ticking = true;
-            window.requestAnimationFrame(function () {
-                ticking = false;
-                renderProgress(computeScrollProgress());
-            });
-        }
-
-        window.addEventListener('scroll', onScrollOrResize, { passive: true });
-        window.addEventListener('resize', onScrollOrResize, { passive: true });
-
-        // Initial paint
-        renderProgress(computeScrollProgress());
+    if (spotlight) {
+      spotlight.style.setProperty('--spotlight-opacity', (0.18 + progress * 0.48).toFixed(4));
+      spotlight.style.setProperty('--spotlight-scale', (1 + progress * 0.42).toFixed(4));
+      spotlight.style.setProperty('--spotlight-y', Math.round(progress * viewport * 0.025) + 'px');
     }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initStageJourney);
-    } else {
-        initStageJourney();
+    if (proscenium) {
+      proscenium.style.setProperty('--proscenium-scale', (1 + progress * 0.19).toFixed(4));
+      proscenium.style.setProperty('--proscenium-y', Math.round(progress * viewport * 0.06) + 'px');
+      proscenium.style.setProperty('--proscenium-opacity', clamp(1 - (progress - 0.82) / 0.18, 0, 1).toFixed(4));
     }
+    if (identity) {
+      identity.style.setProperty('--identity-opacity', clamp(1 - (progress - 0.22) / 0.38, 0, 1).toFixed(4));
+      identity.style.setProperty('--identity-scale', (1 + progress * 0.46).toFixed(4));
+      identity.style.setProperty('--identity-z', Math.round(progress * 105) + 'px');
+      identity.style.setProperty('--identity-y', (-Math.round(progress * viewport * 0.3)) + 'px');
+    }
+    if (production) {
+      var posterProgress = clamp((progress - 0.56) / 0.24, 0, 1);
+      var informationProgress = clamp((progress - 0.73) / 0.19, 0, 1);
+      production.style.setProperty('--production-opacity', reveal.toFixed(4));
+      production.style.setProperty('--production-y', Math.round((1 - reveal) * viewport * 0.035) + 'px');
+      production.style.setProperty('--production-scale', (0.97 + reveal * 0.03).toFixed(4));
+      production.style.setProperty('--poster-opacity', posterProgress.toFixed(4));
+      production.style.setProperty('--poster-y', Math.round((1 - posterProgress) * viewport * 0.09) + 'px');
+      production.style.setProperty('--poster-scale', (0.92 + posterProgress * 0.08).toFixed(4));
+      production.style.setProperty('--information-opacity', informationProgress.toFixed(4));
+      production.style.setProperty('--information-y', Math.round((1 - informationProgress) * 16) + 'px');
+      if (informationProgress > 0.04) production.removeAttribute('inert');
+      else production.setAttribute('inert', '');
+    }
+    if (intermission) {
+      intermission.style.setProperty('--intermission-opacity', reveal.toFixed(4));
+      intermission.style.setProperty('--intermission-y', Math.round((1 - reveal) * viewport * 0.035) + 'px');
+      if (reveal > 0.04) intermission.removeAttribute('inert');
+      else intermission.setAttribute('inert', '');
+    }
+    var cue = document.querySelector('.camera-cue');
+    if (cue) cue.style.setProperty('--cue-opacity', clamp(1 - progress * 2.5, 0, 1).toFixed(4));
+    if (curtain) curtain.classList.toggle('is-passed', progress > 0.97);
+    document.querySelector('.cinema-home').style.setProperty('--camera-progress', progress.toFixed(4));
+  }
+
+  function requestCameraUpdate() {
+    if (!done || reducedMotion || pendingFrame || !track) return;
+    pendingFrame = true;
+    window.requestAnimationFrame(paintCamera);
+  }
+
+  function skipAndContinue() { finish(true); }
+
+  if (skip) skip.addEventListener('click', skipAndContinue);
+  // Gesture and keyboard continuation preserve the browser's native scroll.
+  window.addEventListener('wheel', skipAndContinue, { passive: true, once: true });
+  window.addEventListener('touchmove', skipAndContinue, { passive: true, once: true });
+  window.addEventListener('keydown', function (event) {
+    if (done || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    var target = event.target;
+    if (target && target.closest && target.closest('a,button,input,textarea,select,[contenteditable="true"]')) return;
+    if (event.key === 'Escape' || event.key === 'ArrowDown' || event.key === 'PageDown' || event.key === ' ') finish(true);
+  });
+
+  if (motionQuery) {
+    var onMotionPreference = function (event) {
+      if (!event.matches) return;
+      reducedMotion = true;
+      finish(false);
+      releaseReveal();
+      [production, intermission].forEach(function (panel) {
+        if (!panel) return;
+        panel.style.setProperty('--production-opacity', '1');
+        panel.style.setProperty('--poster-opacity', '1');
+        panel.style.setProperty('--information-opacity', '1');
+        panel.style.setProperty('--intermission-opacity', '1');
+      });
+    };
+    if (motionQuery.addEventListener) motionQuery.addEventListener('change', onMotionPreference);
+    else if (motionQuery.addListener) motionQuery.addListener(onMotionPreference);
+  }
+
+  if (production || intermission) (production || intermission).setAttribute('inert', '');
+  if (!reducedMotion) {
+    window.addEventListener('scroll', requestCameraUpdate, { passive: true });
+    window.addEventListener('resize', requestCameraUpdate, { passive: true });
+    window.addEventListener('orientationchange', requestCameraUpdate, { passive: true });
+  } else {
+    releaseReveal();
+  }
+
+  startOverture();
 })();
