@@ -23,7 +23,7 @@ class Show extends Model
 
     public function showTimes()
     {
-        return $this->hasMany(ShowTime::class);
+        return $this->hasMany(ShowTime::class, 'show_id');
     }
 
     public function isPublicPlaceholder(): bool

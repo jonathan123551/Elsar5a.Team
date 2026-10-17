@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\Play;
-use App\Models\Show;
 use App\Models\ShowTime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,136 +12,129 @@ class HomepageJourneyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_homepage_renders_approved_intro_and_removes_manifesto_bloat(): void
+    public function test_homepage_renders_approved_intro_and_direct_show_reveal_without_post_intro_bloat(): void
     {
         $play = Play::create([
-            'title' => 'الصرخة',
-            'description' => 'عرض مسرحي يطرح أسئلة جريئة على خشبة المسرح.',
-            'poster' => 'posters/elsar5a.jpg',
+            'title' => 'مسرحية الصرخة الكبرى',
+            'description' => 'عرض مسرحي يناقش قضايا الإنسان والوعي على خشبة مسرح الصرخة.',
+            'poster' => 'posters/elsar5a-main.jpg',
             'price' => 120,
             'is_active' => true,
         ]);
 
         ShowTime::create([
             'play_id' => $play->id,
-            'starts_at' => now()->addDays(4)->setTime(20, 0),
-            'capacity' => 80,
-            'price' => 120,
+            'starts_at' => now()->addDays(4)->setTime(19, 30),
+            'capacity' => 100,
+            'price' => 150,
             'status' => 'open',
         ]);
 
         $response = $this->get(route('home'));
-
         $response->assertStatus(200);
 
-        // Approved Intro elements must remain intact
-        $response->assertSee('id="curtain-left"', false);
-        $response->assertSee('id="curtain-right"', false);
-        $response->assertSee('id="curtain-seam"', false);
-        $response->assertSee('id="stage-logo-scene"', false);
+        // 1. Approved Intro is preserved (Act I)
+        $response->assertSee('id="theatre-journey"', false);
+        $response->assertSee('id="stage-intro-scene"', false);
+        $response->assertSee('id="curtain-layer"', false);
         $response->assertSee('فريق الصرخة المسرحي');
-        $response->assertSee('❤ نجول نصرخ فيزداد العقل وعيا ❤');
+        $response->assertSee('نجول نصرخ فيزداد العقل وعيا');
 
-        // Removed filler scenes and manifesto/archive bloat must NOT appear on homepage
+        // 2. Obsolete post-intro filler scenes are completely removed
         $response->assertDontSee('id="stage-identity-scene"', false);
         $response->assertDontSee('id="stage-corridor-scene"', false);
         $response->assertDontSee('id="continuation-world"', false);
-        $response->assertDontSee('كثيرًا ما فسدت عقولنا');
-        $response->assertDontSee('أعمالنا وعروضنا المسرحية');
+
+        // 3. Real current production Playbill Reveal is rendered with canonical booking route (Act II)
+        $response->assertSee('id="stage-show-scene"', false);
+        $response->assertSee('id="playbill-showcase"', false);
+        $response->assertSee('مسرحية الصرخة الكبرى');
+        $response->assertSee('150');
+        $response->assertSee('متاح للحجز الآن');
+        $response->assertSee(route('shows.book', $play), false);
+        $response->assertSee(asset('storage/posters/elsar5a-main.jpg'), false);
     }
 
-    public function test_homepage_connects_real_upcoming_production_and_booking_cta(): void
+    public function test_homepage_displays_active_play_even_when_all_showtimes_are_in_the_past(): void
     {
         $play = Play::create([
             'title' => 'ليلة المحاكمة',
-            'description' => 'دراما مسرحية تفاعلية من إنتاج فريق الصرخة.',
-            'poster' => 'posters/trial-night.webp',
-            'price' => 150,
+            'description' => 'دراما مسرحية حية من إنتاج فريق الصرخة.',
+            'poster' => 'https://res.cloudinary.com/demo/image/upload/v1/sample.jpg',
+            'price' => 100,
             'is_active' => true,
         ]);
 
         ShowTime::create([
             'play_id' => $play->id,
-            'starts_at' => now()->addDays(2)->setTime(21, 0),
-            'capacity' => 60,
-            'price' => 150,
+            'starts_at' => now()->subDays(2)->setTime(20, 0),
+            'capacity' => 80,
+            'price' => 100,
             'status' => 'open',
         ]);
 
         $response = $this->get(route('home'));
-
         $response->assertStatus(200);
+
         $response->assertSee('ليلة المحاكمة');
-        $response->assertSee('دراما مسرحية تفاعلية من إنتاج فريق الصرخة.');
-        $response->assertSee('150 ج.م');
-        $response->assertSee('متاح للحجز الآن');
-        $response->assertSee(route('shows.book', $play), false);
-        $response->assertSee('storage/posters/trial-night.webp', false);
-    }
-
-    public function test_homepage_still_displays_active_play_when_showtimes_are_in_the_past(): void
-    {
-        $play = Play::create([
-            'title' => 'ما وراء الستار',
-            'description' => 'العرض المسرحي الرئيسي للفريق هذا الموسم.',
-            'poster' => 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
-            'price' => 100,
-            'is_active' => true,
-        ]);
-
-        ShowTime::create([
-            'play_id' => $play->id,
-            'starts_at' => now()->subDays(2)->setTime(19, 0),
-            'capacity' => 50,
-            'price' => 100,
-            'status' => 'open',
-        ]);
-
-        $response = $this->get(route('home'));
-
-        $response->assertStatus(200);
-        // Must surface the real active play rather than dropping to the generic empty state
-        $response->assertSee('ما وراء الستار');
-        $response->assertSee('https://res.cloudinary.com/demo/image/upload/sample.jpg', false);
-        $response->assertSee(route('shows.book', $play), false);
         $response->assertDontSee('ترقبوا العرض المسرحي القادم قريباً');
+        $response->assertSee('https://res.cloudinary.com/demo/image/upload/v1/sample.jpg', false);
+        $response->assertSee(route('shows.book', $play), false);
     }
 
-    public function test_homepage_ignores_past_showtime_and_picks_next_upcoming_bookable_showtime(): void
+    public function test_homepage_prioritizes_active_play_with_upcoming_bookable_showtime_over_expired_play(): void
     {
-        $play = Play::create([
-            'title' => 'صوت الخشبة',
-            'description' => 'عرض حي.',
-            'poster' => 'images/stage-voice.png',
+        $expiredPlay = Play::create([
+            'title' => 'عرض الأسبوع الماضي',
+            'description' => 'عرض انتهت مواعيده.',
             'price' => 90,
             'is_active' => true,
         ]);
 
-        // Past showtime with different price
         ShowTime::create([
-            'play_id' => $play->id,
-            'starts_at' => now()->subDays(5)->setTime(18, 0),
-            'capacity' => 50,
-            'price' => 70,
+            'play_id' => $expiredPlay->id,
+            'starts_at' => now()->subDays(5),
+            'capacity' => 100,
+            'price' => 90,
             'status' => 'open',
         ]);
 
-        // Upcoming bookable showtime
+        $upcomingPlay = Play::create([
+            'title' => 'عرض الموسم الجديد',
+            'description' => 'العرض القادم المتاح للحجز.',
+            'price' => 140,
+            'is_active' => true,
+        ]);
+
         ShowTime::create([
-            'play_id' => $play->id,
-            'starts_at' => now()->addDays(3)->setTime(21, 0),
-            'capacity' => 50,
-            'price' => 135,
+            'play_id' => $upcomingPlay->id,
+            'starts_at' => now()->addDays(2),
+            'capacity' => 100,
+            'price' => 140,
             'status' => 'open',
         ]);
 
         $response = $this->get(route('home'));
-
         $response->assertStatus(200);
-        $response->assertSee('صوت الخشبة');
-        $response->assertSee('135 ج.م');
-        $response->assertSee('متاح للحجز الآن');
-        $response->assertSee(asset('images/stage-voice.png'), false);
+
+        $response->assertSee('عرض الموسم الجديد');
+        $response->assertSee(route('shows.book', $upcomingPlay), false);
+    }
+
+    public function test_homepage_shows_clean_fallback_only_when_no_active_plays_exist(): void
+    {
+        Play::create([
+            'title' => 'عرض أرشيفي قديم',
+            'description' => 'أرشيف',
+            'price' => 80,
+            'is_active' => false,
+        ]);
+
+        $response = $this->get(route('home'));
+        $response->assertStatus(200);
+
+        $response->assertSee('ترقبوا العرض المسرحي القادم قريباً');
+        $response->assertDontSee('عرض أرشيفي قديم');
     }
 
     public function test_homepage_communicates_progressive_scarcity_accurately(): void
@@ -162,9 +154,9 @@ class HomepageJourneyTest extends TestCase
             'status' => 'open',
         ]);
 
-        // Leave 6 seats remaining (high scarcity)
+        // Leave 6 seats remaining (1–10 seats -> critical exact count)
         Booking::create([
-            'reference' => 'BK-SCARCITY-1',
+            'reference' => 'BK-SCARCITY-6',
             'play_id' => $play->id,
             'show_time_id' => $showtime->id,
             'customer_name' => 'أحمد محمد',
@@ -176,8 +168,8 @@ class HomepageJourneyTest extends TestCase
         ]);
 
         $response = $this->get(route('home'));
-
         $response->assertStatus(200);
         $response->assertSee('متبقي 6 تذاكر فقط');
+        $response->assertSee('playbill-badge--critical', false);
     }
 }

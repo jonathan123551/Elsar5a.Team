@@ -1,306 +1,274 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="description" content="فريق الصرخة المسرحي — نجول نصرخ فيزداد العقل وعيا. تعرف على العرض المسرحي الحالي واحجز تذكرتك الآن.">
-    <title>فريق الصرخة المسرحي | العرض الحالي وحجز التذاكر</title>
+@extends('layouts.app')
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;600;700;800;900&family=Amiri:ital,wght@0,400;0,700;1,400&family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+@section('title', 'فريق الصرخة المسرحي | المسرح والجمهور والعرض الحالي')
+@section('body_class', 'home-stage-mode')
 
-    <link rel="stylesheet" href="{{ asset('css/elsar5a-stage.css') }}?v={{ file_exists(public_path('css/elsar5a-stage.css')) ? filemtime(public_path('css/elsar5a-stage.css')) : '1.0' }}">
-</head>
-<body class="theatre-body">
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/elsar5a-stage.css') }}?v={{ file_exists(public_path('css/elsar5a-stage.css')) ? filemtime(public_path('css/elsar5a-stage.css')) : '2.1' }}">
+@endpush
 
-    <!-- SVG Dynamic Parabolic Curtain Tie-Back Clip Paths (Approved Intro Physics) -->
-    <svg width="0" height="0" class="stage-svg-defs" aria-hidden="true">
-        <defs>
-            <clipPath id="curtainLeftClip" clipPathUnits="objectBoundingBox">
-                <path id="curtainLeftPath" d="M 0,0 L 0.505,0 C 0.505,0.32 0.505,0.58 0.505,0.74 C 0.505,0.86 0.505,0.94 0.505,1 L 0,1 Z"></path>
-            </clipPath>
-            <clipPath id="curtainRightClip" clipPathUnits="objectBoundingBox">
-                <path id="curtainRightPath" d="M 1,0 L 0.495,0 C 0.495,0.32 0.495,0.58 0.495,0.74 C 0.495,0.86 0.495,0.94 0.495,1 L 1,1 Z"></path>
-            </clipPath>
-        </defs>
-    </svg>
+@section('main_class', 'p-0 max-w-none m-0')
 
-    <!-- =======================================================================
-         PERSISTENT PROSCENIUM HEADER & NAVIGATION DRAWER
-         ======================================================================= -->
-    <header class="proscenium-header" id="proscenium-header">
-        <a href="{{ route('home') }}" class="proscenium-brand" aria-label="فريق الصرخة المسرحي">
-            <span class="proscenium-brand-emblem" aria-hidden="true">🎭</span>
-            <span class="proscenium-brand-title">فريق الصرخة المسرحي</span>
-        </a>
+@section('content')
+@php
+    $hasShow = isset($featuredShow) && $featuredShow !== null;
+    $hasShowTime = isset($featuredShowTime) && $featuredShowTime !== null;
+    $isUpcomingShowTime = $hasShowTime && $featuredShowTime->starts_at && $featuredShowTime->starts_at->gte(now());
+    $isSoldOut = $hasShowTime && (
+        (method_exists($featuredShowTime, 'isSoldOut') ? $featuredShowTime->isSoldOut() : false) ||
+        $featuredShowTime->status === 'sold_out' ||
+        $featuredShowTime->is_sold_out ||
+        ($featuredRemainingSeats !== null && $featuredRemainingSeats <= 0)
+    );
+    $isBookableNow = !empty($isFeaturedBookable) && !$isSoldOut;
+    $extraShowTimesCount = max(0, (int) ($upcomingShowTimesCount ?? 0) - 1);
 
-        <div class="proscenium-actions">
-            @if($featuredShow)
-                <a href="{{ route('shows.book', $featuredShow) }}" id="fast-track-book-btn" class="proscenium-book-pill">
-                    <span>احجز الآن</span>
-                    <span aria-hidden="true">🎟</span>
-                </a>
-            @else
-                <a href="{{ route('shows.index') }}" id="fast-track-book-btn" class="proscenium-book-pill">
-                    <span>العروض</span>
-                    <span aria-hidden="true">🎟</span>
-                </a>
-            @endif
+    // Exact Progressive Scarcity Rules:
+    // - Healthy: >25 seats AND >25% capacity -> "متاح للحجز الآن" (playbill-badge--available)
+    // - Low: 11–25 seats OR <= 25% capacity -> "متبقي عدد محدود من التذاكر" (playbill-badge--scarcity)
+    // - Very low: 1–10 seats -> show honest exact count (e.g. "متبقي X تذاكر فقط", "متبقي تذكرة واحدة فقط", "متبقي تذكرتان فقط") (playbill-badge--critical)
+    // - Sold out: 0 -> "اكتملت التذاكر" (playbill-badge--soldout)
+    $capacity = (int) ($featuredShowTime?->total_tickets ?? $featuredShowTime?->capacity ?? 0);
+    $remaining = $featuredRemainingSeats !== null ? (int) $featuredRemainingSeats : null;
 
-            <button type="button" id="menu-drawer-btn" class="proscenium-menu-btn" aria-label="فتح القائمة" aria-expanded="false" aria-controls="theatre-menu-drawer">
-                <span class="menu-bar"></span>
-                <span class="menu-bar"></span>
-                <span class="menu-bar menu-bar-short"></span>
-            </button>
-        </div>
-    </header>
+    if ($isSoldOut || ($remaining !== null && $remaining <= 0)) {
+        $badgeClass = 'playbill-badge--soldout';
+        $badgeText = 'اكتملت التذاكر';
+    } elseif ($isBookableNow && $remaining !== null && $remaining >= 1 && $remaining <= 10) {
+        $badgeClass = 'playbill-badge--critical';
+        $badgeText = $remaining === 1
+            ? 'متبقي تذكرة واحدة فقط'
+            : ($remaining === 2 ? 'متبقي تذكرتان فقط' : "متبقي {$remaining} تذاكر فقط");
+    } elseif ($isBookableNow && $remaining !== null && (($remaining >= 11 && $remaining <= 25) || ($capacity > 0 && ($remaining / $capacity) <= 0.25))) {
+        $badgeClass = 'playbill-badge--scarcity';
+        $badgeText = 'متبقي عدد محدود من التذاكر';
+    } elseif ($isBookableNow) {
+        $badgeClass = 'playbill-badge--available';
+        $badgeText = 'متاح للحجز الآن';
+    } else {
+        $badgeClass = 'playbill-badge--active';
+        $badgeText = 'عرض حالي على المسرح';
+    }
+@endphp
 
-    <!-- Slide-Over Theatre Navigation Drawer -->
-    <div id="theatre-menu-drawer" class="theatre-drawer" aria-hidden="true">
-        <div class="theatre-drawer-backdrop" id="drawer-backdrop"></div>
-        <div class="theatre-drawer-panel" role="dialog" aria-label="قائمة المسرح">
-            <div class="theatre-drawer-header">
-                <span class="theatre-drawer-title">قائمة المسرح</span>
-                <button type="button" id="close-menu-drawer-btn" class="theatre-drawer-close" aria-label="إغلاق القائمة">✕</button>
+<div id="theatre-journey" dir="rtl">
+    {{-- SCROLL TRACK: Direct 2-Act Journey (Act I: Approved Intro -> Act II: Current Production Reveal) --}}
+    <section id="stage-scroll-track" aria-label="رحلة المسرح والعرض الحالي">
+        <div id="stage-sticky-viewport">
+            {{-- Layer 1: Deep Atmospheric Stage & Proscenium Lighting --}}
+            <div id="stage-world" aria-hidden="true">
+                <div class="stage-proscenium-arch"></div>
+                <div id="stage-spotlight"></div>
+                <div class="stage-SideGlow stage-SideGlow--right"></div>
+                <div class="stage-SideGlow stage-SideGlow--left"></div>
+                <div class="stage-dust-layer"></div>
+                <div id="stage-floor"></div>
             </div>
 
-            <nav class="theatre-drawer-nav">
-                <a href="{{ route('home') }}" class="drawer-nav-item is-active">الرئيسية — خشبة المسرح</a>
-                @if($featuredShow)
-                    <a href="{{ route('shows.book', $featuredShow) }}" class="drawer-nav-item is-highlight">
-                        حجز عرض « {{ $featuredShow->title }} » 🎟
-                    </a>
-                @endif
-                <a href="{{ route('shows.index') }}" class="drawer-nav-item">العروض المتاحة</a>
-                <a href="{{ route('archive') }}" class="drawer-nav-item">أرشيف العروض</a>
-                <a href="{{ route('about') }}" class="drawer-nav-item">من نحن</a>
-                <a href="{{ route('join') }}" class="drawer-nav-item">انضم للفريق</a>
-            </nav>
-
-            <div class="theatre-drawer-footer">
-                ❤ نجول نصرخ فيزداد العقل وعيا ❤
-            </div>
-        </div>
-    </div>
-
-    <!-- =======================================================================
-         TWO-ACT CAMERA JOURNEY (235VH):
-         ACT I (0% -> 42%): APPROVED CURTAIN + LOGO + MOTTO INTRO
-         ACT II (34% -> 100%): DIRECT PRODUCTION REVEAL + INFORMATION + BOOK
-         ======================================================================= -->
-    <main id="stage-scroll-track" class="stage-scroll-track">
-        <div id="sticky-stage-viewport" class="sticky-stage-viewport">
-
-            <!-- LAYER 1: OPEN LIT WOODEN STAGE & VOLUMETRIC SPOTLIGHT -->
-            <div id="layer-open-stage" class="stage-layer layer-open-stage">
-                <div class="stage-proscenium-arch" aria-hidden="true"></div>
-                <div class="spotlight-cone" aria-hidden="true"></div>
-                <div class="stage-wood-floor" aria-hidden="true"></div>
-            </div>
-
-            <!-- LAYER 2 (ACT I): APPROVED LOGO & IDENTITY INTRO -->
-            <section id="stage-logo-scene" class="stage-layer layer-logo-scene" aria-label="مقدمة فريق الصرخة المسرحي">
-                <div class="logo-spotlight-halo" aria-hidden="true"></div>
-                <div class="stage-logo-lockup">
-                    <div class="stage-emblem-ring" id="intro-logo">
-                        <span class="stage-emblem-icon" aria-hidden="true">🎭</span>
+            {{-- Layer 2: Active Stage Content (Intro -> Show Reveal) --}}
+            <div id="stage-content-layer">
+                {{-- ACT I: APPROVED OPENING INTRO (FROZEN) --}}
+                <div id="stage-intro-scene" class="stage-scene is-active">
+                    <div class="intro-emblem-shell">
+                        <div class="intro-emblem-halo"></div>
+                        <img src="{{ asset('images/logo.png') }}"
+                             alt="شعار فريق الصرخة المسرحي"
+                             class="intro-logo-img"
+                             width="116"
+                             height="116"
+                             onerror="this.onerror=null;this.src='{{ asset('images/sarkha-logo.png') }}';"
+                        >
                     </div>
-                    <p class="stage-kicker">خشبة المسرح ترحب بكم</p>
-                    <h1 class="stage-main-title" id="intro-title">فريق الصرخة المسرحي</h1>
-                    <div class="stage-gold-divider" aria-hidden="true"></div>
-                    <p class="stage-identity-brief" id="intro-words">
-                        مسرح حي يحمل الرسالة من قلب الخشبة إلى وجدان المشاهد
-                    </p>
-                    <p class="stage-slogan-text" id="intro-motto">❤ نجول نصرخ فيزداد العقل وعيا ❤</p>
+                    <p class="intro-kicker">خشبة مسرح الصرخة ترحب بكم</p>
+                    <h1 class="intro-main-title">فريق الصرخة المسرحي</h1>
+                    <p class="intro-motto">❤ نجول نصرخ فيزداد العقل وعيا ❤</p>
+
+                    <div id="scroll-prompt" aria-hidden="true">
+                        <span class="scroll-prompt-label">مرّر لرفع الستار واكتشاف العرض الحالي</span>
+                        <span class="scroll-prompt-line"></span>
+                    </div>
                 </div>
-            </section>
 
-            <!-- LAYER 3 (ACT II): CURRENT PRODUCTION PLAYBILL REVEAL -->
-            <section id="stage-show-scene" class="stage-layer layer-show-scene" aria-label="العرض المسرحي الحالي">
-                @if($featuredShow)
-                    @php
-                        $activePrice = $featuredShowtime?->price ?? $featuredShow->EffectivePrice;
-                        $scarcityLevel = $scarcityState['level'] ?? 'normal';
-                        $displayDate = $featuredShowtime?->starts_at && $featuredShowtime->starts_at->isFuture()
-                            ? $featuredShowtime->starts_at->locale('ar')->translatedFormat('l j F Y')
-                            : ($upcomingShowtimes->isEmpty() ? 'يعلن قريباً' : 'مواعيد متعددة');
-                        $displayTime = $featuredShowtime?->starts_at && $featuredShowtime->starts_at->isFuture()
-                            ? $featuredShowtime->starts_at->locale('ar')->translatedFormat('g:i A')
-                            : ($upcomingShowtimes->isEmpty() ? 'راجع تفاصيل العرض' : 'راجع جدول الحفلات');
-                    @endphp
+                {{-- ACT II: CURRENT PRODUCTION PLAYBILL REVEAL --}}
+                <div id="stage-show-scene" class="stage-scene">
+                    @if($hasShow)
+                        <article id="playbill-showcase" class="playbill-showcase" aria-labelledby="playbill-title">
+                            {{-- Visual Hero: Production Poster Column --}}
+                            <div class="playbill-poster-col">
+                                <div class="playbill-poster-frame">
+                                    @if(!empty($featuredPosterUrl))
+                                        <img src="{{ $featuredPosterUrl }}"
+                                             alt="بوستر عرض {{ $featuredShow->title }}"
+                                             class="playbill-poster-img"
+                                             onerror="this.onerror=null;this.src='{{ asset('images/logo.png') }}';this.classList.add('is-fallback-logo');"
+                                        >
+                                    @else
+                                        <div class="playbill-poster-fallback">
+                                            <img src="{{ asset('images/logo.png') }}" alt="{{ $featuredShow->title }}" onerror="this.onerror=null;this.src='{{ asset('images/sarkha-logo.png') }}';">
+                                            <span>{{ $featuredShow->title }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="playbill-poster-vignette" aria-hidden="true"></div>
 
-                    <article class="playbill-showcase" id="emerging-boxoffice-card">
-                        <!-- Visual Hero: Production Poster Monolith -->
-                        <div class="playbill-poster-column" id="emerging-poster-card">
-                            <div class="stage-poster-monolith">
-                                @if($featuredPosterUrl)
-                                    <img
-                                        src="{{ $featuredPosterUrl }}"
-                                        alt="بوستر عرض {{ $featuredShow->title }}"
-                                        class="poster-img"
-                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                                    >
-                                    <div class="poster-fallback" style="display: none;">
-                                        <span class="poster-fallback-kicker">فريق الصرخة المسرحي يقدم</span>
-                                        <span class="poster-fallback-title">{{ $featuredShow->title }}</span>
-                                        <span class="poster-fallback-sub">عرض مسرحي حي على الخشبة</span>
+                                    {{-- Live Availability / Status Badge --}}
+                                    <div class="playbill-status-floating">
+                                        <span class="playbill-badge {{ $badgeClass }}">
+                                            <span class="playbill-badge-dot"></span>
+                                            {{ $badgeText }}
+                                        </span>
                                     </div>
-                                @else
-                                    <div class="poster-fallback">
-                                        <span class="poster-fallback-kicker">فريق الصرخة المسرحي يقدم</span>
-                                        <span class="poster-fallback-title">{{ $featuredShow->title }}</span>
-                                        <span class="poster-fallback-sub">عرض مسرحي حي على الخشبة</span>
-                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Secondary Hierarchy: Show Details + Strong Booking CTA --}}
+                            <div class="playbill-info-col">
+                                <div class="playbill-header-group">
+                                    <span class="playbill-kicker">العرض المسرحي الحالي</span>
+                                    <h2 id="playbill-title" class="playbill-title">{{ $featuredShow->title }}</h2>
+                                </div>
+
+                                @if(filled($featuredShow->description))
+                                    <p class="playbill-synopsis">
+                                        {{ \Illuminate\Support\Str::limit($featuredShow->description, 170) }}
+                                    </p>
                                 @endif
 
-                                <div class="poster-spotlight-sheen" aria-hidden="true"></div>
-                                <div class="poster-caption-gradient">
-                                    <span class="poster-caption-kicker">العرض الحالي على الخشبة</span>
+                                {{-- Structured Showtime & Ticket Spec Grid --}}
+                                <div class="playbill-specs-grid" role="list" aria-label="بيانات العرض المسرحي">
+                                    @if($hasShowTime && $featuredShowTime->starts_at)
+                                        <div class="playbill-spec-item" role="listitem">
+                                            <span class="playbill-spec-label">تاريخ العرض</span>
+                                            <strong class="playbill-spec-value">
+                                                {{ $featuredShowTime->starts_at->translatedFormat('l j F Y') }}
+                                            </strong>
+                                        </div>
+                                        <div class="playbill-spec-item" role="listitem">
+                                            <span class="playbill-spec-label">موعد رفع الستار</span>
+                                            <strong class="playbill-spec-value">
+                                                {{ $featuredShowTime->starts_at->translatedFormat('g:i A') }}
+                                                @if($extraShowTimesCount > 0)
+                                                    <small class="playbill-extra-dates">+{{ $extraShowTimesCount }} مواعيد أخرى</small>
+                                                @endif
+                                            </strong>
+                                        </div>
+                                    @else
+                                        <div class="playbill-spec-item" role="listitem">
+                                            <span class="playbill-spec-label">حالة المواعيد</span>
+                                            <strong class="playbill-spec-value">تُعلن المواعيد عبر صفحة الحجز</strong>
+                                        </div>
+                                    @endif
+
+                                    @if($featuredPrice !== null)
+                                        <div class="playbill-spec-item playbill-spec-item--price" role="listitem">
+                                            <span class="playbill-spec-label">سعر التذكرة</span>
+                                            <strong class="playbill-spec-value playbill-price-number">
+                                                {{ number_format((float) $featuredPrice, 0) }} <small>ج.م</small>
+                                            </strong>
+                                        </div>
+                                    @endif
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Secondary Hierarchy: Clear Show Information & Strong Booking CTA -->
-                        <div class="playbill-info-column">
-                            <div class="playbill-top-meta">
-                                <span class="playbill-kicker">فريق الصرخة المسرحي يقدم</span>
-                                <span class="scarcity-badge scarcity-{{ $scarcityLevel }} scarcity-badge--{{ $scarcityLevel === 'normal' ? 'healthy' : ($scarcityLevel === 'medium' ? 'low' : ($scarcityLevel === 'high' ? 'critical' : 'soldout')) }}" id="stage-scarcity-badge">
-                                    ● {{ $scarcityState['label'] }}
-                                </span>
-                            </div>
+                                {{-- Primary Action Row --}}
+                                <div class="playbill-actions-row">
+                                    @if($isSoldOut && $extraShowTimesCount === 0)
+                                        <a href="{{ route('shows.book', $featuredShow) }}" class="btn-stage-primary is-soldout-cta">
+                                            <span>تفاصيل العرض والمواعيد</span>
+                                        </a>
+                                    @else
+                                        <a href="{{ route('shows.book', $featuredShow) }}" class="btn-stage-primary">
+                                            <span>احجز تذكرتك الآن</span>
+                                            <svg class="btn-stage-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </a>
+                                    @endif
 
-                            <h2 class="playbill-title">{{ $featuredShow->title }}</h2>
-
-                            @if(filled($featuredShow->description))
-                                <p class="playbill-description">
-                                    {{ \Illuminate\Support\Str::limit($featuredShow->description, 155) }}
-                                </p>
-                            @endif
-
-                            <!-- Ticket-Stub Metadata Grid (Date / Showtime / Price) -->
-                            <div class="playbill-ticket-grid" role="list" aria-label="معلومات العرض">
-                                <div class="ticket-meta-cell" role="listitem">
-                                    <span class="ticket-meta-label">📅 التاريخ</span>
-                                    <strong class="ticket-meta-value">{{ $displayDate }}</strong>
-                                </div>
-
-                                <div class="ticket-meta-cell" role="listitem">
-                                    <span class="ticket-meta-label">🕖 الموعد</span>
-                                    <strong class="ticket-meta-value">{{ $displayTime }}</strong>
-                                </div>
-
-                                <div class="ticket-meta-cell" role="listitem">
-                                    <span class="ticket-meta-label">🎟 سعر التذكرة</span>
-                                    <strong class="ticket-meta-value">
-                                        @if(!is_null($activePrice))
-                                            {{ number_format((float) $activePrice, 0) }} ج.م
-                                        @else
-                                            يحدد عند الحجز
-                                        @endif
-                                    </strong>
-                                </div>
-                            </div>
-
-                            @if($upcomingShowtimes->count() > 1)
-                                <div class="playbill-showtimes-strip" aria-label="جميع الحفلات المتاحة">
-                                    <span class="showtimes-strip-label">الحفلات المتاحة:</span>
-                                    <div class="showtimes-pills-row">
-                                        @foreach($upcomingShowtimes->take(3) as $st)
-                                            <span class="showtime-mini-pill">
-                                                {{ $st->starts_at->locale('ar')->translatedFormat('j M — g:i A') }}
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
-                            <!-- Primary Booking CTA -->
-                            <div class="playbill-cta-row">
-                                @if($isBookableNow)
-                                    <a href="{{ route('shows.book', $featuredShow) }}" id="primary-stage-book-cta" class="stage-primary-cta">
-                                        <span>احجز تذكرتك الآن</span>
-                                        <span aria-hidden="true">🎟</span>
+                                    <a href="{{ route('shows.index') }}" class="btn-stage-secondary">
+                                        جميع العروض
                                     </a>
-                                @elseif($scarcityLevel === 'sold_out')
-                                    <a href="{{ route('shows.book', $featuredShow) }}" id="primary-stage-book-cta" class="stage-primary-cta is-sold-out">
-                                        <span>اكتمل العدد — عرض تفاصيل المسرحية</span>
-                                    </a>
-                                @else
-                                    <a href="{{ route('shows.book', $featuredShow) }}" id="primary-stage-book-cta" class="stage-primary-cta">
-                                        <span>تفاصيل العرض والحجز</span>
-                                        <span aria-hidden="true">🎟</span>
-                                    </a>
-                                @endif
+                                </div>
                             </div>
-                        </div>
-                    </article>
-                @else
-                    <!-- Honest Fallback Only When Zero Active Plays Exist in DB -->
-                    <article class="playbill-showcase playbill-empty-state" id="emerging-boxoffice-card">
-                        <div class="playbill-info-column text-center">
-                            <span class="scarcity-badge scarcity-upcoming">● الموسم المسرحي الجديد</span>
+                        </article>
+                    @else
+                        {{-- Clean Fallback Only When Zero Active Plays Exist in Database --}}
+                        <div id="playbill-showcase" class="playbill-empty-card">
+                            <span class="playbill-kicker">خشبة مسرح الصرخة</span>
                             <h2 class="playbill-title">ترقبوا العرض المسرحي القادم قريباً</h2>
-                            <p class="playbill-description">
-                                نجهز حالياً لرفع الستار عن عملنا المسرحي الجديد. تصفح صفحة العروض أو الأرشيف لمشاهدة أعمال الفريق.
+                            <p class="playbill-synopsis">
+                                نجهز حالياً لرفع الستار عن عمل مسرحي جديد. تصفح العروض أو أرشيف المسرحية لمشاهدة أعمال الفريق السابقة.
                             </p>
-                            <div class="playbill-cta-row">
-                                <a href="{{ route('shows.index') }}" id="primary-stage-book-cta" class="stage-primary-cta">
-                                    <span>استعرض صفحة العروض</span>
-                                    <span aria-hidden="true">🎭</span>
+                            <div class="playbill-actions-row is-centered">
+                                <a href="{{ route('shows.index') }}" class="btn-stage-primary">
+                                    <span>صفحة العروض</span>
+                                </a>
+                                <a href="{{ route('archive') }}" class="btn-stage-secondary">
+                                    أرشيف الصرخة
                                 </a>
                             </div>
                         </div>
-                    </article>
-                @endif
-            </section>
-
-            <!-- LAYER 4: CLOSED VELVET CURTAINS WITH PARABOLIC TIE-BACK GATHERING -->
-            <div id="layer-closed-curtains" class="stage-layer layer-closed-curtains">
-                <div id="curtain-left" class="curtain-wing curtain-wing-left">
-                    <div class="curtain-velvet-surface"></div>
-                    <div class="curtain-gold-trim"></div>
+                    @endif
                 </div>
-
-                <div id="curtain-right" class="curtain-wing curtain-wing-right">
-                    <div class="curtain-velvet-surface"></div>
-                    <div class="curtain-gold-trim"></div>
-                </div>
-
-                <!-- Golden Center Seam Light Flare -->
-                <div id="curtain-seam" class="seam-flare-beam" aria-hidden="true"></div>
-
-                <!-- Interactive Scroll / Tap Prompt -->
-                <button type="button" id="curtain-scroll-prompt" class="curtain-scroll-prompt" aria-label="مرر للأسفل لفتح الستار ومشاهدة العرض الحالي">
-                    <span class="scroll-mouse-shell" aria-hidden="true">
-                        <span class="scroll-wheel-dot"></span>
-                    </span>
-                    <span class="scroll-prompt-text">مرر للأسفل أو اضغط لمشاهدة العرض الحالي</span>
-                </button>
             </div>
 
+            {{-- Layer 3: Foreground Proscenium Velvet Curtains (Approved SVG Tie-Back Physics) --}}
+            <div id="curtain-layer" aria-hidden="true">
+                <div id="curtain-valance"></div>
+                <div id="curtain-right" class="curtain-panel">
+                    <svg class="curtain-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="curtainGradR" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#3a0308"/>
+                                <stop offset="18%" stop-color="#7c0a14"/>
+                                <stop offset="36%" stop-color="#430409"/>
+                                <stop offset="54%" stop-color="#8b0d18"/>
+                                <stop offset="74%" stop-color="#3c0308"/>
+                                <stop offset="90%" stop-color="#6e0912"/>
+                                <stop offset="100%" stop-color="#280205"/>
+                            </linearGradient>
+                        </defs>
+                        <path id="curtain-path-r" fill="url(#curtainGradR)" d="M 100,0 L 0,0 C 0,36 0,58 0,100 L 100,100 Z"></path>
+                        <path id="curtain-trim-r" fill="none" stroke="#d4af37" stroke-width="0.9" stroke-opacity="0.7" d="M 0,0 C 0,36 0,58 0,100"></path>
+                    </svg>
+                </div>
+                <div id="curtain-left" class="curtain-panel">
+                    <svg class="curtain-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="curtainGradL" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#280205"/>
+                                <stop offset="14%" stop-color="#6e0912"/>
+                                <stop offset="32%" stop-color="#3c0308"/>
+                                <stop offset="52%" stop-color="#8b0d18"/>
+                                <stop offset="70%" stop-color="#430409"/>
+                                <stop offset="86%" stop-color="#7c0a14"/>
+                                <stop offset="100%" stop-color="#3a0308"/>
+                            </linearGradient>
+                        </defs>
+                        <path id="curtain-path-l" fill="url(#curtainGradL)" d="M 0,0 L 100,0 C 100,36 100,58 100,100 L 0,100 Z"></path>
+                        <path id="curtain-trim-l" fill="none" stroke="#d4af37" stroke-width="0.9" stroke-opacity="0.7" d="M 100,0 C 100,36 100,58 100,100"></path>
+                    </svg>
+                </div>
+            </div>
         </div>
-    </main>
+    </section>
 
-    <!-- =======================================================================
-         COMPACT NAVIGATION BAR BELOW THE STAGE (NO MANIFESTO/ARCHIVE BLOAT)
-         ======================================================================= -->
-    <footer class="theatre-compact-footer" aria-label="روابط المسرح">
-        <div class="compact-footer-inner">
-            <div class="compact-footer-brand">
-                <span class="compact-footer-title">فريق الصرخة المسرحي</span>
-                <span class="compact-footer-motto">❤ نجول نصرخ فيزداد العقل وعيا ❤</span>
+    {{-- Minimal Post-Stage Navigation Bar (No Manifesto or Archive Bloat) --}}
+    <footer id="stage-compact-footer" aria-label="روابط سريعة">
+        <div class="stage-compact-footer-inner">
+            <div class="stage-compact-brand">
+                <img src="{{ asset('images/logo.png') }}" alt="" width="34" height="34" onerror="this.onerror=null;this.src='{{ asset('images/sarkha-logo.png') }}';">
+                <span>فريق الصرخة المسرحي</span>
             </div>
-
-            <nav class="compact-footer-links" aria-label="التنقل السريع">
-                <a href="{{ route('shows.index') }}">العروض</a>
-                <a href="{{ route('archive') }}">الأرشيف</a>
+            <nav class="stage-compact-links" aria-label="التنقل في الموقع">
+                <a href="{{ route('shows.index') }}">العروض والحجز</a>
+                <a href="{{ route('archive') }}">أرشيف المسرح</a>
                 <a href="{{ route('about') }}">من نحن</a>
                 <a href="{{ route('join') }}">انضم للفريق</a>
             </nav>
         </div>
     </footer>
+</div>
+@endsection
 
-    <script src="{{ asset('js/elsar5a-stage.js') }}?v={{ file_exists(public_path('js/elsar5a-stage.js')) ? filemtime(public_path('js/elsar5a-stage.js')) : '1.0' }}" defer></script>
-</body>
-</html>
+@push('scripts')
+    <script src="{{ asset('js/elsar5a-stage.js') }}?v={{ file_exists(public_path('js/elsar5a-stage.js')) ? filemtime(public_path('js/elsar5a-stage.js')) : '2.1' }}" defer></script>
+@endpush

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\About;
 use App\Models\Archive;
+use App\Models\Play;
 use App\Models\Show;
 use App\Models\ShowTime;
 use Illuminate\Support\Collection;
@@ -15,21 +16,23 @@ class SiteController extends Controller
     public function home(): View
     {
         [
-            $featuredShow,
-            $featuredShowtime,
-            $upcomingShowtimes,
-            $scarcityState,
-            $featuredPosterUrl,
-            $isBookableNow,
+            'featuredShow' => $featuredShow,
+            'featuredShowTime' => $featuredShowTime,
+            'featuredRemainingSeats' => $featuredRemainingSeats,
+            'featuredPrice' => $featuredPrice,
+            'featuredPosterUrl' => $featuredPosterUrl,
+            'upcomingShowTimesCount' => $upcomingShowTimesCount,
+            'isFeaturedBookable' => $isFeaturedBookable,
         ] = $this->resolveFeaturedHomeShow();
 
         return view('welcome', compact(
             'featuredShow',
-            'featuredShowtime',
-            'upcomingShowtimes',
-            'scarcityState',
+            'featuredShowTime',
+            'featuredRemainingSeats',
+            'featuredPrice',
             'featuredPosterUrl',
-            'isBookableNow',
+            'upcomingShowTimesCount',
+            'isFeaturedBookable'
         ));
     }
 
@@ -54,168 +57,122 @@ class SiteController extends Controller
     }
 
     /**
-     * Resolve the current featured production for the homepage stage reveal.
-     * Uses the canonical Show + ShowTime models.
+     * Resolve the canonical current production for the homepage using the same
+     * underlying Play + ShowTime data flow as ShowController@index.
      *
-     * @return array{0: ?Show, 1: ?ShowTime, 2: Collection<int, ShowTime>, 3: array{level: string, label: string, remaining: ?int}, 4: ?string, 5: bool}
+     * @return array{
+     *     featuredShow: ?Play,
+     *     featuredShowTime: ?ShowTime,
+     *     featuredRemainingSeats: ?int,
+     *     featuredPrice: ?float,
+     *     featuredPosterUrl: ?string,
+     *     upcomingShowTimesCount: int,
+     *     isFeaturedBookable: bool
+     * }
      */
     private function resolveFeaturedHomeShow(): array
     {
         $now = now();
 
-        $activeShows = Show::where('is_active', true)
+        $activePlays = Play::where('is_active', true)
             ->with(['showTimes' => fn ($query) => $query->orderBy('date')->orderBy('time')])
             ->latest()
             ->get();
 
         // Keep placeholder shows out of the public homepage
-        $activeShows = $activeShows->reject(fn ($show) => $show->isPublicPlaceholder())->values();
+        $activePlays = $activePlays->reject(fn ($show) => $show->isPublicPlaceholder())->values();
 
-        if ($activeShows->isEmpty()) {
+        if ($activePlays->isEmpty()) {
             return [
-                null,
-                null,
-                collect(),
-                ['level' => 'upcoming', 'label' => 'قريباً على الخشبة', 'remaining' => null],
-                null,
-                false,
+                'featuredShow' => null,
+                'featuredShowTime' => null,
+                'featuredRemainingSeats' => null,
+                'featuredPrice' => null,
+                'featuredPosterUrl' => null,
+                'upcomingShowTimesCount' => 0,
+                'isFeaturedBookable' => false,
             ];
         }
 
-        // Prioritize active shows that have upcoming showtimes, ordered by the soonest upcoming showtime.
-        $showsWithUpcoming = $activeShows->filter(function (Show $show) use ($now) {
-            return $show->showTimes->contains(fn (ShowTime $st) => $st->starts_at && $st->starts_at->gte($now));
-        })->sortBy(function (Show $show) use ($now) {
-            return $show->showTimes
-                ->filter(fn (ShowTime $st) => $st->starts_at && $st->starts_at->gte($now))
-                ->min('starts_at');
-        })->values();
+        // Prefer active plays that have upcoming non-cancelled showtimes, ordered by nearest upcoming date
+        $playsWithUpcoming = $activePlays
+            ->map(function (Play $play) use ($now) {
+                $upcomingShowTimes = $play->showTimes
+                    ->filter(fn (ShowTime $st) => $st->status !== 'cancelled' && $st->starts_at && $st->starts_at->gte($now))
+                    ->values();
 
-        /** @var Show $featuredShow */
-        $featuredShow = $showsWithUpcoming->first() ?? $activeShows->first();
+                $bookableUpcoming = $upcomingShowTimes->first(fn (ShowTime $st) => $st->isBookable());
+                $primaryUpcoming = $bookableUpcoming ?? $upcomingShowTimes->first();
 
-        $upcomingShowtimes = $featuredShow->showTimes
-            ->filter(fn (ShowTime $st) => $st->starts_at && $st->starts_at->gte($now))
-            ->sortBy('starts_at')
+                return [
+                    'play' => $play,
+                    'primaryShowTime' => $primaryUpcoming,
+                    'upcomingCount' => $upcomingShowTimes->count(),
+                ];
+            })
+            ->filter(fn (array $item) => $item['primaryShowTime'] !== null)
+            ->sortBy([
+                fn (array $a, array $b) => ($b['primaryShowTime']->isBookable() <=> $a['primaryShowTime']->isBookable()),
+                fn (array $a, array $b) => $a['primaryShowTime']->starts_at->timestamp <=> $b['primaryShowTime']->starts_at->timestamp,
+            ])
             ->values();
 
-        $bookableShowtimes = $upcomingShowtimes->filter(function (ShowTime $showtime) {
-            return $showtime->isBookable();
-        })->values();
-
-        /** @var ?ShowTime $featuredShowtime */
-        $featuredShowtime = $bookableShowtimes->first()
-            ?? $upcomingShowtimes->first()
-            ?? $featuredShow->showTimes->sortByDesc('starts_at')->first();
-
-        $isBookableNow = $bookableShowtimes->isNotEmpty();
-
-        if ($upcomingShowtimes->isEmpty()) {
-            $scarcityState = [
-                'level' => 'schedule_pending',
-                'label' => 'عرض حالي — تابع المواعيد والتفاصيل',
-                'remaining' => null,
-            ];
+        if ($playsWithUpcoming->isNotEmpty()) {
+            $selected = $playsWithUpcoming->first();
+            /** @var Play $featuredShow */
+            $featuredShow = $selected['play'];
+            /** @var ShowTime $featuredShowTime */
+            $featuredShowTime = $selected['primaryShowTime'];
+            $upcomingShowTimesCount = $selected['upcomingCount'];
         } else {
-            $scarcityState = $this->computeProgressiveScarcity($featuredShowtime, $bookableShowtimes);
+            // Fallback: pick the latest active play even if its showtimes are in the past or not yet scheduled
+            /** @var Play $featuredShow */
+            $featuredShow = $activePlays->first();
+            /** @var Collection<int, ShowTime> $nonCancelled */
+            $nonCancelled = $featuredShow->showTimes
+                ->filter(fn (ShowTime $st) => $st->status !== 'cancelled')
+                ->values();
+            $featuredShowTime = $nonCancelled->last() ?? $featuredShow->showTimes->last();
+            $upcomingShowTimesCount = 0;
         }
 
-        $featuredPosterUrl = $this->resolvePosterUrl($featuredShow->poster_path ?? $featuredShow->poster);
+        $featuredRemainingSeats = $featuredShowTime ? $featuredShowTime->remainingSeats() : null;
+        $featuredPrice = $featuredShowTime?->price ?? $featuredShow->effective_price;
+        $featuredPosterUrl = $this->resolvePosterUrl($featuredShow->poster);
+        $isFeaturedBookable = $featuredShowTime ? $featuredShowTime->isBookable() : false;
 
         return [
-            $featuredShow,
-            $featuredShowtime,
-            $upcomingShowtimes,
-            $scarcityState,
-            $featuredPosterUrl,
-            $isBookableNow,
+            'featuredShow' => $featuredShow,
+            'featuredShowTime' => $featuredShowTime,
+            'featuredRemainingSeats' => $featuredRemainingSeats,
+            'featuredPrice' => $featuredPrice,
+            'featuredPosterUrl' => $featuredPosterUrl,
+            'upcomingShowTimesCount' => $upcomingShowTimesCount,
+            'isFeaturedBookable' => $isFeaturedBookable,
         ];
     }
 
     /**
-     * Normalize poster paths across full URLs, public assets, and storage disk paths.
+     * Safely resolve any stored poster path (full URL, public asset, or storage path).
      */
     public function resolvePosterUrl(?string $poster): ?string
     {
-        if (! is_string($poster) || trim($poster) === '') {
+        if (! filled($poster)) {
             return null;
         }
 
-        $poster = trim($poster);
+        $trimmed = trim($poster);
 
-        if (Str::startsWith($poster, ['http://', 'https://', '//', 'data:'])) {
-            return $poster;
+        if (Str::startsWith($trimmed, ['http://', 'https://', '//', 'data:'])) {
+            return $trimmed;
         }
 
-        $clean = ltrim($poster, '/');
+        $normalized = ltrim($trimmed, '/');
 
-        if (Str::startsWith($clean, ['storage/', 'images/', 'assets/', 'build/'])) {
-            return asset($clean);
+        if (Str::startsWith($normalized, ['images/', 'storage/', 'build/', 'css/', 'js/'])) {
+            return asset($normalized);
         }
 
-        if (file_exists(public_path($clean))) {
-            return asset($clean);
-        }
-
-        return asset('storage/' . $clean);
-    }
-
-    /**
-     * Progressive scarcity communication:
-     * - normal (>20 seats) -> "متاح للحجز الآن"
-     * - medium (11-20 seats) -> "متبقي عدد محدود من التذاكر"
-     * - high (1-10 seats) -> "متبقي X تذاكر فقط"
-     * - sold_out (0 seats across upcoming showtimes) -> "اكتمل العدد"
-     *
-     * @param  Collection<int, ShowTime>  $bookableShowtimes
-     * @return array{level: string, label: string, remaining: ?int}
-     */
-    private function computeProgressiveScarcity(?ShowTime $featuredShowtime, Collection $bookableShowtimes): array
-    {
-        if (! $featuredShowtime || $bookableShowtimes->isEmpty()) {
-            return [
-                'level' => 'sold_out',
-                'label' => 'اكتمل العدد',
-                'remaining' => 0,
-            ];
-        }
-
-        $remaining = (int) $featuredShowtime->remainingSeats();
-
-        if ($remaining <= 0) {
-            return [
-                'level' => 'sold_out',
-                'label' => 'اكتمل العدد',
-                'remaining' => 0,
-            ];
-        }
-
-        if ($remaining <= 10) {
-            $label = $remaining === 1
-                ? 'متبقي تذكرة واحدة فقط'
-                : ($remaining === 2
-                    ? 'متبقي تذكرتان فقط'
-                    : "متبقي {$remaining} تذاكر فقط");
-
-            return [
-                'level' => 'high',
-                'label' => $label,
-                'remaining' => $remaining,
-            ];
-        }
-
-        if ($remaining <= 20) {
-            return [
-                'level' => 'medium',
-                'label' => 'متبقي عدد محدود من التذاكر',
-                'remaining' => $remaining,
-            ];
-        }
-
-        return [
-            'level' => 'normal',
-            'label' => 'متاح للحجز الآن',
-            'remaining' => $remaining,
-        ];
+        return asset('storage/' . $normalized);
     }
 }

@@ -1,1645 +1,749 @@
 /* ==========================================================================
-
-   ELSAR5A THEATRE — TWO-ACT STAGE & PLAYBILL SHOWCASE STYLESHEET
-
-   Act I: Approved Curtain + Logo + Motto Intro
-
-   Act II: Direct Camera Push -> Current Production Playbill Reveal -> Book
-
+   ELSAR5A THEATRE — TWO-ACT STAGE EXPERIENCE
+   Act I: Approved Opening Curtain & Intro (Frozen Mechanics)
+   Act II: Direct Current Production Playbill Reveal
    ========================================================================== */
 
 :root {
-
-    --bg-obsidian: #040203;
-
-    --bg-stage-deep: #0b0506;
-
-    --crimson-velvet: #6b0f1a;
-
-    --crimson-dark: #2c0408;
-
-    --gold-bright: #fbbf24;
-
-    --gold-warm: #d97706;
-
-    --gold-soft: rgba(251, 191, 36, 0.38);
-
-    --text-cream: #f7f1e5;
-
-    --text-muted: #d6cbb9;
-
-    --font-display: 'Alexandria', sans-serif;
-
-    --font-serif: 'Amiri', serif;
-
-    --font-sans: 'Readex Pro', system-ui, -apple-system, sans-serif;
-
+    --stage-obsidian: #050406;
+    --stage-charcoal: #0d090c;
+    --stage-crimson: #8b0d18;
+    --stage-crimson-bright: #b91524;
+    --stage-gold: #d4af37;
+    --stage-gold-soft: rgba(212, 175, 55, 0.28);
+    --stage-ivory: #f7f2e9;
+    --stage-muted: #bfb4a6;
 }
 
-*, *::before, *::after {
-
-    box-sizing: border-box;
-
-    -webkit-tap-highlight-color: transparent;
-
-}
-
-html, body.theatre-body {
-
-    margin: 0;
-
-    padding: 0;
-
-    width: 100%;
-
-    background-color: var(--bg-obsidian);
-
-    color: var(--text-cream);
-
-    font-family: var(--font-sans);
-
+body.home-stage-mode {
+    background-color: var(--stage-obsidian);
+    color: var(--stage-ivory);
     overflow-x: hidden;
-
-    -webkit-font-smoothing: antialiased;
-
 }
 
-.stage-svg-defs {
-
+body.home-stage-mode header {
     position: absolute;
-
-    width: 0;
-
-    height: 0;
-
-    overflow: hidden;
-
-    pointer-events: none;
-
-}
-
-/* --------------------------------------------------------------------------
-
-   PERSISTENT PROSCENIUM HEADER & SLIDE-OVER DRAWER
-
-   -------------------------------------------------------------------------- */
-
-.proscenium-header {
-
-    position: fixed;
-
     top: 0;
-
     left: 0;
-
     right: 0;
-
-    z-index: 60;
-
-    padding: 0.75rem 1rem;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    background: linear-gradient(to bottom, rgba(4, 2, 3, 0.9) 0%, rgba(4, 2, 3, 0.45) 65%, transparent 100%);
-
+    z-index: 40;
+    background: transparent;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
 }
 
-.proscenium-brand {
-
-    display: inline-flex;
-
-    align-items: center;
-
-    gap: 0.6rem;
-
-    text-decoration: none;
-
-    color: var(--text-cream);
-
-}
-
-.proscenium-brand-emblem {
-
-    width: 2.25rem;
-
-    height: 2.25rem;
-
-    border-radius: 9999px;
-
-    background: rgba(245, 158, 11, 0.16);
-
-    border: 1px solid rgba(251, 191, 36, 0.5);
-
-    display: inline-flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    font-size: 1.05rem;
-
-    box-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
-
-}
-
-.proscenium-brand-title {
-
-    font-family: var(--font-display);
-
-    font-weight: 800;
-
-    font-size: 0.92rem;
-
-    color: #fef3c7;
-
-    letter-spacing: 0;
-
-}
-
-.proscenium-actions {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 0.5rem;
-
-}
-
-.proscenium-book-pill {
-
-    display: inline-flex;
-
-    align-items: center;
-
-    gap: 0.35rem;
-
-    padding: 0.42rem 0.85rem;
-
-    border-radius: 9999px;
-
-    background: rgba(251, 191, 36, 0.16);
-
-    border: 1px solid rgba(251, 191, 36, 0.55);
-
-    color: #fde68a;
-
-    font-family: var(--font-display);
-
-    font-size: 0.76rem;
-
-    font-weight: 700;
-
-    text-decoration: none;
-
-    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
-
-}
-
-.proscenium-book-pill:hover {
-
-    background: var(--gold-bright);
-
-    color: #090405;
-
-}
-
-.proscenium-menu-btn {
-
-    width: 2.35rem;
-
-    height: 2.35rem;
-
-    border-radius: 0.6rem;
-
-    background: rgba(0, 0, 0, 0.55);
-
-    border: 1px solid rgba(255, 255, 255, 0.18);
-
-    display: inline-flex;
-
-    flex-direction: column;
-
-    align-items: center;
-
-    justify-content: center;
-
-    gap: 4px;
-
-    cursor: pointer;
-
-    color: #fde68a;
-
-}
-
-.menu-bar {
-
-    width: 16px;
-
-    height: 2px;
-
-    background: currentColor;
-
-    border-radius: 1px;
-
-}
-
-.menu-bar-short {
-
-    width: 11px;
-
-    align-self: flex-end;
-
-    margin-right: 9px;
-
-}
-
-/* Slide-Over Navigation Drawer */
-
-.theatre-drawer {
-
-    position: fixed;
-
-    inset: 0;
-
-    z-index: 80;
-
-    display: none;
-
-}
-
-.theatre-drawer.is-open {
-
-    display: block;
-
-}
-
-.theatre-drawer-backdrop {
-
-    position: absolute;
-
-    inset: 0;
-
-    background: rgba(0, 0, 0, 0.78);
-
-    backdrop-filter: blur(6px);
-
-}
-
-.theatre-drawer-panel {
-
-    position: absolute;
-
-    top: 0;
-
-    right: 0;
-
-    bottom: 0;
-
-    width: min(86vw, 340px);
-
-    background: #0b0506;
-
-    border-left: 1px solid rgba(251, 191, 36, 0.28);
-
-    padding: 1.4rem;
-
-    display: flex;
-
-    flex-direction: column;
-
-    justify-content: space-between;
-
-    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.9);
-
-}
-
-.theatre-drawer-header {
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    padding-bottom: 0.9rem;
-
-    border-bottom: 1px solid rgba(251, 191, 36, 0.2);
-
-}
-
-.theatre-drawer-title {
-
-    font-family: var(--font-display);
-
-    font-weight: 800;
-
-    font-size: 0.95rem;
-
-    color: #fde68a;
-
-}
-
-.theatre-drawer-close {
-
-    width: 2rem;
-
-    height: 2rem;
-
-    border-radius: 9999px;
-
-    border: 1px solid rgba(255, 255, 255, 0.15);
-
-    background: rgba(255, 255, 255, 0.08);
-
-    color: #fde68a;
-
-    font-weight: 700;
-
-    cursor: pointer;
-
-}
-
-.theatre-drawer-nav {
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 0.6rem;
-
-    margin: auto 0;
-
-}
-
-.drawer-nav-item {
-
-    display: block;
-
-    padding: 0.75rem 1rem;
-
-    border-radius: 0.85rem;
-
-    background: rgba(255, 255, 255, 0.04);
-
-    border: 1px solid rgba(255, 255, 255, 0.08);
-
-    color: var(--text-cream);
-
-    text-decoration: none;
-
-    font-family: var(--font-display);
-
-    font-size: 0.88rem;
-
-    font-weight: 700;
-
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-
-}
-
-.drawer-nav-item:hover,
-
-.drawer-nav-item.is-active {
-
-    background: rgba(251, 191, 36, 0.14);
-
-    border-color: rgba(251, 191, 36, 0.45);
-
-}
-
-.drawer-nav-item.is-highlight {
-
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(180, 83, 9, 0.2));
-
-    border-color: rgba(251, 191, 36, 0.6);
-
-    color: #fef08a;
-
-}
-
-.theatre-drawer-footer {
-
-    padding-top: 0.85rem;
-
-    border-top: 1px solid rgba(251, 191, 36, 0.2);
-
-    text-align: center;
-
-    font-size: 0.78rem;
-
-    color: rgba(253, 230, 138, 0.75);
-
-}
-
-/* --------------------------------------------------------------------------
-
-   SHORTENED 235VH TWO-ACT CAMERA TRACK & STICKY VIEWPORT
-
-   -------------------------------------------------------------------------- */
-
-.stage-scroll-track {
-
+#theatre-journey {
     position: relative;
-
-    width: 100%;
-
-    height: 235vh;
-
-}
-
-.sticky-stage-viewport {
-
-    position: sticky;
-
-    top: 0;
-
-    width: 100%;
-
-    height: 100vh;
-
-    height: 100dvh;
-
-    overflow: hidden;
-
-    background-color: var(--bg-obsidian);
-
-    perspective: 1100px;
-
-}
-
-.stage-layer {
-
-    position: absolute;
-
-    inset: 0;
-
-    width: 100%;
-
-    height: 100%;
-
-    will-change: transform, opacity;
-
-    transform-origin: 50% 52%;
-
+    background: var(--stage-obsidian);
+    color: var(--stage-ivory);
 }
 
 /* --------------------------------------------------------------------------
-
-   LAYER 1: WOODEN STAGE & OVERHEAD SPOTLIGHT
-
+   1. SHORTENED SCROLL TRACK (235vh Total — Zero Dead Zones)
    -------------------------------------------------------------------------- */
+#stage-scroll-track {
+    position: relative;
+    height: 235vh;
+    width: 100%;
+}
 
-.layer-open-stage {
+#stage-sticky-viewport {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 24%, #1a090d 0%, #090608 58%, #040305 100%);
+}
 
-    z-index: 5;
-
-    background:
-
-        radial-gradient(ellipse 68% 54% at 50% 38%, rgba(124, 29, 29, 0.34) 0%, rgba(12, 5, 6, 0.96) 72%, #040203 100%);
-
+/* --------------------------------------------------------------------------
+   2. LAYER 1: STAGE ATMOSPHERE & LIGHTING (FROZEN)
+   -------------------------------------------------------------------------- */
+#stage-world {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
 }
 
 .stage-proscenium-arch {
-
     position: absolute;
-
     inset: 0;
-
-    box-shadow: inset 0 0 90px 30px rgba(0, 0, 0, 0.92);
-
-    border-top: 2px solid rgba(251, 191, 36, 0.22);
-
-    pointer-events: none;
-
+    box-shadow: inset 0 0 110px rgba(0, 0, 0, 0.92);
+    border: 1px solid rgba(212, 175, 55, 0.08);
 }
 
-.spotlight-cone {
-
+#stage-spotlight {
     position: absolute;
-
-    inset: 0;
-
-    background:
-
-        conic-gradient(
-
-            from 180deg at 50% -4%,
-
-            transparent 41%,
-
-            rgba(251, 191, 36, 0.09) 46%,
-
-            rgba(254, 240, 138, 0.24) 50%,
-
-            rgba(251, 191, 36, 0.09) 54%,
-
-            transparent 59%
-
-        ),
-
-        radial-gradient(ellipse 60% 25% at 50% 82%, rgba(251, 191, 36, 0.22), transparent 72%);
-
-    mix-blend-mode: screen;
-
-    pointer-events: none;
-
+    top: -14%;
+    left: 50%;
+    width: min(92vw, 960px);
+    height: 92vh;
+    transform: translateX(-50%) scale(0.94);
+    opacity: 0.45;
+    background: radial-gradient(
+        ellipse at 50% 18%,
+        rgba(212, 175, 55, 0.22) 0%,
+        rgba(139, 13, 24, 0.16) 38%,
+        rgba(5, 4, 6, 0) 74%
+    );
+    filter: blur(18px);
+    transition: opacity 0.15s linear, transform 0.15s linear;
 }
 
-.stage-wood-floor {
-
+.stage-SideGlow {
     position: absolute;
+    top: 12%;
+    width: 28vw;
+    height: 70vh;
+    border-radius: 50%;
+    filter: blur(64px);
+    opacity: 0.24;
+    background: radial-gradient(circle, rgba(139, 13, 24, 0.45) 0%, transparent 72%);
+}
 
-    left: -10%;
+.stage-SideGlow--right {
+    right: -10vw;
+}
 
+.stage-SideGlow--left {
+    left: -10vw;
+}
+
+#stage-floor {
+    position: absolute;
     right: -10%;
-
-    bottom: 0;
-
-    height: 28%;
-
+    left: -10%;
+    bottom: -6%;
+    height: 34vh;
     background:
-
-        radial-gradient(ellipse 60% 45% at 50% 20%, rgba(217, 119, 6, 0.25), transparent 70%),
-
-        repeating-linear-gradient(
-
-            90deg,
-
-            rgba(46, 17, 12, 0.65) 0px,
-
-            rgba(46, 17, 12, 0.65) 38px,
-
-            rgba(24, 9, 7, 0.85) 39px,
-
-            rgba(24, 9, 7, 0.85) 42px
-
-        ),
-
-        linear-gradient(to bottom, #160908 0%, #070303 100%);
-
-    border-top: 1px solid rgba(251, 191, 36, 0.24);
-
-    transform: perspective(500px) rotateX(22deg);
-
+        radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.12) 0%, rgba(139, 13, 24, 0.08) 42%, transparent 75%),
+        linear-gradient(180deg, rgba(14, 8, 10, 0) 0%, #090507 48%, #040305 100%);
     transform-origin: 50% 100%;
-
 }
 
 /* --------------------------------------------------------------------------
-
-   LAYER 2 (ACT I): APPROVED LOGO & IDENTITY INTRO
-
+   3. LAYER 2: STAGE SCENES (ACT I INTRO + ACT II PLAYBILL REVEAL)
    -------------------------------------------------------------------------- */
-
-.layer-logo-scene {
-
-    z-index: 14;
-
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: center;
-
-    justify-content: center;
-
-    padding: 1.5rem;
-
-    text-align: center;
-
-    pointer-events: none;
-
-}
-
-.logo-spotlight-halo {
-
+#stage-content-layer {
     position: absolute;
-
-    width: min(78vw, 420px);
-
-    height: min(78vw, 420px);
-
-    border-radius: 9999px;
-
-    background: radial-gradient(circle, rgba(251, 191, 36, 0.22) 0%, rgba(185, 28, 28, 0.12) 45%, transparent 72%);
-
-    filter: blur(12px);
-
-    pointer-events: none;
-
-}
-
-.stage-logo-lockup {
-
-    position: relative;
-
+    inset: 0;
     z-index: 2;
-
-    max-width: 32rem;
-
-    padding: 1.5rem 1.25rem;
-
-}
-
-.stage-emblem-ring {
-
-    margin: 0 auto 0.85rem;
-
-    width: 5.25rem;
-
-    height: 5.25rem;
-
-    border-radius: 9999px;
-
-    background: radial-gradient(circle at 50% 30%, rgba(251, 191, 36, 0.3), rgba(120, 53, 15, 0.2));
-
-    border: 1.5px solid rgba(251, 191, 36, 0.65);
-
     display: flex;
-
     align-items: center;
-
     justify-content: center;
-
-    box-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
-
-}
-
-.stage-emblem-icon {
-
-    font-size: 2.35rem;
-
-    filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.75));
-
-}
-
-.stage-kicker {
-
-    margin: 0 0 0.35rem;
-
-    font-size: 0.78rem;
-
-    font-weight: 600;
-
-    color: rgba(253, 230, 138, 0.85);
-
-}
-
-.stage-main-title {
-
-    margin: 0;
-
-    font-family: var(--font-display);
-
-    font-size: clamp(1.75rem, 5.5vw, 2.85rem);
-
-    font-weight: 900;
-
-    color: #fef3c7;
-
-    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.95);
-
-}
-
-.stage-gold-divider {
-
-    width: 5rem;
-
-    height: 1px;
-
-    margin: 0.85rem auto;
-
-    background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
-
-}
-
-.stage-identity-brief {
-
-    margin: 0 auto 0.65rem;
-
-    max-width: 24rem;
-
-    font-family: var(--font-serif);
-
-    font-size: clamp(1rem, 2.8vw, 1.2rem);
-
-    line-height: 1.6;
-
-    color: rgba(247, 241, 229, 0.92);
-
-}
-
-.stage-slogan-text {
-
-    margin: 0;
-
-    font-family: var(--font-display);
-
-    font-size: clamp(0.92rem, 2.6vw, 1.12rem);
-
-    font-weight: 800;
-
-    color: var(--gold-bright);
-
-    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95);
-
-}
-
-/* --------------------------------------------------------------------------
-
-   LAYER 3 (ACT II): CURRENT PRODUCTION PLAYBILL SHOWCASE
-
-   -------------------------------------------------------------------------- */
-
-.layer-show-scene {
-
-    z-index: 20;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    padding: 3.75rem 1rem 1rem;
-
-    opacity: 0;
-
+    padding: 4.5rem 1.25rem 1.75rem;
     pointer-events: none;
+}
 
+.stage-scene {
+    position: absolute;
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    will-change: transform, opacity;
+}
+
+/* ACT I: Approved Intro Scene (Frozen Visual Composition) */
+#stage-intro-scene {
+    text-align: center;
+    padding: 1rem;
+    z-index: 3;
+    pointer-events: auto;
+}
+
+.intro-emblem-shell {
+    position: relative;
+    width: 118px;
+    height: 118px;
+    margin: 0 auto 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.intro-emblem-halo {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.26) 0%, rgba(139, 13, 24, 0.18) 52%, transparent 75%);
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    box-shadow: 0 0 36px rgba(139, 13, 24, 0.45);
+}
+
+.intro-logo-img {
+    position: relative;
+    z-index: 1;
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.75));
+}
+
+.intro-kicker {
+    font-family: 'Alexandria', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--stage-gold);
+    letter-spacing: 0;
+    margin: 0 0 0.45rem;
+    opacity: 0.92;
+}
+
+.intro-main-title {
+    font-family: 'Amiri', serif;
+    font-size: clamp(2.15rem, 5vw, 3.85rem);
+    font-weight: 700;
+    color: var(--stage-ivory);
+    line-height: 1.2;
+    letter-spacing: 0;
+    margin: 0 0 0.65rem;
+    text-shadow: 0 6px 28px rgba(0, 0, 0, 0.85);
+}
+
+.intro-motto {
+    font-family: 'Readex Pro', 'Alexandria', sans-serif;
+    font-size: clamp(0.98rem, 2.2vw, 1.22rem);
+    font-weight: 500;
+    color: #e8dccb;
+    letter-spacing: 0;
+    margin: 0 auto 2rem;
+    max-width: 34rem;
+}
+
+#scroll-prompt {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    color: rgba(247, 242, 233, 0.78);
+    font-size: 0.82rem;
+    letter-spacing: 0;
+}
+
+.scroll-prompt-line {
+    width: 1px;
+    height: 36px;
+    background: linear-gradient(180deg, var(--stage-gold) 0%, transparent 100%);
+    animation: stagePromptPulse 1.9s ease-in-out infinite;
+}
+
+@keyframes stagePromptPulse {
+    0%, 100% {
+        transform: scaleY(0.75);
+        opacity: 0.45;
+    }
+    50% {
+        transform: scaleY(1.1);
+        opacity: 1;
+    }
+}
+
+/* ACT II: Current Production Playbill Reveal */
+#stage-show-scene {
+    opacity: 0;
+    transform: translate3d(0, 42px, 0) scale(0.95);
+    z-index: 4;
+    pointer-events: none;
+    padding: 0 0.5rem;
+}
+
+#stage-show-scene.is-interactive {
+    pointer-events: auto;
 }
 
 .playbill-showcase {
-
     width: 100%;
-
-    max-width: 440px;
-
-    background: linear-gradient(165deg, rgba(18, 9, 11, 0.95) 0%, rgba(9, 4, 5, 0.98) 100%);
-
-    border: 1px solid rgba(251, 191, 36, 0.42);
-
-    border-radius: 1.35rem;
-
-    padding: 0.95rem;
-
-    box-shadow:
-
-        0 26px 70px rgba(0, 0, 0, 0.95),
-
-        0 0 45px rgba(251, 191, 36, 0.14);
-
-    backdrop-filter: blur(12px);
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 0.85rem;
-
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: minmax(250px, 360px) 1fr;
+    gap: 2rem;
+    align-items: center;
+    background: linear-gradient(145deg, rgba(20, 12, 16, 0.92) 0%, rgba(10, 7, 9, 0.96) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.32);
+    border-radius: 22px;
+    padding: 1.65rem;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.88), 0 0 55px rgba(139, 13, 24, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(14px);
 }
 
-.playbill-poster-column {
-
-    display: flex;
-
-    justify-content: center;
-
+/* Poster Hero Column */
+.playbill-poster-col {
+    width: 100%;
 }
 
-.stage-poster-monolith {
-
+.playbill-poster-frame {
     position: relative;
-
-    width: min(54vw, 205px);
-
+    width: 100%;
     aspect-ratio: 3 / 4;
-
-    border-radius: 0.95rem;
-
+    max-height: 430px;
+    border-radius: 16px;
     overflow: hidden;
-
-    border: 1.5px solid rgba(251, 191, 36, 0.55);
-
-    background: #120709;
-
-    box-shadow:
-
-        0 18px 42px rgba(0, 0, 0, 0.92),
-
-        0 0 32px rgba(251, 191, 36, 0.22);
-
+    background: #12090c;
+    border: 1px solid rgba(212, 175, 55, 0.38);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.78);
 }
 
-.poster-img {
-
+.playbill-poster-img {
     width: 100%;
-
     height: 100%;
-
     object-fit: cover;
-
     display: block;
-
+    transition: transform 0.5s ease;
 }
 
-.poster-fallback {
+.playbill-poster-img.is-fallback-logo {
+    object-fit: contain;
+    padding: 2.25rem;
+    background: radial-gradient(circle, #24090e 0%, #090507 100%);
+}
 
+.playbill-showcase:hover .playbill-poster-img:not(.is-fallback-logo) {
+    transform: scale(1.03);
+}
+
+.playbill-poster-fallback {
     width: 100%;
-
     height: 100%;
-
-    padding: 1.25rem;
-
-    background:
-
-        radial-gradient(circle at 50% 25%, rgba(251, 191, 36, 0.22), transparent 65%),
-
-        linear-gradient(180deg, #2a080d 0%, #090304 100%);
-
     display: flex;
-
     flex-direction: column;
-
     align-items: center;
-
     justify-content: center;
-
+    gap: 1rem;
+    padding: 1.5rem;
     text-align: center;
-
+    background: radial-gradient(circle at 50% 35%, #2c0b11 0%, #0b0608 100%);
 }
 
-.poster-fallback-kicker {
-
-    font-size: 0.68rem;
-
-    color: #fcd34d;
-
-    margin-bottom: 0.4rem;
-
+.playbill-poster-fallback img {
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
 }
 
-.poster-fallback-title {
-
-    font-family: var(--font-display);
-
-    font-size: 1.55rem;
-
-    font-weight: 900;
-
-    color: #ffffff;
-
-    line-height: 1.25;
-
-}
-
-.poster-fallback-sub {
-
-    margin-top: 0.45rem;
-
-    font-size: 0.72rem;
-
-    color: rgba(253, 230, 138, 0.8);
-
-}
-
-.poster-spotlight-sheen {
-
-    position: absolute;
-
-    inset: 0;
-
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 45%);
-
-    pointer-events: none;
-
-}
-
-.poster-caption-gradient {
-
-    position: absolute;
-
-    left: 0;
-
-    right: 0;
-
-    bottom: 0;
-
-    padding: 0.5rem 0.65rem;
-
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.92), transparent);
-
-    text-align: center;
-
-}
-
-.poster-caption-kicker {
-
-    font-family: var(--font-display);
-
-    font-size: 0.65rem;
-
+.playbill-poster-fallback span {
+    font-family: 'Amiri', serif;
+    font-size: 1.35rem;
     font-weight: 700;
-
-    color: #fde68a;
-
+    color: var(--stage-gold);
 }
 
-/* Playbill Information Hierarchy */
-
-.playbill-info-column {
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 0.55rem;
-
+.playbill-poster-vignette {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(5, 4, 6, 0.05) 50%, rgba(5, 4, 6, 0.82) 100%);
+    pointer-events: none;
 }
 
-.playbill-top-meta {
+.playbill-status-floating {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    z-index: 2;
+}
 
-    display: flex;
-
+.playbill-badge {
+    display: inline-flex;
     align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+}
 
-    justify-content: space-between;
+.playbill-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
 
-    flex-wrap: wrap;
+.playbill-badge--available {
+    background: rgba(16, 85, 48, 0.9);
+    color: #9ef5c2;
+    border: 1px solid rgba(158, 245, 194, 0.35);
+}
 
-    gap: 0.4rem;
+.playbill-badge--scarcity {
+    background: rgba(146, 64, 14, 0.92);
+    color: #fde68a;
+    border: 1px solid rgba(253, 230, 138, 0.4);
+}
 
+.playbill-badge--critical {
+    background: rgba(185, 21, 36, 0.92);
+    color: #ffe4e6;
+    border: 1px solid rgba(254, 205, 211, 0.45);
+}
+
+.playbill-badge--soldout {
+    background: rgba(127, 29, 29, 0.92);
+    color: #fecaca;
+    border: 1px solid rgba(254, 202, 202, 0.35);
+}
+
+.playbill-badge--active {
+    background: rgba(20, 14, 18, 0.88);
+    color: var(--stage-gold);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+/* Info & CTA Column */
+.playbill-info-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: right;
 }
 
 .playbill-kicker {
-
-    font-size: 0.72rem;
-
-    color: rgba(251, 191, 36, 0.85);
-
-    font-weight: 600;
-
-}
-
-.scarcity-badge {
-
-    display: inline-flex;
-
-    align-items: center;
-
-    padding: 0.22rem 0.65rem;
-
-    border-radius: 9999px;
-
-    font-size: 0.68rem;
-
+    display: inline-block;
+    font-family: 'Alexandria', sans-serif;
+    font-size: 0.8rem;
     font-weight: 700;
-
-}
-
-.scarcity-normal,
-.scarcity-badge--healthy {
-
-    background: rgba(16, 185, 129, 0.16);
-
-    border: 1px solid rgba(52, 211, 153, 0.45);
-
-    color: #6ee7b7;
-
-}
-
-.scarcity-medium,
-
-.scarcity-schedule_pending,
-
-.scarcity-upcoming,
-.scarcity-badge--low {
-
-    background: rgba(245, 158, 11, 0.18);
-
-    border: 1px solid rgba(251, 191, 36, 0.5);
-
-    color: #fde68a;
-
-}
-
-.scarcity-high,
-
-.scarcity-sold_out,
-.scarcity-badge--critical,
-.scarcity-badge--soldout {
-
-    background: rgba(239, 68, 68, 0.22);
-
-    border: 1px solid rgba(248, 113, 113, 0.55);
-
-    color: #fca5a5;
-
+    color: var(--stage-gold);
+    letter-spacing: 0;
+    margin-bottom: 0.35rem;
 }
 
 .playbill-title {
-
-    margin: 0;
-
-    font-family: var(--font-display);
-
-    font-size: clamp(1.25rem, 4vw, 1.75rem);
-
-    font-weight: 900;
-
-    color: #fffbeb;
-
-    line-height: 1.25;
-
-}
-
-.playbill-description {
-
-    margin: 0;
-
-    font-size: 0.8rem;
-
-    line-height: 1.55;
-
-    color: var(--text-muted);
-
-    display: -webkit-box;
-
-    -webkit-line-clamp: 2;
-
-    -webkit-box-orient: vertical;
-
-    overflow: hidden;
-
-}
-
-/* Ticket-Stub 3-Column Metadata Grid */
-
-.playbill-ticket-grid {
-
-    display: grid;
-
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-
-    gap: 0.4rem;
-
-    margin-top: 0.15rem;
-
-}
-
-.ticket-meta-cell {
-
-    background: rgba(255, 255, 255, 0.04);
-
-    border: 1px solid rgba(251, 191, 36, 0.2);
-
-    border-radius: 0.7rem;
-
-    padding: 0.42rem 0.35rem;
-
-    text-align: center;
-
-}
-
-.ticket-meta-label {
-
-    display: block;
-
-    font-size: 0.63rem;
-
-    color: var(--gold-bright);
-
-    margin-bottom: 0.15rem;
-
-}
-
-.ticket-meta-value {
-
-    display: block;
-
-    font-size: 0.72rem;
-
+    font-family: 'Amiri', serif;
+    font-size: clamp(1.85rem, 3.6vw, 2.85rem);
     font-weight: 700;
-
-    color: #fef3c7;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-
+    color: var(--stage-ivory);
+    line-height: 1.2;
+    letter-spacing: 0;
+    margin: 0 0 0.75rem;
 }
 
-.playbill-showtimes-strip {
+.playbill-synopsis {
+    font-size: 0.96rem;
+    line-height: 1.7;
+    color: var(--stage-muted);
+    margin: 0 0 1.25rem;
+    letter-spacing: 0;
+}
 
+/* Spec Grid (Date, Time, Price) */
+.playbill-specs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.45rem;
+}
+
+.playbill-spec-item {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(212, 175, 55, 0.18);
+    border-radius: 12px;
+    padding: 0.7rem 0.9rem;
     display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+}
 
-    align-items: center;
+.playbill-spec-item--price {
+    background: rgba(139, 13, 24, 0.18);
+    border-color: rgba(212, 175, 55, 0.35);
+}
 
+.playbill-spec-label {
+    font-size: 0.74rem;
+    color: rgba(247, 242, 233, 0.65);
+    letter-spacing: 0;
+}
+
+.playbill-spec-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--stage-ivory);
+    letter-spacing: 0;
+    line-height: 1.35;
+}
+
+.playbill-extra-dates {
+    display: inline-block;
+    margin-right: 0.35rem;
+    font-size: 0.74rem;
+    color: var(--stage-gold);
+    font-weight: 600;
+}
+
+.playbill-price-number {
+    font-size: 1.15rem;
+    color: var(--stage-gold);
+}
+
+/* Action Buttons */
+.playbill-actions-row {
+    display: flex;
     flex-wrap: wrap;
-
-    gap: 0.35rem;
-
-    padding-top: 0.1rem;
-
-}
-
-.showtimes-strip-label {
-
-    font-size: 0.68rem;
-
-    color: rgba(253, 230, 138, 0.75);
-
-}
-
-.showtimes-pills-row {
-
-    display: flex;
-
-    flex-wrap: wrap;
-
-    gap: 0.3rem;
-
-}
-
-.showtime-mini-pill {
-
-    font-size: 0.65rem;
-
-    padding: 0.15rem 0.5rem;
-
-    border-radius: 9999px;
-
-    background: rgba(251, 191, 36, 0.1);
-
-    border: 1px solid rgba(251, 191, 36, 0.3);
-
-    color: #fde68a;
-
-}
-
-.playbill-cta-row {
-
-    margin-top: 0.25rem;
-
-}
-
-.stage-primary-cta {
-
-    display: flex;
-
     align-items: center;
+    gap: 0.85rem;
+}
 
+.playbill-actions-row.is-centered {
     justify-content: center;
+}
 
-    gap: 0.5rem;
-
-    width: 100%;
-
-    padding: 0.82rem 1.2rem;
-
-    border-radius: 0.85rem;
-
-    background: linear-gradient(180deg, #fcd34d 0%, #f59e0b 55%, #d97706 100%);
-
-    color: #090405;
-
-    font-family: var(--font-display);
-
-    font-size: 0.92rem;
-
-    font-weight: 900;
-
+.btn-stage-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.9rem 1.75rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--stage-crimson-bright) 0%, #7a0912 100%);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.98rem;
     text-decoration: none;
-
-    box-shadow: 0 10px 28px rgba(245, 158, 11, 0.42);
-
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-
+    letter-spacing: 0;
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    box-shadow: 0 12px 28px rgba(139, 13, 24, 0.5);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-.stage-primary-cta:hover {
-
-    transform: translateY(-1px);
-
-    box-shadow: 0 14px 34px rgba(245, 158, 11, 0.58);
-
+.btn-stage-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px rgba(185, 21, 36, 0.65);
+    color: #ffffff;
 }
 
-.stage-primary-cta.is-sold-out {
-
-    background: rgba(255, 255, 255, 0.1);
-
-    border: 1px solid rgba(251, 191, 36, 0.4);
-
-    color: #fde68a;
-
-    box-shadow: none;
-
+.btn-stage-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.88rem 1.35rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--stage-ivory);
+    font-weight: 600;
+    font-size: 0.92rem;
+    text-decoration: none;
+    letter-spacing: 0;
+    border: 1px solid rgba(212, 175, 55, 0.24);
+    transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-/* Desktop 2-Column Playbill Composition */
+.btn-stage-secondary:hover {
+    background: rgba(212, 175, 55, 0.12);
+    border-color: rgba(212, 175, 55, 0.5);
+    color: var(--stage-ivory);
+}
 
-@media (min-width: 768px) {
+.playbill-empty-card {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 2.25rem 1.75rem;
+    text-align: center;
+    background: rgba(16, 10, 13, 0.92);
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+}
+
+/* --------------------------------------------------------------------------
+   4. LAYER 3: FOREGROUND CURTAIN LAYER (FROZEN APPROVED MECHANICS)
+   -------------------------------------------------------------------------- */
+#curtain-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+#curtain-valance {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 52px;
+    background: repeating-linear-gradient(
+        90deg,
+        #350307 0px,
+        #6d0912 28px,
+        #2b0206 56px
+    );
+    border-bottom: 2px solid rgba(212, 175, 55, 0.65);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.85);
+    z-index: 3;
+}
+
+.curtain-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 51%;
+    will-change: transform;
+}
+
+#curtain-right {
+    right: 0;
+}
+
+#curtain-left {
+    left: 0;
+}
+
+.curtain-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(0 0 24px rgba(0, 0, 0, 0.85));
+}
+
+/* --------------------------------------------------------------------------
+   5. COMPACT FOOTER NAVIGATION
+   -------------------------------------------------------------------------- */
+#stage-compact-footer {
+    position: relative;
+    z-index: 6;
+    background: #070507;
+    border-top: 1px solid rgba(212, 175, 55, 0.16);
+    padding: 1.35rem 1.25rem;
+}
+
+.stage-compact-footer-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.stage-compact-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-family: 'Amiri', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--stage-ivory);
+}
+
+.stage-compact-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.stage-compact-links a {
+    color: var(--stage-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.stage-compact-links a:hover {
+    color: var(--stage-gold);
+}
+
+/* --------------------------------------------------------------------------
+   6. MOBILE & TABLET RESPONSIVE COMPOSITION
+   -------------------------------------------------------------------------- */
+@media (max-width: 860px) {
+    #stage-scroll-track {
+        height: 215vh;
+    }
+
+    #stage-content-layer {
+        padding: 4rem 0.9rem 1.1rem;
+    }
 
     .playbill-showcase {
-
-        max-width: 780px;
-
-        padding: 1.5rem;
-
-        flex-direction: row;
-
-        align-items: center;
-
-        gap: 1.75rem;
-
+        grid-template-columns: 1fr;
+        gap: 1.05rem;
+        padding: 1.15rem;
+        max-width: 460px;
     }
 
-    .stage-poster-monolith {
-
-        width: 255px;
-
+    .playbill-poster-frame {
+        aspect-ratio: 4 / 4.6;
+        max-height: 235px;
     }
 
-    .playbill-info-column {
-
-        flex: 1;
-
-        gap: 0.75rem;
-
+    .playbill-title {
+        font-size: 1.65rem;
+        margin-bottom: 0.45rem;
     }
 
-    .playbill-description {
-
-        font-size: 0.9rem;
-
-        -webkit-line-clamp: 3;
-
+    .playbill-synopsis {
+        font-size: 0.86rem;
+        line-height: 1.55;
+        margin-bottom: 0.85rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
-    .ticket-meta-cell {
-
-        padding: 0.6rem 0.5rem;
-
+    .playbill-specs-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin-bottom: 1rem;
     }
 
-    .ticket-meta-label {
-
-        font-size: 0.7rem;
-
+    .playbill-spec-item--price {
+        grid-column: span 2;
     }
 
-    .ticket-meta-value {
-
-        font-size: 0.82rem;
-
+    .playbill-spec-item {
+        padding: 0.55rem 0.75rem;
     }
 
-    .stage-primary-cta {
+    .btn-stage-primary,
+    .btn-stage-secondary {
+        width: 100%;
+        padding: 0.78rem 1.15rem;
+    }
+}
 
-        font-size: 1rem;
-
-        padding: 0.95rem 1.5rem;
-
+@media (prefers-reduced-motion: reduce) {
+    #stage-scroll-track {
+        height: auto;
+        min-height: 100vh;
     }
 
-}
-
-/* --------------------------------------------------------------------------
-
-   LAYER 4: CLOSED VELVET CURTAINS & SEAM FLARE (APPROVED INTRO)
-
-   -------------------------------------------------------------------------- */
-
-.layer-closed-curtains {
-
-    z-index: 30;
-
-    pointer-events: none;
-
-}
-
-.curtain-wing {
-
-    position: absolute;
-
-    inset: 0;
-
-    width: 100%;
-
-    height: 100%;
-
-    will-change: transform;
-
-}
-
-.curtain-wing-left {
-
-    clip-path: url(#curtainLeftClip);
-
-    -webkit-clip-path: url(#curtainLeftClip);
-
-    transform-origin: 0% 0%;
-
-}
-
-.curtain-wing-right {
-
-    clip-path: url(#curtainRightClip);
-
-    -webkit-clip-path: url(#curtainRightClip);
-
-    transform-origin: 100% 0%;
-
-}
-
-.curtain-velvet-surface {
-
-    position: absolute;
-
-    inset: 0;
-
-    background:
-
-        repeating-linear-gradient(
-
-            90deg,
-
-            #4a0710 0%,
-
-            #7c101e 4.5%,
-
-            #33040a 9%,
-
-            #680c18 13.5%,
-
-            #260206 18%
-
-        );
-
-    box-shadow: inset 0 0 110px rgba(0, 0, 0, 0.85);
-
-}
-
-.curtain-gold-trim {
-
-    position: absolute;
-
-    left: 0;
-
-    right: 0;
-
-    bottom: 0;
-
-    height: 10px;
-
-    background: linear-gradient(90deg, #92400e, #fbbf24, #b45309, #fde68a, #92400e);
-
-    box-shadow: 0 -4px 18px rgba(251, 191, 36, 0.35);
-
-}
-
-.seam-flare-beam {
-
-    position: absolute;
-
-    top: 0;
-
-    bottom: 0;
-
-    left: 50%;
-
-    width: 5px;
-
-    transform: translateX(-50%);
-
-    background: linear-gradient(
-
-        to bottom,
-
-        rgba(255, 235, 160, 0) 2%,
-
-        rgba(255, 240, 190, 0.95) 22%,
-
-        rgba(255, 250, 220, 1) 55%,
-
-        rgba(251, 191, 36, 0.95) 82%,
-
-        rgba(251, 191, 36, 0) 98%
-
-    );
-
-    box-shadow:
-
-        0 0 22px 6px rgba(251, 191, 36, 0.85),
-
-        0 0 65px 20px rgba(217, 119, 6, 0.55),
-
-        0 0 120px 38px rgba(185, 28, 28, 0.45);
-
-    pointer-events: none;
-
-}
-
-.curtain-scroll-prompt {
-
-    position: absolute;
-
-    bottom: 1.75rem;
-
-    left: 50%;
-
-    transform: translateX(-50%);
-
-    z-index: 35;
-
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: center;
-
-    gap: 0.45rem;
-
-    background: transparent;
-
-    border: 0;
-
-    cursor: pointer;
-
-    pointer-events: auto;
-
-    color: #fef3c7;
-
-}
-
-.scroll-mouse-shell {
-
-    width: 1.65rem;
-
-    height: 2.6rem;
-
-    border-radius: 9999px;
-
-    border: 2px solid rgba(253, 230, 138, 0.82);
-
-    background: rgba(0, 0, 0, 0.45);
-
-    display: flex;
-
-    align-items: flex-start;
-
-    justify-content: center;
-
-    padding: 0.35rem;
-
-    box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
-
-}
-
-@keyframes scrollWheelBounce {
-
-    0%, 100% { transform: translateY(0); opacity: 0.95; }
-
-    50% { transform: translateY(7px); opacity: 0.35; }
-
-}
-
-.scroll-wheel-dot {
-
-    width: 0.35rem;
-
-    height: 0.55rem;
-
-    border-radius: 9999px;
-
-    background: var(--gold-bright);
-
-    animation: scrollWheelBounce 1.7s ease-in-out infinite;
-
-}
-
-.scroll-prompt-text {
-
-    font-family: var(--font-display);
-
-    font-size: 0.76rem;
-
-    font-weight: 700;
-
-    color: #fef3c7;
-
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
-
-    white-space: nowrap;
-
-}
-
-/* --------------------------------------------------------------------------
-
-   COMPACT FOOTER BAR
-
-   -------------------------------------------------------------------------- */
-
-.theatre-compact-footer {
-
-    position: relative;
-
-    z-index: 25;
-
-    background: #060304;
-
-    border-top: 1px solid rgba(251, 191, 36, 0.22);
-
-    padding: 1.15rem 1.25rem;
-
-}
-
-.compact-footer-inner {
-
-    max-width: 960px;
-
-    margin: 0 auto;
-
-    display: flex;
-
-    flex-wrap: wrap;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    gap: 0.85rem;
-
-}
-
-.compact-footer-brand {
-
-    display: flex;
-
-    flex-wrap: wrap;
-
-    align-items: center;
-
-    gap: 0.65rem;
-
-}
-
-.compact-footer-title {
-
-    font-family: var(--font-display);
-
-    font-weight: 800;
-
-    font-size: 0.88rem;
-
-    color: #fde68a;
-
-}
-
-.compact-footer-motto {
-
-    font-size: 0.78rem;
-
-    color: rgba(247, 241, 229, 0.75);
-
-}
-
-.compact-footer-links {
-
-    display: flex;
-
-    flex-wrap: wrap;
-
-    align-items: center;
-
-    gap: 1rem;
-
-}
-
-.compact-footer-links a {
-
-    color: var(--text-muted);
-
-    text-decoration: none;
-
-    font-size: 0.82rem;
-
-    font-weight: 600;
-
-    transition: color 0.18s ease;
-
-}
-
-.compact-footer-links a:hover {
-
-    color: var(--gold-bright);
-
+    #stage-sticky-viewport {
+        position: relative;
+        height: auto;
+        min-height: 100vh;
+        padding: 5.5rem 1rem 2.5rem;
+    }
+
+    #stage-content-layer {
+        position: relative;
+        inset: auto;
+        flex-direction: column;
+        gap: 2.5rem;
+        pointer-events: auto;
+    }
+
+    .stage-scene,
+    #stage-intro-scene,
+    #stage-show-scene {
+        position: relative;
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: auto !important;
+    }
+
+    #scroll-prompt {
+        display: none;
+    }
 }
