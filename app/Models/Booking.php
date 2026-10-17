@@ -9,14 +9,24 @@ use Illuminate\Support\Facades\Schema;
 
 class Booking extends Model
 {
+    public const STATUS_PENDING   = 'pending';
+    public const STATUS_APPROVED  = 'approved';
+    public const STATUS_CONFIRMED = 'approved';
+    public const STATUS_REJECTED  = 'rejected';
+
     protected $fillable = [
         'show_time_id',
         'show_id',
+        'play_id',
         'public_number',
         'full_name',
+        'customer_name',
         'phone',
+        'customer_phone',
         'tickets_count',
+        'seats_count',
         'total_price',
+        'total_amount',
 
         // الدفع
         'payment_method',
@@ -27,6 +37,7 @@ class Booking extends Model
         // الحجز
         'status',
         'reference_code',
+        'reference',
         'qr_code_path',
         'admin_notes',
 
@@ -41,6 +52,45 @@ class Booking extends Model
         'transfer_screenshot_public_id',
         'qr_code_public_id',
     ];
+
+    public function setPlayIdAttribute($value): void
+    {
+        $this->attributes['show_id'] = $value;
+    }
+
+    public function setCustomerNameAttribute($value): void
+    {
+        $this->attributes['full_name'] = $value;
+    }
+
+    public function setCustomerPhoneAttribute($value): void
+    {
+        $this->attributes['phone'] = $value;
+    }
+
+    public function setSeatsCountAttribute($value): void
+    {
+        $this->attributes['tickets_count'] = $value;
+    }
+
+    public function setTotalAmountAttribute($value): void
+    {
+        $this->attributes['total_price'] = $value;
+    }
+
+    public function setReferenceAttribute($value): void
+    {
+        $this->attributes['reference_code'] = $value;
+    }
+
+    public function setStatusAttribute($value): void
+    {
+        if ($value === 'confirmed') {
+            $this->attributes['status'] = 'approved';
+        } else {
+            $this->attributes['status'] = $value;
+        }
+    }
 
     protected $casts = [
         'paid_at'           => 'datetime',

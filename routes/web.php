@@ -47,6 +47,7 @@ Route::get('/', [SiteController::class, 'home'])->name('home');
 // Shows
 Route::get('/shows', [ShowController::class, 'index'])->name('shows.index');
 Route::get('/shows/{show}', [ShowController::class, 'show'])->name('shows.show');
+Route::get('/shows/{show}/book', [ShowController::class, 'show'])->name('shows.book');
 
 // About
 Route::get('/about', [SiteController::class, 'about'])->name('about');
@@ -79,6 +80,8 @@ Route::get('/ticket/{reference}', [App\Http\Controllers\Admin\BookingController:
 // 🎭 Team Application (Public)
 Route::get('/join-team', [TeamApplicationController::class, 'create'])
     ->name('team.apply');
+Route::get('/join', [TeamApplicationController::class, 'create'])
+    ->name('join');
 Route::post('/join-team', [TeamApplicationController::class, 'store'])
     ->name('team.apply.store');
 
