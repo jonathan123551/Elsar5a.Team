@@ -144,19 +144,41 @@
     </section>
 
     <section class="manifesto-section" aria-labelledby="manifesto-heading">
-        <header class="section-intro"><p>صوت الفريق</p><h2 id="manifesto-heading">رسالتنا</h2></header>
+        <header class="section-intro">
+            <div class="manifesto-kicker-badge" aria-hidden="true"><span class="kicker-dot"></span> صوت الفريق</div>
+            <p class="sr-only">صوت الفريق</p>
+            <h2 id="manifesto-heading">رسالتنا</h2>
+            <p class="manifesto-lead">كلمات كُتبت في عتمة المسرح، لتضيء الوعي وترسم الملامح الحقيقية لرسالتنا الإنسانية.</p>
+        </header>
         <div class="manifesto-lines">
             @foreach($manifesto as $beat)
                 <p class="manifesto-line{{ $loop->last ? ' manifesto-line--final' : '' }}" data-manifesto-line>{{ $beat }}</p>
             @endforeach
         </div>
-        <img class="manifesto-mark" src="{{ asset('images/sarkha-logo.png') }}" alt="" width="72" height="72" loading="lazy">
+        <div class="manifesto-seal">
+            <img class="manifesto-mark" src="{{ asset('images/sarkha-logo.png') }}" alt="" width="72" height="72" loading="lazy">
+        </div>
     </section>
 
     <section class="upcoming-section" id="shows" aria-labelledby="upcoming-heading">
-        <header class="section-heading"><div><p>على خشبة المسرح</p><h2 id="upcoming-heading">العروض القادمة</h2></div><a href="{{ route('archive') }}">العروض السابقة <span aria-hidden="true">↗</span></a></header>
+        <header class="section-heading">
+            <div>
+                <div class="upcoming-kicker-badge" aria-hidden="true"><span class="kicker-dot"></span> على خشبة المسرح</div>
+                <p class="sr-only">على خشبة المسرح</p>
+                <h2 id="upcoming-heading">العروض القادمة</h2>
+            </div>
+            <a class="upcoming-archive-pill" href="{{ route('archive') }}">
+                <span>العروض السابقة</span>
+                <span aria-hidden="true">↗</span>
+            </a>
+        </header>
         @if($shows->isEmpty())
-            <div class="upcoming-empty"><span class="empty-rule" aria-hidden="true"></span><p>لا توجد عروض معلنة في الوقت الحالي.</p><a href="{{ route('archive') }}">تصفّح الأرشيف</a></div>
+            <div class="upcoming-empty">
+                <span class="empty-theatre-icon" aria-hidden="true">🎭</span>
+                <span class="empty-rule" aria-hidden="true"></span>
+                <p>لا توجد عروض معلنة في الوقت الحالي.</p>
+                <a href="{{ route('archive') }}">تصفّح الأرشيف <span aria-hidden="true">↗</span></a>
+            </div>
         @else
             <div class="upcoming-list">
                 @foreach($shows as $show)
@@ -170,16 +192,67 @@
                         $low = !$soldOut && !$critical && ($remaining <= 25 || ((int) $nextTime->total_tickets > 0 && $remaining / (int) $nextTime->total_tickets <= .25));
                     @endphp
                     <article class="upcoming-production">
-                        @if($showPoster)<img class="upcoming-poster" src="{{ $showPoster }}" alt="ملصق {{ $show->title }}" width="120" height="168" loading="lazy" decoding="async">@endif
-                        <div class="upcoming-copy"><p>عرض مسرحي</p><h3>{{ $show->title }}</h3>@if($show->description)<p>{{ $show->description }}</p>@endif
-                            @if($nextTime)<p class="upcoming-date">{{ $nextTime->date?->format('d/m/Y') }} @if($clock) · {{ $clock->format('g:i') }} {{ $clock->format('A') === 'PM' ? 'م' : 'ص' }} @endif · {{ number_format((float) $nextTime->ticket_price, 0) }} ج.م</p>@endif
+                        <div class="upcoming-poster-frame">
+                            @if($showPoster)
+                                <img class="upcoming-poster" src="{{ $showPoster }}" alt="ملصق {{ $show->title }}" width="130" height="190" loading="lazy" decoding="async">
+                            @else
+                                <div class="upcoming-poster-missing" role="img" aria-label="ملصق العرض لم يُنشر بعد">
+                                    <span class="poster-missing-icon" aria-hidden="true">🎭</span>
+                                    <span>ملصق العرض لم يُنشر بعد</span>
+                                </div>
+                            @endif
+                        </div>
+                        <div class="upcoming-copy">
+                            <div class="upcoming-meta-top">
+                                <span class="upcoming-kicker">عرض مسرحي</span>
+                                <p class="sr-only">عرض مسرحي</p>
+                                @if($nextTime && !$soldOut)
+                                    <span class="upcoming-chip-live">متاح للحجز</span>
+                                @endif
+                            </div>
+                            <h3>{{ $show->title }}</h3>
+                            @if($show->description)<p class="upcoming-description">{{ $show->description }}</p>@endif
+                            @if($nextTime)
+                                <div class="upcoming-meta-chips" aria-label="تفاصيل موعد العرض">
+                                    <span class="meta-chip meta-chip--date">
+                                        <span class="chip-icon" aria-hidden="true">📅</span>
+                                        <span>{{ $nextTime->date?->format('d/m/Y') }}</span>
+                                    </span>
+                                    @if($clock)
+                                        <span class="meta-chip meta-chip--time">
+                                            <span class="chip-icon" aria-hidden="true">⏰</span>
+                                            <span>{{ $clock->format('g:i') }} {{ $clock->format('A') === 'PM' ? 'م' : 'ص' }}</span>
+                                        </span>
+                                    @endif
+                                    @if($nextTime->ticket_price !== null)
+                                        <span class="meta-chip meta-chip--price">
+                                            <span class="chip-icon" aria-hidden="true">🎟️</span>
+                                            <span>{{ number_format((float) $nextTime->ticket_price, 0) }} ج.م</span>
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="upcoming-date sr-only">{{ $nextTime->date?->format('d/m/Y') }} @if($clock) · {{ $clock->format('g:i') }} {{ $clock->format('A') === 'PM' ? 'م' : 'ص' }} @endif · {{ number_format((float) $nextTime->ticket_price, 0) }} ج.م</p>
+                            @else
+                                <p class="upcoming-date upcoming-date--pending">لم تُحدد مواعيد بعد · سيتم الإعلان عنها قريباً</p>
+                            @endif
                         </div>
                         <div class="upcoming-action">
                             @if($soldOut)<span class="ticket-state ticket-state--soldout">{{ $nextTime ? 'اكتملت التذاكر' : 'لا يوجد موعد قادم' }}</span>
                             @elseif($critical)<span class="ticket-state ticket-state--critical">متبقي {{ $remaining }} {{ $remaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط</span>
                             @elseif($low)<span class="ticket-state ticket-state--low">متبقي عدد محدود من التذاكر</span>
                             @else<span class="ticket-state ticket-state--healthy">متاح للحجز الآن</span>@endif
-                            @if($nextTime && !$soldOut)<a href="{{ route('bookings.create', $nextTime) }}">احجز الآن</a>@else<a href="{{ route('shows.show', $show) }}">تفاصيل العرض</a>@endif
+
+                            @if($nextTime && !$soldOut)
+                                <a class="upcoming-cta" href="{{ route('bookings.create', $nextTime) }}">
+                                    <span>احجز الآن</span>
+                                    <span class="cta-arrow" aria-hidden="true">←</span>
+                                </a>
+                            @else
+                                <a class="upcoming-cta upcoming-cta--quiet" href="{{ route('shows.show', $show) }}">
+                                    <span>تفاصيل العرض</span>
+                                    <span class="cta-arrow" aria-hidden="true">←</span>
+                                </a>
+                            @endif
                         </div>
                     </article>
                 @endforeach
@@ -188,9 +261,18 @@
     </section>
 
     <section class="team-signoff" aria-label="عن الفريق">
-        <img src="{{ asset('images/sarkha-logo.png') }}" alt="" width="56" height="56" loading="lazy">
-        <div><p>فريق الصرخة المسرحي</p><span>{{ $manifesto[6] }}</span></div>
-        <a href="{{ route('about') }}">عن الفريق <span aria-hidden="true">↗</span></a>
+        <div class="signoff-emblem-wrap">
+            <img src="{{ asset('images/sarkha-logo.png') }}" alt="" width="56" height="56" loading="lazy">
+        </div>
+        <div class="signoff-text">
+            <p>فريق الصرخة المسرحي</p>
+            <span>{{ $manifesto[6] }}</span>
+            <p class="signoff-tagline">فرقة مسرحية مستقلة تسعى لتقديم فن يحاكي الوعي الإنساني ويوقظ الفكر على خشبة المسرح.</p>
+        </div>
+        <a class="signoff-action" href="{{ route('about') }}">
+            <span>عن الفريق</span>
+            <span aria-hidden="true">↗</span>
+        </a>
     </section>
 </div>
 @else
