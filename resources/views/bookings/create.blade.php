@@ -20,7 +20,7 @@
 
 <style>
 /* ============================================================
-   ELSAR5A THEATRE BOX OFFICE — CALM, PREMIUM THEATRICAL DESIGN
+   ELSAR5A THEATRE BOX OFFICE — PRECISE REFINED EXPERIENCE
    ============================================================ */
 :root {
     --th-bg: #07090e;
@@ -36,205 +36,127 @@
     --th-text-dim: #6b7280;
 }
 
-/* Prevent layout jump and fix touch ergonomics */
 html {
     scroll-behavior: smooth;
-    scroll-padding-top: 80px;
+    scroll-padding-top: 140px;
 }
 
 .boxoffice-container {
-    max-width: 820px;
+    max-width: 780px;
     margin-inline: auto;
-    padding: 1rem 1rem 3.5rem;
+    padding: 0 1rem 3.5rem;
     color: var(--th-text-main);
     font-family: inherit;
 }
 
 @media (min-width: 640px) {
     .boxoffice-container {
-        padding: 1.5rem 1.5rem 4rem;
+        padding: 0 1.5rem 4rem;
     }
 }
 
-/* 1. CINEMATIC PRODUCTION BANNER */
-.bo-hero {
-    position: relative;
-    background: linear-gradient(180deg, rgba(22, 27, 40, 0.95), rgba(12, 16, 24, 0.98));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1.5rem;
-    padding: 1.25rem 1.25rem 1.1rem;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.7);
-    overflow: hidden;
-}
-
-.bo-hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b);
-}
-
-.bo-hero-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.bo-hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #fbbf24;
-    background: rgba(245, 158, 11, 0.12);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    padding: 0.25rem 0.65rem;
-    border-radius: 9999px;
-    letter-spacing: 0.02em;
-}
-
-.bo-hero-title {
-    font-size: clamp(1.4rem, 4vw, 1.85rem);
-    font-weight: 900;
-    line-height: 1.25;
-    margin-top: 0.45rem;
-    color: #ffffff;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-}
-
-.bo-hero-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-top: 0.65rem;
-    font-size: 0.85rem;
-    color: var(--th-text-muted);
-}
-
-.bo-hero-meta-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.bo-price-tag {
-    margin-inline-start: auto;
-    background: rgba(245, 158, 11, 0.15);
-    border: 1px solid rgba(245, 158, 11, 0.4);
-    border-radius: 0.75rem;
-    padding: 0.4rem 0.8rem;
-    text-align: left;
-}
-
-.bo-price-tag-label {
-    font-size: 0.65rem;
-    color: #fde68a;
-    display: block;
-    line-height: 1;
-}
-
-.bo-price-tag-value {
-    font-size: 1.15rem;
-    font-weight: 900;
-    color: #fbbf24;
-    line-height: 1.2;
-}
-
-/* 2. COMPACT STEP PROGRESS RAIL */
-.bo-stepper {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.4rem;
+/* 1. STICKY STEP NAVIGATION — NO BOXES, PURE TYPOGRAPHY */
+.bo-sticky-nav-wrap {
+    position: sticky;
+    top: 50px;
+    z-index: 30;
+    background: rgba(7, 9, 14, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-inline: -1rem;
+    padding: 0.65rem 0.75rem;
     margin-bottom: 1.5rem;
 }
 
 @media (min-width: 640px) {
-    .bo-stepper {
-        gap: 0.65rem;
+    .bo-sticky-nav-wrap {
+        margin-inline: -1.5rem;
+        padding: 0.75rem 1.5rem;
     }
 }
 
+.bo-steps-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 480px;
+    margin-inline: auto;
+    padding-inline: 0.5rem;
+}
+
 .bo-step-item {
-    background: rgba(15, 20, 30, 0.6);
-    border: 1px solid var(--th-card-border);
-    border-radius: 0.9rem;
-    padding: 0.55rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    transition: all 0.25s ease;
     cursor: pointer;
     user-select: none;
+    transition: all 0.25s ease;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.2rem 0.6rem;
 }
 
-.bo-step-item.is-upcoming {
-    opacity: 0.5;
-}
-
-.bo-step-item.is-current {
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.5);
-    box-shadow: 0 0 16px -4px var(--th-amber-glow);
-    opacity: 1;
-}
-
-.bo-step-item.is-completed {
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.45);
-    box-shadow: 0 0 16px -4px var(--th-emerald-glow);
-    opacity: 1;
-}
-
-.bo-step-indicator {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 9999px;
-    font-size: 0.68rem;
-    font-weight: 800;
-    margin-bottom: 0.2rem;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--th-text-muted);
-}
-
-.bo-step-item.is-current .bo-step-indicator {
-    background: #f59e0b;
-    color: #000;
-}
-
-.bo-step-item.is-completed .bo-step-indicator {
-    background: #10b981;
-    color: #fff;
+.bo-step-num {
+    font-size: 1.15rem;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    transition: all 0.2s ease;
 }
 
 .bo-step-name {
-    display: block;
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 700;
     line-height: 1.2;
-    color: var(--th-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    transition: all 0.2s ease;
 }
 
-.bo-step-item.is-current .bo-step-name {
-    color: #fde68a;
+/* Inactive / Dimmed */
+.bo-step-item.is-inactive {
+    opacity: 0.35;
+    color: #9ca3af;
+}
+
+.bo-step-item.is-inactive:hover {
+    opacity: 0.65;
+}
+
+/* Active / Current step */
+.bo-step-item.is-active {
+    opacity: 1;
+    color: #10b981;
+}
+
+.bo-step-item.is-active .bo-step-num {
+    color: #34d399;
+    font-size: 1.3rem;
+    text-shadow: 0 0 14px rgba(16, 185, 129, 0.5);
+}
+
+.bo-step-item.is-active .bo-step-name {
+    color: #ffffff;
+    font-weight: 800;
+}
+
+/* Completed step */
+.bo-step-item.is-completed {
+    opacity: 0.85;
+    color: #10b981;
+}
+
+.bo-step-item.is-completed .bo-step-num {
+    color: #10b981;
 }
 
 .bo-step-item.is-completed .bo-step-name {
-    color: #34d399;
+    color: #a7f3d0;
 }
 
-/* 3. SECTION CARDS */
+/* 2. SECTION CARDS */
 .bo-section {
     background: var(--th-card-bg);
     border: 1px solid var(--th-card-border);
@@ -321,7 +243,7 @@ html {
     border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-/* 4. SHOWTIME SELECTOR — 100% STABLE POSITIONING */
+/* 3. SHOWTIME SELECTOR — 100% STABLE POSITIONING */
 .bo-showtimes-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -391,24 +313,25 @@ html {
     margin-top: 0.15rem;
 }
 
-/* 5. TACTILE TICKET COUNTER */
+/* 4. TACTILE TICKET COUNTER — STRICT PLUS ON RIGHT, MINUS ON LEFT */
 .bo-counter-box {
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1rem;
-    padding: 1rem;
+    padding: 1.1rem 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.85rem;
 }
 
 .bo-counter-controls {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1.25rem;
+    gap: 1.35rem;
     width: 100%;
+    direction: ltr; /* GUARANTEES: Minus (-) on physical LEFT, Plus (+) on physical RIGHT */
 }
 
 .bo-counter-btn {
@@ -418,7 +341,7 @@ html {
     border: 1.5px solid rgba(255, 255, 255, 0.15);
     background: rgba(255, 255, 255, 0.06);
     color: #ffffff;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 800;
     display: flex;
     align-items: center;
@@ -427,6 +350,7 @@ html {
     transition: all 0.15s ease;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .bo-counter-btn:hover {
@@ -439,22 +363,25 @@ html {
 }
 
 .bo-counter-display {
-    min-width: 70px;
+    min-width: 80px;
     text-align: center;
+    direction: rtl;
 }
 
 .bo-counter-number {
-    font-size: 2.25rem;
+    font-size: 2.35rem;
     font-weight: 900;
     color: #ffffff;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .bo-counter-sub {
     font-size: 0.75rem;
     color: var(--th-text-muted);
     margin-top: 0.25rem;
+    display: block;
 }
 
 .bo-counter-ledger {
@@ -466,7 +393,14 @@ html {
     gap: 0.4rem;
 }
 
-/* 6. PAYMENT SECTION */
+.bo-counter-price-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #ffffff;
+}
+
+/* 5. PAYMENT SECTION */
 .bo-payment-list {
     display: grid;
     grid-template-columns: 1fr;
@@ -518,9 +452,9 @@ html {
 
 .bo-copy-btn {
     flex-shrink: 0;
-    padding: 0.4rem 0.75rem;
+    padding: 0.4rem 0.85rem;
     border-radius: 0.65rem;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     font-weight: 800;
     background: rgba(245, 158, 11, 0.12);
     border: 1px solid rgba(245, 158, 11, 0.4);
@@ -543,7 +477,7 @@ html {
     border: 1px dashed rgba(245, 158, 11, 0.3);
     border-radius: 0.9rem;
     padding: 0.75rem 0.9rem;
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     color: #fde68a;
     display: flex;
     align-items: center;
@@ -553,7 +487,14 @@ html {
     margin-bottom: 1rem;
 }
 
-/* 7. RECEIPT DROPZONE & COMPLETED STATE */
+.bo-required-amount-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #ffffff;
+}
+
+/* 6. RECEIPT DROPZONE & COMPLETED STATE */
 .bo-upload-wrap {
     margin-top: 0.75rem;
 }
@@ -649,7 +590,7 @@ html {
     display: inline-block;
 }
 
-/* 8. CUSTOMER FORM FIELDS */
+/* 7. CUSTOMER FORM FIELDS */
 .bo-field-group {
     margin-bottom: 0.85rem;
 }
@@ -705,7 +646,7 @@ html {
     color: #fbbf24;
 }
 
-/* 9. COMPACT "NEXT" BUTTON */
+/* 8. NEXT BUTTON WITH VISUAL ACTIVATION */
 .bo-next-btn {
     display: flex;
     align-items: center;
@@ -713,24 +654,32 @@ html {
     gap: 0.4rem;
     width: 100%;
     margin-top: 1rem;
-    padding: 0.65rem 1rem;
+    padding: 0.75rem 1rem;
     border-radius: 0.85rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: var(--th-text-muted);
-    font-size: 0.82rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #6b7280;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.25s ease;
 }
 
-.bo-next-btn:hover {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.4);
+.bo-next-btn.is-active-cta {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.55);
     color: #fbbf24;
+    font-weight: 800;
+    box-shadow: 0 4px 18px -4px rgba(245, 158, 11, 0.3);
 }
 
-/* 10. FINAL SUBMISSION CTA */
+.bo-next-btn.is-active-cta:hover {
+    background: rgba(245, 158, 11, 0.22);
+    color: #fde68a;
+    transform: translateY(-1px);
+}
+
+/* 9. FINAL SUBMISSION CTA — CLEAN WITHOUT DECORATIVE SPINNER */
 .bo-submit-area {
     margin-top: 1.5rem;
     text-align: center;
@@ -786,31 +735,22 @@ html {
     color: #34d399;
 }
 
-/* Trust strip */
-.bo-trust-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-    margin-top: 1.5rem;
-    text-align: center;
+/* Real submit network spinner */
+.bo-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(0, 0, 0, 0.25);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: boSpin 0.7s linear infinite;
+    display: inline-block;
 }
 
-.bo-trust-item {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 0.75rem;
-    padding: 0.65rem 0.4rem;
-    font-size: 0.72rem;
-    color: var(--th-text-muted);
+@keyframes boSpin {
+    to { transform: rotate(360deg); }
 }
 
-.bo-trust-icon {
-    display: block;
-    font-size: 1.1rem;
-    margin-bottom: 0.2rem;
-}
-
-/* Toast */
+/* Global copy toast */
 .bo-toast {
     position: fixed;
     bottom: 2rem;
@@ -835,80 +775,31 @@ html {
     visibility: visible;
     transform: translateX(-50%) translateY(0);
 }
-
-/* Spinner */
-.bo-spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(0,0,0,0.2);
-    border-top-color: #000;
-    border-radius: 50%;
-    animation: boSpin 0.7s linear infinite;
-    display: inline-block;
-}
-
-@keyframes boSpin {
-    to { transform: rotate(360deg); }
-}
 </style>
 
 <div class="boxoffice-container">
 
-    {{-- 1. THEATRE & PRODUCTION HERO --}}
-    <header class="bo-hero">
-        <div class="bo-hero-header">
-            <div>
-                <span class="bo-hero-badge">
-                    <span>🎭</span> شباك التذاكر الرسمي
-                </span>
-                <h1 class="bo-hero-title">{{ $showTime->show->title }}</h1>
+    {{-- 1. STICKY STEP NAVIGATION (NO BOXES, NUMBERS ABOVE LABELS, 1-4) --}}
+    <div class="bo-sticky-nav-wrap">
+        <nav class="bo-steps-bar" aria-label="مراحل الحجز">
+            <div class="bo-step-item is-active" id="stepNav-1" onclick="scrollToSection('section-tickets')">
+                <span class="bo-step-num">1</span>
+                <span class="bo-step-name">التذاكر</span>
             </div>
-
-            {{-- Single primary price tag --}}
-            <div class="bo-price-tag">
-                <span class="bo-price-tag-label">سعر التذكرة</span>
-                <span class="bo-price-tag-value">{{ $showTime->ticket_price }} <span class="text-xs font-normal">ج.م</span></span>
+            <div class="bo-step-item is-inactive" id="stepNav-2" onclick="scrollToSection('section-payment')">
+                <span class="bo-step-num">2</span>
+                <span class="bo-step-name">التحويل</span>
             </div>
-        </div>
-
-        <div class="bo-hero-meta">
-            <span class="bo-hero-meta-item">
-                <span>📅</span> {{ $currentDate->format('d-m-Y') }}
-            </span>
-            <span>•</span>
-            <span class="bo-hero-meta-item">
-                <span>⏰</span> {{ $timeFormatted }}
-            </span>
-            <span>•</span>
-            <span class="bo-hero-meta-item">
-                @if ($remaining <= 10)
-                    <span class="text-amber-400 font-bold">🔥 متبقي {{ $remaining }} مقاعد فقط</span>
-                @else
-                    <span class="text-emerald-400 font-bold">✓ متاح للحجز ({{ $remaining }} مقعد)</span>
-                @endif
-            </span>
-        </div>
-    </header>
-
-    {{-- 2. COMPACT STEP PROGRESS RAIL --}}
-    <nav class="bo-stepper" aria-label="مراحل الحجز">
-        <div class="bo-step-item is-completed" id="stepIndicator-1" onclick="scrollToSection('section-tickets')">
-            <span class="bo-step-indicator" id="stepNum-1">✓</span>
-            <span class="bo-step-name">01 التذاكر</span>
-        </div>
-        <div class="bo-step-item is-current" id="stepIndicator-2" onclick="scrollToSection('section-payment')">
-            <span class="bo-step-indicator" id="stepNum-2">02</span>
-            <span class="bo-step-name">02 التحويل</span>
-        </div>
-        <div class="bo-step-item is-upcoming" id="stepIndicator-3" onclick="scrollToSection('section-details')">
-            <span class="bo-step-indicator" id="stepNum-3">03</span>
-            <span class="bo-step-name">03 البيانات</span>
-        </div>
-        <div class="bo-step-item is-upcoming" id="stepIndicator-4" onclick="scrollToSection('section-submit')">
-            <span class="bo-step-indicator" id="stepNum-4">04</span>
-            <span class="bo-step-name">04 الإرسال</span>
-        </div>
-    </nav>
+            <div class="bo-step-item is-inactive" id="stepNav-3" onclick="scrollToSection('section-details')">
+                <span class="bo-step-num">3</span>
+                <span class="bo-step-name">البيانات</span>
+            </div>
+            <div class="bo-step-item is-inactive" id="stepNav-4" onclick="scrollToSection('section-submit')">
+                <span class="bo-step-num">4</span>
+                <span class="bo-step-name">الإرسال</span>
+            </div>
+        </nav>
+    </div>
 
     {{-- Error messages if any --}}
     @if ($errors->any())
@@ -934,7 +825,7 @@ html {
         <input type="hidden" name="tickets_count" id="tickets_count" value="{{ (int) old('tickets_count', 1) }}">
 
         {{-- ============================================================
-             SECTION 1: الموعد والتذاكر (Showtime & Tickets)
+             SECTION 1: الموعد وعدد التذاكر (Showtime & Tickets)
         ============================================================ --}}
         <section id="section-tickets" class="bo-section is-active-focus is-section-done">
             <div class="bo-section-header">
@@ -983,10 +874,10 @@ html {
                 </div>
             @endif
 
-            {{-- Tactile Ticket Counter --}}
+            {{-- Tactile Ticket Counter — Strict Minus (-) on LEFT, Plus (+) on RIGHT --}}
             <div class="bo-counter-box">
                 <span class="text-xs text-gray-400">حدد عدد التذاكر المطلوبة:</span>
-                <div class="bo-counter-controls">
+                <div class="bo-counter-controls" dir="ltr">
                     <button type="button"
                             class="bo-counter-btn"
                             onclick="changeTicketCount(-1)"
@@ -1003,16 +894,17 @@ html {
                             aria-label="زيادة عدد التذاكر">+</button>
                 </div>
 
-                {{-- Live Ledger --}}
+                {{-- Live Ledger with English digits --}}
                 <div class="bo-counter-ledger">
                     <span>الإجمالي:</span>
-                    <span class="text-white font-extrabold text-lg" id="totalPriceDisplay">{{ $showTime->ticket_price }}</span>
+                    <span class="bo-counter-price-val" id="totalPriceDisplay">{{ (int)$showTime->ticket_price }}</span>
                     <span>جنيه مصري</span>
                 </div>
             </div>
 
             <button type="button"
-                    class="bo-next-btn"
+                    id="btnNextToPayment"
+                    class="bo-next-btn is-active-cta"
                     onclick="scrollToSection('section-payment')">
                 <span>التالي: التحويل والدفع</span>
                 <span>↓</span>
@@ -1020,7 +912,7 @@ html {
         </section>
 
         {{-- ============================================================
-             SECTION 2: التحويل والإيصال (Payment & Screenshot)
+             SECTION 2: التحويل وإرفاق الإيصال (Payment & Screenshot)
         ============================================================ --}}
         <section id="section-payment" class="bo-section">
             <div class="bo-section-header">
@@ -1031,15 +923,15 @@ html {
                 <span class="bo-status-pill status-pending" id="status-badge-2">بانتظار الإيصال</span>
             </div>
 
-            {{-- Dynamic instructions with live calculated total --}}
+            {{-- Dynamic instructions with English digits --}}
             <div class="bo-pay-instructions">
-                <span>المبلغ المطلوب تحويله: <strong class="text-white text-base" id="requiredPayAmount">{{ $showTime->ticket_price }}</strong> ج.م</span>
+                <span>المبلغ المطلوب تحويله: <strong class="bo-required-amount-val" id="requiredPayAmount">{{ (int)$showTime->ticket_price }}</strong> ج.م</span>
                 <span class="text-xs text-amber-200/90">حوّل المبلغ على أحد الأرقام التالية:</span>
             </div>
 
-            {{-- Payment Accounts --}}
+            {{-- Payment Accounts: only show configured real numbers, button says simply "نسخ" --}}
             <div class="bo-payment-list">
-                @if ($transferWallet)
+                @if ($transferWallet && !preg_match('/^0+$/', $transferWallet))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
                             <span class="bo-pay-name">📱 فودافون كاش / محفظة</span>
@@ -1048,12 +940,12 @@ html {
                         <button type="button"
                                 class="bo-copy-btn"
                                 onclick="copyText('{{ $transferWallet }}', this)">
-                            نسخ الرقم
+                            نسخ
                         </button>
                     </div>
                 @endif
 
-                @if ($transferInsta)
+                @if ($transferInsta && !preg_match('/^0+$/', $transferInsta))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
                             <span class="bo-pay-name">⚡ حساب InstaPay</span>
@@ -1062,7 +954,7 @@ html {
                         <button type="button"
                                 class="bo-copy-btn"
                                 onclick="copyText('{{ $transferInsta }}', this)">
-                            نسخ الحساب
+                            نسخ
                         </button>
                     </div>
                 @endif
@@ -1104,6 +996,7 @@ html {
             </div>
 
             <button type="button"
+                    id="btnNextToDetails"
                     class="bo-next-btn"
                     onclick="scrollToSection('section-details')">
                 <span>التالي: بيانات الحجز</span>
@@ -1129,6 +1022,7 @@ html {
             </div>
 
             <button type="button"
+                    id="btnNextToSubmit"
                     class="bo-next-btn"
                     onclick="scrollToSection('section-submit')">
                 <span>التالي: تأكيد وإرسال الحجز</span>
@@ -1152,29 +1046,12 @@ html {
                 <button type="submit"
                         id="submitBtn"
                         disabled>
-                    <span id="submitSpinner" class="hidden bo-spinner" aria-hidden="true"></span>
                     <span id="submitText">إرسال طلب الحجز 🎟️</span>
                 </button>
 
                 <p id="submitHint" class="bo-submit-hint">
                     يرجى إكمال البيانات وإرفاق إيصال التحويل لتفعيل زر الحجز.
                 </p>
-            </div>
-
-            {{-- Trust Strip --}}
-            <div class="bo-trust-row" aria-hidden="true">
-                <div class="bo-trust-item">
-                    <span class="bo-trust-icon">🔒</span>
-                    <span>دفع وتحويل آمن</span>
-                </div>
-                <div class="bo-trust-item">
-                    <span class="bo-trust-icon">⚡</span>
-                    <span>معالجة فورية للمقاعد</span>
-                </div>
-                <div class="bo-trust-item">
-                    <span class="bo-trust-icon">📱</span>
-                    <span>تذكرة إلكترونية على واتساب</span>
-                </div>
             </div>
         </section>
 
@@ -1212,21 +1089,20 @@ html {
     var screenshotError   = document.getElementById('screenshotError');
     var submitBtn         = document.getElementById('submitBtn');
     var submitText        = document.getElementById('submitText');
-    var submitSpinner     = document.getElementById('submitSpinner');
     var submitHint        = document.getElementById('submitHint');
     var bookingForm       = document.getElementById('bookingForm');
     var copyToast         = document.getElementById('copyToast');
 
-    // Stepper Indicators
-    var step1 = document.getElementById('stepIndicator-1');
-    var step2 = document.getElementById('stepIndicator-2');
-    var step3 = document.getElementById('stepIndicator-3');
-    var step4 = document.getElementById('stepIndicator-4');
+    // Next CTA Buttons
+    var btnNextToPayment  = document.getElementById('btnNextToPayment');
+    var btnNextToDetails  = document.getElementById('btnNextToDetails');
+    var btnNextToSubmit   = document.getElementById('btnNextToSubmit');
 
-    var stepNum1 = document.getElementById('stepNum-1');
-    var stepNum2 = document.getElementById('stepNum-2');
-    var stepNum3 = document.getElementById('stepNum-3');
-    var stepNum4 = document.getElementById('stepNum-4');
+    // Sticky Step Nav Items (Pure Typography, 1-4)
+    var stepNav1 = document.getElementById('stepNav-1');
+    var stepNav2 = document.getElementById('stepNav-2');
+    var stepNav3 = document.getElementById('stepNav-3');
+    var stepNav4 = document.getElementById('stepNav-4');
 
     var badge1 = document.getElementById('status-badge-1');
     var badge2 = document.getElementById('status-badge-2');
@@ -1298,8 +1174,9 @@ html {
         ticketsInput.value = count;
 
         var total = count * ticketPrice;
-        totalPriceDisplay.textContent = total.toLocaleString('ar-EG');
-        if (requiredPayAmount) requiredPayAmount.textContent = total.toLocaleString('ar-EG');
+        // MUST use English digits for all monetary numbers
+        totalPriceDisplay.textContent = total.toLocaleString('en-US');
+        if (requiredPayAmount) requiredPayAmount.textContent = total.toLocaleString('en-US');
 
         if (count === 1) {
             wordLabel.textContent = 'تذكرة واحدة';
@@ -1341,7 +1218,7 @@ html {
         }
     } catch (e) {}
 
-    // --- Render Attendee Fields ---
+    // --- Render Attendee Fields (Label and Placeholder: simply "الاسم") ---
     function renderAttendeeFields() {
         attendeesContainer.innerHTML = '';
 
@@ -1357,18 +1234,18 @@ html {
                 card.innerHTML =
                     '<div class="bo-attendee-header">' +
                         '<span>👤</span>' +
-                        '<span>التذكرة 1 — صاحب الحجز الأساسي</span>' +
+                        '<span>التذكرة 1 — صاحب الحجز</span>' +
                     '</div>' +
                     '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
                         '<div class="bo-field-group">' +
-                            '<label class="bo-field-label">الاسم بالكامل (عربي أو English) *</label>' +
+                            '<label class="bo-field-label">الاسم *</label>' +
                             '<input type="text" name="names[]" value="' + valName + '"' +
-                                   ' class="bo-input" placeholder="مثال: يوناثان ماجد" required autocomplete="name">' +
+                                   ' class="bo-input" placeholder="الاسم" required autocomplete="name">' +
                         '</div>' +
                         '<div class="bo-field-group">' +
-                            '<label class="bo-field-label">رقم الواتساب (لتأكيد واستلام التذاكر) *</label>' +
+                            '<label class="bo-field-label">رقم الواتساب *</label>' +
                             '<input type="tel" name="phones[]" value="' + valPhone + '"' +
-                                   ' class="bo-input" placeholder="مثال: 01012345678" required autocomplete="tel" dir="ltr">' +
+                                   ' class="bo-input" placeholder="01xxxxxxxxx" required autocomplete="tel" dir="ltr">' +
                         '</div>' +
                     '</div>';
             } else {
@@ -1381,12 +1258,12 @@ html {
                         '<div class="bo-field-group mb-0">' +
                             '<label class="bo-field-label">اسم المرافق ' + i + ' *</label>' +
                             '<input type="text" name="names[]" value="' + valName + '"' +
-                                   ' class="bo-input" placeholder="اسم المرافق بالكامل" required>' +
+                                   ' class="bo-input" placeholder="الاسم" required>' +
                         '</div>' +
                         '<div class="bo-field-group mb-0">' +
                             '<label class="bo-field-label">رقم واتساب المرافق ' + i + ' *</label>' +
                             '<input type="tel" name="phones[]" value="' + valPhone + '"' +
-                                   ' class="bo-input" placeholder="رقم واتساب المرافق" required dir="ltr">' +
+                                   ' class="bo-input" placeholder="01xxxxxxxxx" required dir="ltr">' +
                         '</div>' +
                     '</div>';
             }
@@ -1449,7 +1326,7 @@ html {
                 btn.textContent = 'تم النسخ ✓';
                 btn.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/50');
                 setTimeout(function() {
-                    btn.textContent = original;
+                    btn.textContent = 'نسخ';
                     btn.classList.remove('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/50');
                 }, 1500);
             }
@@ -1505,20 +1382,40 @@ html {
         var allReady  = step1Done && step2Done && step3Done && (maxTickets > 0);
 
         // Step 1: Tickets
-        setStepState(step1, stepNum1, badge1, section1, true, '01', '✓ تم التحديد');
+        setStepNavState(stepNav1, true, false);
+        badge1.className = 'bo-status-pill status-done';
+        badge1.textContent = '✓ تم التحديد';
+        section1.classList.add('is-section-done');
+        btnNextToPayment.classList.add('is-active-cta');
 
-        // Step 2: Payment
+        // Step 2: Payment & Screenshot
         if (step2Done) {
-            setStepState(step2, stepNum2, badge2, section2, true, '02', '✓ الإيصال مرفوع');
+            setStepNavState(stepNav2, true, false);
+            badge2.className = 'bo-status-pill status-done';
+            badge2.textContent = '✓ الإيصال مرفوع';
+            section2.classList.add('is-section-done');
+            btnNextToDetails.classList.add('is-active-cta');
         } else {
-            setStepState(step2, stepNum2, badge2, section2, false, '02', 'بانتظار الإيصال', true);
+            setStepNavState(stepNav2, false, true);
+            badge2.className = 'bo-status-pill status-pending';
+            badge2.textContent = 'بانتظار الإيصال';
+            section2.classList.remove('is-section-done');
+            btnNextToDetails.classList.remove('is-active-cta');
         }
 
         // Step 3: Attendees
         if (step3Done) {
-            setStepState(step3, stepNum3, badge3, section3, true, '03', '✓ مكتملة (' + count + ')');
+            setStepNavState(stepNav3, true, false);
+            badge3.className = 'bo-status-pill status-done';
+            badge3.textContent = '✓ مكتملة (' + count + ')';
+            section3.classList.add('is-section-done');
+            btnNextToSubmit.classList.add('is-active-cta');
         } else {
-            setStepState(step3, stepNum3, badge3, section3, false, '03', 'أدخل البيانات', step2Done);
+            setStepNavState(stepNav3, false, step2Done);
+            badge3.className = 'bo-status-pill status-pending';
+            badge3.textContent = 'أدخل البيانات';
+            section3.classList.remove('is-section-done');
+            btnNextToSubmit.classList.remove('is-active-cta');
         }
 
         // Step 4: Submission
@@ -1527,8 +1424,7 @@ html {
             submitHint.textContent = '✓ جميع البيانات جاهزة — اضغط لإرسال طلب الحجز فوراً.';
             submitHint.classList.add('ready');
 
-            step4.className = 'bo-step-item is-completed';
-            stepNum4.textContent = '✓';
+            setStepNavState(stepNav4, true, false);
             badge4.className = 'bo-status-pill status-done';
             badge4.textContent = 'جاهز للإرسال';
             section4.classList.add('is-section-done');
@@ -1542,37 +1438,24 @@ html {
 
             submitHint.textContent = 'المتبقي لإرسال الحجز: ' + missing.join(' و ') + '.';
 
-            step4.className = 'bo-step-item is-upcoming';
-            stepNum4.textContent = '04';
+            setStepNavState(stepNav4, false, step3Done);
             badge4.className = 'bo-status-pill status-pending';
             badge4.textContent = 'في انتظار الإكمال';
             section4.classList.remove('is-section-done');
         }
     }
 
-    function setStepState(stepEl, numEl, badgeEl, sectionEl, isDone, stepNumber, badgeDoneText, isCurrent) {
+    function setStepNavState(navEl, isDone, isActive) {
         if (isDone) {
-            stepEl.className = 'bo-step-item is-completed';
-            numEl.textContent = '✓';
-            badgeEl.className = 'bo-status-pill status-done';
-            badgeEl.textContent = badgeDoneText;
-            sectionEl.classList.add('is-section-done');
-        } else if (isCurrent) {
-            stepEl.className = 'bo-step-item is-current';
-            numEl.textContent = stepNumber;
-            badgeEl.className = 'bo-status-pill status-pending';
-            badgeEl.textContent = badgeDoneText;
-            sectionEl.classList.remove('is-section-done');
+            navEl.className = 'bo-step-item is-completed';
+        } else if (isActive) {
+            navEl.className = 'bo-step-item is-active';
         } else {
-            stepEl.className = 'bo-step-item is-upcoming';
-            numEl.textContent = stepNumber;
-            badgeEl.className = 'bo-status-pill status-pending';
-            badgeEl.textContent = badgeDoneText;
-            sectionEl.classList.remove('is-section-done');
+            navEl.className = 'bo-step-item is-inactive';
         }
     }
 
-    // --- Form Submission Handling ---
+    // --- Form Submission Handling with Real Network Loading Spinner ---
     var isSubmitting = false;
 
     bookingForm.addEventListener('submit', function(e) {
@@ -1588,8 +1471,7 @@ html {
 
         isSubmitting = true;
         submitBtn.disabled = true;
-        submitSpinner.classList.remove('hidden');
-        submitText.textContent = 'جاري تأكيد وإرسال الحجز...';
+        submitBtn.innerHTML = '<span class="bo-spinner" aria-hidden="true"></span> <span>جاري إرسال طلب الحجز...</span>';
         submitHint.textContent = 'يرجى الانتظار ولا تغلق الصفحة حتى اكتمال معالجة الطلب.';
     });
 
@@ -1598,8 +1480,7 @@ html {
         if (e.persisted) {
             isSubmitting = false;
             submitBtn.disabled = false;
-            submitSpinner.classList.add('hidden');
-            submitText.textContent = 'إرسال طلب الحجز 🎟️';
+            submitBtn.innerHTML = '<span id="submitText">إرسال طلب الحجز 🎟️</span>';
             recomputeAllStates();
         }
     });
