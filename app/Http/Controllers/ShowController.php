@@ -15,7 +15,7 @@ class ShowController extends Controller
 
     public function show(Show $show)
     {
-        abort_if($show->isPublicPlaceholder(), 404);
+        abort_if(!$show->is_active || $show->isPublicPlaceholder(), 404);
         $show->load('showTimes');
         return view('shows.show', compact('show'));
     }
