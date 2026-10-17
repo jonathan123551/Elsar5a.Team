@@ -574,6 +574,69 @@ html { scroll-padding-bottom: 140px; }
         transition: none !important;
     }
 }
+
+/* A quieter booking surface: keep the theatre palette, remove the
+   layered glow treatment, and let the booking steps read at a glance. */
+[data-booking] {
+    --bk-radius: 1rem;
+    --bk-radius-lg: 1.25rem;
+    --bk-border: rgba(245, 230, 210, .14);
+    --bk-text: #f6eee5;
+    --bk-text-2: #d9cdc0;
+    --bk-text-3: #aa9d92;
+    --bk-amber: #e9c27e;
+    max-width: 68rem;
+    padding-block: .5rem 1.5rem;
+}
+.bk-rail { max-width: 42rem; margin-inline: auto; gap: .45rem; }
+.bk-step { border-radius: .75rem; padding: .55rem .65rem; background: rgba(20, 13, 13, .54); }
+.bk-step.is-active { border-color: rgba(215, 176, 113, .55); background: rgba(108, 35, 45, .22); box-shadow: none; }
+.bk-step-no, .bk-step.is-active .bk-step-no { background: transparent; color: #e9c27e; border: 1px solid rgba(233,194,126,.42); }
+.bk-step-label { font-size: 12px; }
+.bk-aside, .bk-form {
+    background: rgba(14, 10, 10, .72);
+    border: 1px solid rgba(245, 230, 210, .13);
+    border-radius: 1rem;
+    box-shadow: 0 18px 36px rgba(0,0,0,.2);
+}
+.bk-aside { padding: 1rem; }
+.bk-aside::before { display: none; }
+.bk-aside-title { background: none; color: #f3e8dc; font-size: clamp(1.15rem, 3vw, 1.5rem); }
+.bk-aside-eyebrow { color: #d9b776; letter-spacing: .12em; }
+.bk-aside-meta { gap: .4rem; }
+.bk-meta-cell, .bk-step-panel, .bk-field {
+    background: rgba(255,255,255,.025);
+    border: 1px solid rgba(245,230,210,.10);
+    border-radius: .8rem;
+}
+.bk-meta-cell { padding: .6rem; }
+.bk-meta-cell-label { letter-spacing: 0; color: #b9aa9a; font-size: 11px; }
+.bk-meta-cell-value { color: #f6eee5; }
+.bk-step-panel { padding: .85rem; }
+.bk-pay { background: rgba(255,255,255,.025); border-color: rgba(245,230,210,.13); border-radius: .7rem; }
+.bk-pay .copy-hint { border: 0; background: transparent; color: #e9c27e; }
+.bk-form { padding: 1rem; }
+@media (min-width: 640px) { .bk-form { padding: 1.4rem; } }
+.bk-form-h h2 { color: #f1dfc2; letter-spacing: 0; font-size: 1rem; }
+.bk-form-h .pip { background: #e9c27e; }
+.bk-field { padding: .85rem; }
+.bk-field:focus-within { background: rgba(108,35,45,.12); border-color: rgba(215,176,113,.55); box-shadow: 0 0 0 3px rgba(215,176,113,.08); }
+.bk-counter-btn { border-radius: .7rem; background: #211818; }
+.bk-counter-num { background: none; color: #f6eee5; }
+.bk-counter-total { color: #e9c27e; }
+.bk-drop { background: rgba(255,255,255,.02); border-color: rgba(245,230,210,.24); border-radius: .75rem; }
+.bk-drop:hover, .bk-drop:focus-within { background: rgba(108,35,45,.12); transform: none; }
+#submitBtn { border-radius: .75rem; background: #e9c27e; color: #211713; box-shadow: none; min-height: 54px; }
+#submitBtn:not([disabled]):hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.2) !important; }
+.bk-trust { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 1rem; }
+.bk-trust-cell { border: 0; background: transparent; padding: .25rem; flex-direction: row; }
+.bk-trust-cell .glyph { color: #d9b776; }
+@media (max-width: 767px) {
+    .bk-rail { margin-bottom: .8rem; }
+    .bk-aside { position: static; }
+    .bk-aside-meta { grid-template-columns: 1fr 1fr; }
+    .bk-counter-btn { width: 52px; height: 52px; }
+}
 </style>
 
 
@@ -603,23 +666,29 @@ html { scroll-padding-bottom: 140px; }
         <aside class="md:col-span-1 bk-aside md:sticky md:top-24 md:self-start">
 
             <p class="bk-aside-eyebrow">عرض مسرحي · تفاصيل</p>
+            @if($showTime->show->poster_path)
+                <img src="{{ \App\Support\CloudinaryUrl::forDisplay($showTime->show->poster_path) }}"
+                     alt="ملصق {{ $showTime->show->title }}"
+                     class="mt-3 mb-4 w-full max-h-64 object-contain rounded-lg"
+                     loading="eager">
+            @endif
             <h1 class="bk-aside-title">{{ $showTime->show->title }}</h1>
 
             <div class="bk-aside-meta">
                 <div class="bk-meta-cell">
-                    <div class="bk-meta-cell-label">📅 التاريخ</div>
+                    <div class="bk-meta-cell-label">التاريخ</div>
                     <div class="bk-meta-cell-value">
                         {{ \Carbon\Carbon::parse($showTime->date)->format('d-m-Y') }}
                     </div>
                 </div>
                 <div class="bk-meta-cell">
-                    <div class="bk-meta-cell-label">⏰ الساعة</div>
+                    <div class="bk-meta-cell-label">الساعة</div>
                     <div class="bk-meta-cell-value">
                         {{ \Carbon\Carbon::parse($showTime->time)->format('g:i A') }}
                     </div>
                 </div>
                 <div class="bk-meta-cell is-price" style="grid-column: 1 / -1;">
-                    <div class="bk-meta-cell-label">🎟️ سعر التذكرة</div>
+                    <div class="bk-meta-cell-label">سعر التذكرة</div>
                     <div class="bk-meta-cell-value">
                         {{ $showTime->ticket_price }} جنيه
                     </div>
@@ -632,34 +701,41 @@ html { scroll-padding-bottom: 140px; }
                     حوّل قيمة التذكرة
                 </h3>
                 <p class="bk-step-panel-desc">
-                    حوّل المبلغ المطلوب على أحد الأرقام التالية، ثم ارفع لقطة شاشة من التحويل في الخطوة ٢.
-                    اضغط على الرقم لنسخه.
+                    حوّل قيمة التذاكر على أحد الحسابات التالية، ثم أرفق صورة التحويل مع الطلب. اضغط على الحساب لنسخه.
                 </p>
 
                 {{-- Each payment number is tappable: tap to copy. The
                      [data-copy] + .copy-hint contract is preserved
                      so the page-script handles the copy flow. --}}
-                <button type="button"
-                        data-copy="{{ $transferWallet }}"
-                        aria-label="نسخ رقم محفظة الدفع"
-                        class="bk-pay">
-                    <div class="min-w-0 flex-1 text-right">
-                        <p class="bk-pay-label">📱 محفظة</p>
-                        <p class="bk-pay-value truncate" dir="ltr">{{ $transferWallet }}</p>
-                    </div>
-                    <span class="copy-hint">نسخ</span>
-                </button>
+                @if(filled($transferWallet))
+                    <button type="button"
+                            data-copy="{{ $transferWallet }}"
+                            aria-label="نسخ رقم محفظة الدفع"
+                            class="bk-pay">
+                        <div class="min-w-0 flex-1 text-right">
+                            <p class="bk-pay-label">محفظة إلكترونية</p>
+                            <p class="bk-pay-value truncate" dir="ltr">{{ $transferWallet }}</p>
+                        </div>
+                        <span class="copy-hint">نسخ</span>
+                    </button>
+                @endif
 
-                <button type="button"
-                        data-copy="{{ $transferInsta }}"
-                        aria-label="نسخ حساب InstaPay"
-                        class="bk-pay">
-                    <div class="min-w-0 flex-1 text-right">
-                        <p class="bk-pay-label">⚡ InstaPay</p>
-                        <p class="bk-pay-value truncate" dir="ltr">{{ $transferInsta }}</p>
-                    </div>
-                    <span class="copy-hint">نسخ</span>
-                </button>
+                @if(filled($transferInsta))
+                    <button type="button"
+                            data-copy="{{ $transferInsta }}"
+                            aria-label="نسخ حساب InstaPay"
+                            class="bk-pay">
+                        <div class="min-w-0 flex-1 text-right">
+                            <p class="bk-pay-label">InstaPay</p>
+                            <p class="bk-pay-value truncate" dir="ltr">{{ $transferInsta }}</p>
+                        </div>
+                        <span class="copy-hint">نسخ</span>
+                    </button>
+                @endif
+
+                @if(blank($transferWallet) && blank($transferInsta))
+                    <p class="mt-3 text-sm leading-6 text-stone-300">بيانات التحويل غير متاحة حاليًا. يُرجى المحاولة لاحقًا.</p>
+                @endif
             </div>
         </aside>
 

@@ -1,102 +1,85 @@
 @extends('layouts.app')
 
-@section('title', 'تم إرسال طلب الحجز')
+@section('title', 'حالة طلب الحجز')
 
 @section('content')
-<section class="max-w-lg mx-auto px-4">
+<style>
+    .booking-confirmation { max-width: 42rem; margin: 0 auto; padding: .5rem 0 1.5rem; }
+    .confirmation-panel { background: rgba(14,10,10,.78); border: 1px solid rgba(245,230,210,.14); border-radius: 1rem; padding: clamp(1.1rem,4vw,2rem); }
+    .confirmation-status { border-inline-start: 3px solid #d8b474; background: rgba(216,180,116,.08); padding: .9rem 1rem; border-radius: .35rem .75rem .75rem .35rem; }
+    .confirmation-data { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem 1rem; }
+    .confirmation-data dt { color: #baa996; font-size: .8rem; }
+    .confirmation-data dd { margin-top: .2rem; color: #f6eee5; font-weight: 600; overflow-wrap: anywhere; }
+    @media (max-width: 480px) { .confirmation-data { grid-template-columns: 1fr; } }
+</style>
 
-    <div class="bg-black/50 border border-white/10 rounded-3xl p-6 sm:p-7 text-center space-y-5
-                shadow-[0_0_40px_rgba(250,204,21,0.15)]">
+@php
+    $time = $booking->showTime;
+    $statusLabel = match ($booking->status) {
+        'approved' => 'تم تأكيد الحجز',
+        'rejected' => 'تعذّر تأكيد الحجز',
+        default => 'طلبك قيد المراجعة',
+    };
+    $phoneTail = substr((string) $booking->phone, -4);
+@endphp
 
-        {{-- Icon --}}
-        <div class="mx-auto w-14 h-14 flex items-center justify-center rounded-full
-                    bg-amber-400/15 border border-amber-400/40 text-2xl">
-            🎟️
+<main class="booking-confirmation" aria-labelledby="confirmation-title">
+    <section class="confirmation-panel space-y-6">
+        <header class="space-y-2">
+            <p class="text-xs font-semibold tracking-wider text-amber-200/80">فريق الصرخة المسرحي · طلب حجز</p>
+            <h1 id="confirmation-title" class="text-2xl sm:text-3xl font-bold text-stone-100">تم استلام طلبك يا {{ $booking->full_name }}</h1>
+            <p class="text-sm leading-7 text-stone-300">احتفظ برقم الحجز للرجوع إلى الطلب.</p>
+        </header>
+
+        <div class="confirmation-status" role="status">
+            <p class="font-semibold text-amber-100">{{ $statusLabel }}</p>
+            @if($booking->status === 'pending')
+                <p class="mt-1 text-sm leading-6 text-stone-300">لم يصبح الحجز مؤكدًا بعد. يراجع الفريق بيانات الحجز وإثبات التحويل، وبعد الموافقة تُرسل التذاكر إلى رقم واتساب المسجّل.</p>
+                <p class="mt-2 text-xs text-stone-400">المراجعة تستغرق حتى 24 ساعة.</p>
+            @elseif($booking->status === 'approved')
+                <p class="mt-1 text-sm leading-6 text-stone-300">تمت الموافقة على الحجز. تُرسل التذكرة إلى رقم واتساب المسجّل وفق إجراءات الفريق.</p>
+            @else
+                <p class="mt-1 text-sm leading-6 text-stone-300">راجع حالة الطلب أو تواصل مع الفريق عبر قنواته الرسمية إذا احتجت مساعدة.</p>
+            @endif
         </div>
 
-        {{-- Title --}}
-        <div>
-            <h1 class="text-xl sm:text-2xl font-extrabold text-amber-300">
-                تم إرسال طلب الحجز بنجاح
-            </h1>
-            <p class="text-xs sm:text-sm text-gray-300 mt-1">
-                شكراً يا <span class="font-semibold text-white">{{ $booking->full_name }}</span>
-            </p>
-        </div>
-
-        {{-- Booking Info --}}
-        <div class="bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-gray-200 space-y-2 text-left">
-
-            <div class="flex justify-between">
-                <span class="text-gray-400">رقم الحجز</span>
-                <span class="font-mono text-amber-300">
-                    {{ $booking->reference_code }}
-                </span>
+        <dl class="confirmation-data border-y border-white/10 py-4">
+            <div>
+                <dt>رقم الحجز</dt>
+                <dd dir="ltr" class="text-amber-200">{{ $booking->reference_code }}</dd>
             </div>
-
-            
-            <div class="flex justify-between">
-                <span class="text-gray-400">إجمالي المبلغ</span>
-                <span class="font-semibold text-emerald-300">
-                    {{ $booking->total_price }} جنيه
-                </span>
+            <div>
+                <dt>إجمالي المبلغ</dt>
+                <dd>{{ $booking->total_price }} جنيه</dd>
             </div>
-        </div>
-
-        {{-- IMPORTANT NOTICE --}}
-        <div class="bg-amber-500/10 border border-amber-400/40 rounded-2xl p-4 text-left space-y-2">
-
-            <div class="flex items-center gap-2 text-amber-300 font-semibold text-sm">
-                ⏳ الخطوة الجاية
+            <div>
+                <dt>العرض</dt>
+                <dd>{{ $time?->show?->title ?? '—' }}</dd>
             </div>
+            <div>
+                <dt>الموعد</dt>
+                <dd>
+                    @if($time)
+                        {{ $time->date->format('d/m/Y') }} · {{ \Carbon\Carbon::parse($time->time)->format('g:i A') }}
+                    @else
+                        —
+                    @endif
+                </dd>
+            </div>
+            <div>
+                <dt>عدد التذاكر</dt>
+                <dd>{{ $booking->tickets_count }}</dd>
+            </div>
+            <div>
+                <dt>رقم واتساب المسجّل</dt>
+                <dd dir="ltr">••••••{{ $phoneTail }}</dd>
+            </div>
+        </dl>
 
-       <ul class="space-y-3 text-xs sm:text-sm text-gray-200 leading-relaxed text-right">
-
-    <li class="relative pr-5 before:content-[''] before:absolute before:right-0 before:top-[0.55em]
-               before:w-2 before:h-2 before:rounded-full before:bg-amber-300">
-        يتم <span class="text-white font-semibold">مراجعة عملية الدفع</span>
-        والتأكد من التحويل.
-    </li>
-
-    <li class="relative pr-5 before:content-[''] before:absolute before:right-0 before:top-[0.55em]
-               before:w-2 before:h-2 before:rounded-full before:bg-emerald-300">
-        بعد <span class="text-emerald-300 font-semibold">تأكيد الحجز</span>،
-        سيتم إرسال <span class="text-white font-semibold">التذكرة</span>
-        مباشرة على <span class="text-white font-semibold">رقم الواتساب المُسجَّل</span>.
-    </li>
-
-    <li class="relative pr-5 before:content-[''] before:absolute before:right-0 before:top-[0.55em]
-               before:w-2 before:h-2 before:rounded-full before:bg-sky-300">
-        عملية المراجعة قد تستغرق بحد أقصى
-        <span class="text-white font-semibold">24 ساعة</span>.
-    </li>
-
-</ul>
-
-
-
-
-
-        </div>
-
-        {{-- Footer Note --}}
-        <p class="text-[11px] text-gray-400 leading-relaxed">
-            لو في أي مشكلة في التحويل أو البيانات، هنتواصل معاك قبل رفض الطلب.
-            <br>
-            متقلقش، طلبك محفوظ على السيستم ✨
-        </p>
-
-        {{-- Action --}}
         <a href="{{ route('shows.index') }}"
-           class="inline-flex items-center justify-center w-full sm:w-auto
-                  px-5 py-2.5 rounded-full
-                  bg-white/10 border border-white/20
-                  text-xs sm:text-sm text-gray-200
-                  hover:bg-white/20 hover:border-white/30 transition">
-            الرجوع لصفحة العروض
+           class="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-amber-200 px-5 py-3 text-sm font-bold text-stone-950 transition hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+            استكشف العروض
         </a>
-
-    </div>
-
-</section>
+    </section>
+</main>
 @endsection
