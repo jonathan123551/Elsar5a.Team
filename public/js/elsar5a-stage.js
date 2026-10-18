@@ -57,6 +57,11 @@
     body.dataset.introState = 'complete';
     body.classList.remove('cinema-intro-playing');
     body.classList.add('cinema-complete');
+    var posterEl = document.querySelector('.production-poster-wrap, .production-poster-missing');
+    if (posterEl) {
+      posterEl.classList.remove('is-flying');
+      posterEl.classList.add('is-settled');
+    }
     if (opening) opening.setAttribute('aria-hidden', 'true');
     if (track) track.removeAttribute('inert');
     if (production) production.removeAttribute('inert');
@@ -103,8 +108,7 @@
     gsap.set(logo, { autoAlpha: 0, y: 18, scale: .88 });
     gsap.set(openingLines, { autoAlpha: 0, y: 18, scale: .97, filter: 'blur(3px)' });
     if (production) {
-      gsap.set(production, { autoAlpha: 0, y: 20 });
-      gsap.set(production.querySelectorAll('.production-poster-wrap, .production-poster-missing'), { autoAlpha: 0, z: -1500, y: 22, scale: .28, rotationY: -64, rotationX: 13, transformPerspective: 1600 });
+      gsap.set(production, { autoAlpha: 0, y: 0 });
       gsap.set(productionInformation, { autoAlpha: 0, y: 18 });
       gsap.set(productionSteps, { autoAlpha: 0, y: 18 });
       if (productionSteps[0]) gsap.set(productionSteps[0], { scale: .96, filter: 'blur(8px)' });
@@ -164,13 +168,13 @@
       master
         .set(production, { autoAlpha: 1, y: 0 })
         .addLabel('POSTER_REVEAL')
-        .to(poster, { autoAlpha: 1, z: -760, y: 10, scale: .48, rotationY: 20, rotationX: -6, duration: .95, ease: 'power2.out' })
-        .to(poster, { z: -250, y: -2, scale: .78, rotationY: -13, rotationX: 4, duration: .82, ease: 'power2.inOut' })
-        .to(poster, { z: 28, y: 0, scale: 1, rotationY: 4, rotationX: -1.5, duration: 1.05, ease: 'power4.out' })
-        .to(poster, { z: 0, rotationY: 0, rotationX: 0, duration: .48, ease: 'power2.out' })
+        .call(function () {
+          if (poster) poster.classList.add('is-flying');
+        })
+        .to({}, { duration: 3.75 }) // 0.15s delay + 3.6s flight duration
         .addLabel('POSTER_SETTLED')
         .addLabel('PRODUCTION_INFO')
-        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .3, ease: 'power2.out' }, '+=.75')
+        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .35, ease: 'power2.out' }, '+=.3')
         .to(productionSteps[0], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .62, ease: 'power2.out' }, '+=.12')
         .to(productionSteps.slice(1), { autoAlpha: 1, y: 0, duration: .42, stagger: .22, ease: 'power2.out' }, '+=.12')
         .to(cinematicShowtimes, { autoAlpha: 1, y: 0, duration: .38, ease: 'power2.out' }, '+=.2')

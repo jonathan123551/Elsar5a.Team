@@ -403,14 +403,14 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   transform:translate3d(0,var(--production-y,38px),0) scale(var(--production-scale,.91));
   transform-origin:center 58%;
 }
-.production-poster-wrap { position:relative; width:min(100%,390px); justify-self:center; perspective:1000px; }
+.production-poster-wrap { position:relative; width:min(100%,390px); justify-self:center; perspective:1400px; }
 .production-poster-wrap,.production-poster-missing {
-  opacity:var(--poster-opacity,0);
-  transform:perspective(1100px) translate3d(0,var(--poster-y,28px),var(--poster-z,-440px)) rotateY(var(--poster-rotate-y,8deg)) rotateX(var(--poster-rotate-x,3deg)) scale(var(--poster-scale,.56));
-  transform-style:preserve-3d;
-  transform-origin:50% 55%;
-  backface-visibility:hidden;
-  will-change:transform,opacity;
+  opacity: 1;
+  transform: none;
+  transform-style: preserve-3d;
+  transform-origin: center;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 .production-information {
   opacity:var(--information-opacity,0);
@@ -1474,6 +1474,7 @@ body.cinema-intro-playing.cinema-website-stage #elsar5a-stage-world > header {
   padding: calc(72px + env(safe-area-inset-top)) 0 calc(36px + env(safe-area-inset-bottom));
   text-align: center;
   transform-origin: 50% 50%;
+  perspective: 1400px;
 }
 .opening-blackout {
   position: absolute;
@@ -1567,6 +1568,7 @@ body.cinema-complete .stage-production {
   padding: calc(72px + env(safe-area-inset-top)) 0 calc(36px + env(safe-area-inset-bottom));
   text-align: center;
   transform-origin: 50% 50%;
+  perspective: 1400px;
 }
 body.cinema-complete.cinema-static-fallback .camera-world { opacity: .24; transform: none; }
 body.cinema-complete.cinema-static-fallback .stage-intermission {
@@ -1598,6 +1600,7 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
   margin: 0 auto;
   perspective: 1400px;
   transform-style: preserve-3d;
+  transform-origin: center;
   will-change: transform, opacity;
 }
 .production-poster-frame {
@@ -1621,13 +1624,99 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
   margin-inline: auto;
   object-fit: contain;
   background: transparent;
-  border-radius: 14px;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 25%);
   filter: drop-shadow(0 20px 45px rgba(0,0,0,.75)) drop-shadow(0 0 20px rgba(214,164,91,.14)) saturate(1.06);
 }
 .production-poster-frame img:hover {
   transform: scale(1.015);
   filter: drop-shadow(0 26px 54px rgba(0,0,0,.82)) drop-shadow(0 0 30px rgba(214,164,91,.22)) saturate(1.08);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
+}
+
+@keyframes poster-flight {
+  0% {
+    opacity: 0;
+    transform:
+      scale(0.08)
+      rotateZ(-150deg)
+      rotateX(30deg)
+      rotateY(-360deg);
+  }
+
+  18% {
+    opacity: 1;
+    transform:
+      scale(0.22)
+      rotateZ(-110deg)
+      rotateX(22deg)
+      rotateY(-285deg);
+  }
+
+  48% {
+    opacity: 1;
+    transform:
+      scale(0.46)
+      rotateZ(-45deg)
+      rotateX(12deg)
+      rotateY(-140deg);
+  }
+
+  78% {
+    opacity: 1;
+    transform:
+      scale(0.82)
+      rotateZ(-8deg)
+      rotateX(4deg)
+      rotateY(-25deg);
+  }
+
+  92% {
+    opacity: 1;
+    transform:
+      scale(1.035)
+      rotateZ(2deg)
+      rotateX(0deg)
+      rotateY(5deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      scale(1)
+      rotateZ(0deg)
+      rotateX(0deg)
+      rotateY(0deg);
+  }
+}
+
+.production-poster-wrap.is-flying,
+.production-poster-missing.is-flying {
+  display: block;
+  transform-origin: center;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 25%);
+  animation: poster-flight 3.6s cubic-bezier(0.42, 0, 0.2, 1) 0.15s both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+body.cinema-complete .production-poster-wrap,
+body.cinema-complete .production-poster-missing,
+.production-poster-wrap.is-settled,
+.production-poster-missing.is-settled {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .production-poster-wrap,
+  .production-poster-wrap.is-flying,
+  .production-poster-missing,
+  .production-poster-missing.is-flying {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 .production-information {
@@ -1994,9 +2083,11 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
     padding-bottom: 28px;
     text-align: center;
     transform-origin: 50% 50%;
+    perspective: 1400px;
   }
   .production-poster-wrap {
     width: min(74vw, 295px);
+    transform-origin: center;
   }
   .production-poster-frame img {
     height: min(44svh, 420px);
