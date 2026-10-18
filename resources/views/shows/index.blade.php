@@ -16,7 +16,6 @@
         'و قد كان سيدنا و معلمنا و الهنا وهو على الارض يجول يصنع خيرا و نحن على خطاه.',
         '❤ نجول نصرخ فيزداد العقل وعيا ❤',
     ];
-    $openingMotto = 'نجول نصرخ فيزداد العقل وعياً';
     $resolvePoster = function (?string $path): ?string {
         if (!$path) return null;
         $trimmed = trim($path);
@@ -62,17 +61,18 @@
         <div class="opening-blackout" id="opening-blackout" aria-hidden="true"></div>
         <div class="opening-copy">
             <h1 id="team-title" class="sr-only">فريق الصرخة المسرحي</h1>
-            <div class="logo-reveal"><img src="{{ asset('images/sarkha-logo.png') }}" alt="شعار فريق الصرخة المسرحي" width="112" height="112" fetchpriority="high"></div>
-            <p class="opening-team-name" data-reveal="name">فريق الصرخة المسرحي</p>
+            <div class="logo-anchor"><div class="logo-reveal"><img src="{{ asset('images/sarkha-logo.png') }}" alt="شعار فريق الصرخة المسرحي" width="112" height="112" fetchpriority="high"></div></div>
             <div class="opening-identity" aria-label="من بيان الفريق">
-                <p class="opening-line" data-reveal="manifesto-1">فنحن لا نريد سوى حواسكم.</p>
-                <p class="opening-motto" data-reveal="manifesto-2">{{ $openingMotto }}</p>
+                <p class="opening-phrase opening-phrase--first" data-opening-phrase="1">لا نريد سوا حواسك</p>
+                <p class="opening-phrase" data-opening-phrase="2">نجول</p>
+                <p class="opening-phrase" data-opening-phrase="3">نصرخ</p>
+                <p class="opening-phrase opening-phrase--final" data-opening-phrase="4">فيزداد العقل وعيًا</p>
             </div>
         </div>
         <a class="opening-archive" href="{{ route('archive') }}">الأرشيف <span aria-hidden="true">↗</span></a>
     </section>
 
-    <section class="camera-track" id="camera-journey" aria-label="العرض القادم" inert>
+    <section class="camera-track {{ $featuredShow && $featuredTime ? 'has-featured-production' : 'has-no-featured-production' }}" id="camera-journey" aria-label="العرض القادم" inert>
         <div class="camera-viewport">
             <div class="camera-world" id="camera-world" aria-hidden="true">
                 <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" decoding="async">
