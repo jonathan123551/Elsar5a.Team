@@ -20,7 +20,7 @@
 
 <style>
 /* ============================================================
-   ELSAR5A THEATRE BOX OFFICE — PRECISE REFINED EXPERIENCE
+   ELSAR5A THEATRE BOX OFFICE — APPLE-INSPIRED GLASS & TYPOGRAPHY
    ============================================================ */
 :root {
     --th-bg: #07090e;
@@ -34,6 +34,7 @@
     --th-text-main: #f9fafb;
     --th-text-muted: #9ca3af;
     --th-text-dim: #6b7280;
+    --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Arabic", system-ui, -apple-system-subpixel, sans-serif;
 }
 
 html {
@@ -46,7 +47,9 @@ html {
     margin-inline: auto;
     padding: 0 1rem 3.5rem;
     color: var(--th-text-main);
-    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--apple-font);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 @media (min-width: 640px) {
@@ -55,90 +58,107 @@ html {
     }
 }
 
-/* 1. FRAMELESS STICKY STEP NAVIGATION — NO BOXES, PURE ALEXANDRIA TYPOGRAPHY */
+/* 1. APPLE-INSPIRED TRANSLUCENT GLASS FLOATING STEP NAVIGATION */
 .bo-sticky-nav-wrap {
     position: sticky;
     top: 50px;
     z-index: 30;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 0.65rem 0.5rem;
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0.5rem;
     margin-bottom: 1.25rem;
-    transition: background 0.25s ease, backdrop-filter 0.25s ease;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.bo-sticky-nav-wrap.is-scrolled {
-    background: rgba(7, 9, 14, 0.82);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-}
-
-.bo-steps-bar {
+.bo-glass-pill {
+    pointer-events: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
     max-width: 440px;
-    margin-inline: auto;
-    padding-inline: 0.25rem;
-    font-family: 'Alexandria', 'Readex Pro', sans-serif;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(18, 22, 34, 0.65);
+    backdrop-filter: blur(20px) saturate(190%);
+    -webkit-backdrop-filter: blur(20px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.45),
+        0 4px 12px rgba(0, 0, 0, 0.25),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.18),
+        inset 0 -1px 1px 0 rgba(0, 0, 0, 0.25);
+    font-family: var(--apple-font);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bo-sticky-nav-wrap.is-scrolled .bo-glass-pill {
+    background: rgba(14, 18, 28, 0.82);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.6),
+        0 6px 16px rgba(0, 0, 0, 0.35),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .bo-step-item {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
     cursor: pointer;
     user-select: none;
-    transition: all 0.22s ease;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0.25rem 0.6rem;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
 }
 
 .bo-step-num {
-    font-family: 'Alexandria', sans-serif;
-    font-size: 1.35rem;
-    font-weight: 800;
-    line-height: 1;
-    margin-bottom: 0.25rem;
+    font-family: var(--apple-font);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 0.15rem;
+    font-variant-numeric: tabular-nums;
     transition: all 0.22s ease;
 }
 
 .bo-step-name {
-    font-family: 'Alexandria', 'Readex Pro', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 700;
+    font-family: var(--apple-font);
+    font-size: 0.78rem;
+    font-weight: 500;
     line-height: 1.2;
     transition: all 0.22s ease;
+    letter-spacing: -0.01em;
 }
 
 /* INACTIVE STEP: Dimmed / Muted */
 .bo-step-item.is-inactive {
-    opacity: 0.35;
-    color: #6b7280;
+    opacity: 0.4;
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .bo-step-item.is-inactive .bo-step-num {
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .bo-step-item.is-inactive .bo-step-name {
-    color: #9ca3af;
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .bo-step-item.is-inactive:hover {
-    opacity: 0.65;
+    opacity: 0.75;
 }
 
-/* COMPLETED STEP: Green */
+/* COMPLETED STEP: Apple Subtle Emerald Green */
 .bo-step-item.is-completed {
-    opacity: 0.9;
-    color: #10b981;
+    opacity: 0.95;
+    color: #34d399;
 }
 
 .bo-step-item.is-completed .bo-step-num {
@@ -148,27 +168,27 @@ html {
 
 .bo-step-item.is-completed .bo-step-name {
     color: #34d399;
-    font-weight: 700;
+    font-weight: 600;
 }
 
-/* CURRENT ACTIVE STEP: Yellow ("YOU ARE HERE") */
+/* CURRENT ACTIVE STEP: Apple Warm Amber/Yellow with soft glass bloom */
 .bo-step-item.is-active {
     opacity: 1;
-    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.14);
+    box-shadow: 0 0 16px -2px rgba(245, 158, 11, 0.35),
+        inset 0 1px 0 rgba(253, 230, 138, 0.25);
 }
 
 .bo-step-item.is-active .bo-step-num {
     color: #fbbf24;
-    font-size: 1.6rem;
-    font-weight: 900;
-    text-shadow: 0 0 16px rgba(245, 158, 11, 0.7), 0 0 4px #fbbf24;
-    transform: translateY(-1px);
+    font-size: 1.25rem;
+    font-weight: 800;
+    text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
 }
 
 .bo-step-item.is-active .bo-step-name {
-    color: #fef08a;
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    color: #fde68a;
+    font-weight: 700;
 }
 
 /* 2. SECTION CARDS — MINIMAL HEADERS, NO NUMBER BOXES */
@@ -208,16 +228,17 @@ html {
 }
 
 .bo-section-title {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.05rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
     margin: 0;
+    letter-spacing: -0.01em;
 }
 
 .bo-status-pill {
     font-size: 0.72rem;
-    font-weight: 700;
+    font-weight: 600;
     padding: 0.2rem 0.55rem;
     border-radius: 9999px;
     display: inline-flex;
@@ -283,7 +304,7 @@ html {
 
 .bo-showtime-label {
     font-size: 0.72rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--th-text-dim);
     display: flex;
     align-items: center;
@@ -295,18 +316,20 @@ html {
 }
 
 .bo-showtime-time {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.15rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
     margin-top: 0.25rem;
     display: block;
+    font-variant-numeric: tabular-nums;
 }
 
 .bo-showtime-date {
     font-size: 0.75rem;
     color: var(--th-text-muted);
     margin-top: 0.15rem;
+    font-variant-numeric: tabular-nums;
 }
 
 /* 4. TACTILE TICKET COUNTER — STRICT PLUS ON RIGHT, MINUS ON LEFT */
@@ -339,7 +362,7 @@ html {
     background: rgba(255, 255, 255, 0.06);
     color: #ffffff;
     font-size: 1.6rem;
-    font-weight: 800;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -366,9 +389,9 @@ html {
 }
 
 .bo-counter-number {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 2.35rem;
-    font-weight: 900;
+    font-weight: 800;
     color: #ffffff;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -383,7 +406,7 @@ html {
 
 .bo-counter-ledger {
     font-size: 0.95rem;
-    font-weight: 700;
+    font-weight: 600;
     color: #fde68a;
     display: flex;
     align-items: center;
@@ -391,10 +414,11 @@ html {
 }
 
 .bo-counter-price-val {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.2rem;
-    font-weight: 900;
+    font-weight: 800;
     color: #ffffff;
+    font-variant-numeric: tabular-nums;
 }
 
 /* 5. PAYMENT SECTION */
@@ -433,18 +457,19 @@ html {
 }
 
 .bo-pay-name {
-    font-size: 0.72rem;
+    font-size: 0.76rem;
     color: var(--th-text-muted);
-    font-weight: 700;
+    font-weight: 600;
     display: block;
 }
 
 .bo-pay-num {
     font-size: 1rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
     letter-spacing: 0.02em;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--apple-font);
+    font-variant-numeric: tabular-nums;
 }
 
 .bo-copy-btn {
@@ -452,7 +477,7 @@ html {
     padding: 0.4rem 0.85rem;
     border-radius: 0.65rem;
     font-size: 0.78rem;
-    font-weight: 800;
+    font-weight: 700;
     background: rgba(245, 158, 11, 0.12);
     border: 1px solid rgba(245, 158, 11, 0.4);
     color: #fbbf24;
@@ -485,10 +510,11 @@ html {
 }
 
 .bo-required-amount-val {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.15rem;
-    font-weight: 900;
+    font-weight: 800;
     color: #ffffff;
+    font-variant-numeric: tabular-nums;
 }
 
 /* 6. RECEIPT DROPZONE & COMPLETED STATE */
@@ -528,7 +554,7 @@ html {
 
 .bo-drop-title {
     font-size: 0.9rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
 }
 
@@ -562,7 +588,7 @@ html {
 
 .bo-preview-status {
     font-size: 0.85rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #34d399;
     display: flex;
     align-items: center;
@@ -580,7 +606,7 @@ html {
 
 .bo-preview-change-btn {
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 600;
     color: #fbbf24;
     text-decoration: underline;
     margin-top: 0.2rem;
@@ -595,7 +621,7 @@ html {
 .bo-field-label {
     display: block;
     font-size: 0.78rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--th-text-muted);
     margin-bottom: 0.35rem;
 }
@@ -608,6 +634,7 @@ html {
     padding: 0.75rem 0.9rem;
     font-size: 0.95rem;
     color: #ffffff;
+    font-family: var(--apple-font);
     transition: all 0.2s ease;
     box-sizing: border-box;
     -webkit-appearance: none;
@@ -638,8 +665,8 @@ html {
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.65rem;
-    font-size: 0.75rem;
-    font-weight: 800;
+    font-size: 0.8rem;
+    font-weight: 700;
     color: #fbbf24;
 }
 
@@ -657,7 +684,8 @@ html {
     border: 1px dashed rgba(255, 255, 255, 0.12);
     color: #6b7280;
     font-size: 0.9rem;
-    font-weight: 700;
+    font-weight: 600;
+    font-family: var(--apple-font);
     cursor: pointer;
     transition: all 0.25s ease;
     opacity: 0.7;
@@ -668,7 +696,7 @@ html {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.08));
     border: 1.5px solid rgba(245, 158, 11, 0.65);
     color: #fbbf24;
-    font-weight: 800;
+    font-weight: 700;
     box-shadow: 0 4px 20px -3px rgba(245, 158, 11, 0.35);
     opacity: 1;
 }
@@ -691,8 +719,9 @@ html {
     width: 100%;
     padding: 1.05rem 1.5rem;
     border-radius: 1.15rem;
-    font-size: 1.1rem;
-    font-weight: 900;
+    font-size: 1.05rem;
+    font-weight: 800;
+    font-family: var(--apple-font);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -777,8 +806,9 @@ html {
     transform: translateX(-50%) translateY(20px);
     background: #10b981;
     color: #ffffff;
-    font-weight: 800;
+    font-weight: 700;
     font-size: 0.85rem;
+    font-family: var(--apple-font);
     padding: 0.6rem 1.25rem;
     border-radius: 9999px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
@@ -798,9 +828,9 @@ html {
 
 <div class="boxoffice-container">
 
-    {{-- 1. FRAMELESS STICKY STEP NAVIGATION (NO BOXES, NUMBERS ABOVE LABELS, 1-4) --}}
+    {{-- 1. APPLE-INSPIRED TRANSLUCENT GLASS FLOATING STEP NAVIGATION --}}
     <div class="bo-sticky-nav-wrap" id="stickyNavWrap">
-        <nav class="bo-steps-bar" aria-label="مراحل الحجز">
+        <nav class="bo-glass-pill" aria-label="مراحل الحجز">
             <div class="bo-step-item is-active" id="stepNav-1" onclick="navigateToStep(1)">
                 <span class="bo-step-num">1</span>
                 <span class="bo-step-name">التذاكر</span>
@@ -946,7 +976,7 @@ html {
                 @if ($transferWallet && !preg_match('/^0+$/', $transferWallet))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
-                            <span class="bo-pay-name">📱 فودافون كاش / محفظة</span>
+                            <span class="bo-pay-name">محفظة</span>
                             <span class="bo-pay-num" dir="ltr">{{ $transferWallet }}</span>
                         </div>
                         <button type="button"
@@ -960,7 +990,7 @@ html {
                 @if ($transferInsta && !preg_match('/^0+$/', $transferInsta))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
-                            <span class="bo-pay-name">⚡ حساب InstaPay</span>
+                            <span class="bo-pay-name">حساب InstaPay</span>
                             <span class="bo-pay-num" dir="ltr">{{ $transferInsta }}</span>
                         </div>
                         <button type="button"
@@ -1233,7 +1263,9 @@ html {
         }
     } catch (e) {}
 
-    // --- Render Attendee Fields (Label and Placeholder: strictly "الاسم") ---
+    // --- Render Ticket Attendee Fields ---
+    // Every ticket is clearly numbered: "التذكرة 1", "التذكرة 2", "التذكرة 3", etc. (NO "مرافق")
+    // WhatsApp field label explicitly states purpose: "رقم الواتساب لاستلام التذكرة *"
     function renderAttendeeFields() {
         attendeesContainer.innerHTML = '';
 
@@ -1245,43 +1277,23 @@ html {
             var card = document.createElement('div');
             card.className = 'bo-attendee-card';
 
-            if (i === 1) {
-                card.innerHTML =
-                    '<div class="bo-attendee-header">' +
-                        '<span>👤</span>' +
-                        '<span>التذكرة 1 — صاحب الحجز</span>' +
+            card.innerHTML =
+                '<div class="bo-attendee-header">' +
+                    '<span>🎟️</span>' +
+                    '<span>التذكرة ' + i + '</span>' +
+                '</div>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
+                    '<div class="bo-field-group">' +
+                        '<label class="bo-field-label">الاسم *</label>' +
+                        '<input type="text" name="names[]" value="' + valName + '"' +
+                               ' class="bo-input" placeholder="الاسم" required autocomplete="name">' +
                     '</div>' +
-                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
-                        '<div class="bo-field-group">' +
-                            '<label class="bo-field-label">الاسم *</label>' +
-                            '<input type="text" name="names[]" value="' + valName + '"' +
-                                   ' class="bo-input" placeholder="الاسم" required autocomplete="name">' +
-                        '</div>' +
-                        '<div class="bo-field-group">' +
-                            '<label class="bo-field-label">رقم الواتساب *</label>' +
-                            '<input type="tel" name="phones[]" value="' + valPhone + '"' +
-                                   ' class="bo-input" placeholder="01xxxxxxxxx" required autocomplete="tel" dir="ltr">' +
-                        '</div>' +
-                    '</div>';
-            } else {
-                card.innerHTML =
-                    '<div class="bo-attendee-header text-amber-300/90">' +
-                        '<span>🎟️</span>' +
-                        '<span>التذكرة ' + i + ' — بيانات المرافق</span>' +
+                    '<div class="bo-field-group">' +
+                        '<label class="bo-field-label">رقم الواتساب لاستلام التذكرة *</label>' +
+                        '<input type="tel" name="phones[]" value="' + valPhone + '"' +
+                               ' class="bo-input" placeholder="01xxxxxxxxx" required ' + (i === 1 ? 'autocomplete="tel"' : '') + ' dir="ltr">' +
                     '</div>' +
-                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">' +
-                        '<div class="bo-field-group mb-0">' +
-                            '<label class="bo-field-label">اسم المرافق ' + i + ' *</label>' +
-                            '<input type="text" name="names[]" value="' + valName + '"' +
-                                   ' class="bo-input" placeholder="الاسم" required>' +
-                        '</div>' +
-                        '<div class="bo-field-group mb-0">' +
-                            '<label class="bo-field-label">رقم واتساب المرافق ' + i + ' *</label>' +
-                            '<input type="tel" name="phones[]" value="' + valPhone + '"' +
-                                   ' class="bo-input" placeholder="01xxxxxxxxx" required dir="ltr">' +
-                        '</div>' +
-                    '</div>';
-            }
+                '</div>';
 
             attendeesContainer.appendChild(card);
         }
@@ -1397,7 +1409,7 @@ html {
     // Rule:
     // ACTIVE / CURRENT STEP  -> YELLOW (#fbbf24) "YOU ARE HERE"
     // COMPLETED STEP         -> GREEN  (#10b981)
-    // INACTIVE / NOT REACHED -> DIMMED (#6b7280, 0.35 opacity)
+    // INACTIVE / NOT REACHED -> DIMMED (rgba(255,255,255,0.45))
     function updateStepNavDisplay() {
         var navItems = [
             { el: stepNav1, isDone: validateStep1() },
@@ -1592,7 +1604,7 @@ html {
     window.addEventListener('scroll', function() {
         var scrollY = window.scrollY || window.pageYOffset;
 
-        // Sticky frameless blur activation
+        // Sticky glass elevation activation
         if (stickyNavWrap) {
             if (scrollY > 30) {
                 stickyNavWrap.classList.add('is-scrolled');
