@@ -464,14 +464,41 @@ html {
     min-width: 0;
 }
 
+.bo-pay-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.2rem;
+}
+
+.bo-pay-logo {
+    height: 15px;
+    width: auto;
+    object-fit: contain;
+    display: inline-block;
+    vertical-align: middle;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+    opacity: 0.95;
+    flex-shrink: 0;
+}
+
+.bo-pay-logo--wallets {
+    max-width: 56px;
+}
+
+.bo-pay-logo--instapay {
+    max-width: 52px;
+}
+
 .bo-pay-name {
     font-size: 0.76rem;
     color: var(--th-text-muted);
     font-weight: 600;
-    display: block;
+    display: inline-block;
 }
 
 .bo-pay-num {
+    display: block;
     font-size: 1rem;
     font-weight: 700;
     color: #ffffff;
@@ -984,7 +1011,14 @@ html {
                 @if ($transferWallet && !preg_match('/^0+$/', $transferWallet))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
-                            <span class="bo-pay-name">محفظة</span>
+                            <div class="bo-pay-header">
+                                <img src="{{ asset('images/payments/wallets.png') }}"
+                                     alt=""
+                                     class="bo-pay-logo bo-pay-logo--wallets"
+                                     aria-hidden="true"
+                                     loading="lazy">
+                                <span class="bo-pay-name">محفظة</span>
+                            </div>
                             <span class="bo-pay-num" dir="ltr">{{ $transferWallet }}</span>
                         </div>
                         <button type="button"
@@ -998,7 +1032,14 @@ html {
                 @if ($transferInsta && !preg_match('/^0+$/', $transferInsta))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
-                            <span class="bo-pay-name">حساب InstaPay</span>
+                            <div class="bo-pay-header">
+                                <img src="{{ asset('images/payments/instapay.png') }}"
+                                     alt=""
+                                     class="bo-pay-logo bo-pay-logo--instapay"
+                                     aria-hidden="true"
+                                     loading="lazy">
+                                <span class="bo-pay-name">حساب InstaPay</span>
+                            </div>
                             <span class="bo-pay-num" dir="ltr">{{ $transferInsta }}</span>
                         </div>
                         <button type="button"
@@ -1018,8 +1059,7 @@ html {
                     {{-- Empty State --}}
                     <div id="dropzoneEmpty">
                         <span class="bo-drop-icon" aria-hidden="true">📎</span>
-                        <p class="bo-drop-title">اضغط لرفع لقطة شاشة التحويل (إيصال الدفع)</p>
-                        <p class="bo-drop-subtitle">حجم أقل من 20MB • لقطات iPhone وجميع الأجهزة مدعومة</p>
+                        <p class="bo-drop-title">اضغط لرفع صورة إيصال التحويل</p>
                     </div>
 
                     {{-- Preview State --}}
