@@ -246,7 +246,7 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   filter:drop-shadow(0 9px 16px rgba(0,0,0,.8));
   transition:opacity 1.05s ease,transform 1.45s var(--cinema-ease);
 }
-.logo-reveal img { position:relative;z-index:1;width:100%;height:100%;object-fit:contain; }
+.logo-reveal img { position:relative;z-index:1;width:100%;height:100%;object-fit:contain;filter:brightness(0) invert(1); }
 .logo-reveal::before { content:"";position:absolute;inset:-22%;border-radius:50%;background:radial-gradient(ellipse,rgba(255,246,229,.76),rgba(247,185,96,.42) 34%,rgba(247,185,96,.12) 60%,transparent 78%);filter:blur(7px); }
 .opening-identity p {
   opacity:0;
@@ -318,7 +318,7 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
 }
 .camera-world {
   position:absolute;
-  z-index:-5;
+  z-index:0;
   inset:-3%;
   overflow:hidden;
   transform:translate3d(0,var(--world-y,0px),var(--world-z,-120px)) scale(var(--world-scale,1.12));
@@ -326,21 +326,21 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
   backface-visibility:hidden;
   will-change:transform;
 }
-.camera-world img { width:100%;height:100%;object-fit:cover;object-position:50% 48%; }
+.camera-world img { width:100%;height:100%;object-fit:cover;object-position:50% 57%; }
 .camera-grade {
   position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(8,5,4,.42),rgba(8,5,4,.02) 34%,rgba(8,5,4,.65) 100%),linear-gradient(90deg,rgba(0,0,0,.35),transparent 35%,transparent 65%,rgba(0,0,0,.35));
+  background:linear-gradient(180deg,rgba(8,5,4,.24),rgba(8,5,4,.02) 34%,rgba(8,5,4,.42) 100%),linear-gradient(90deg,rgba(0,0,0,.18),transparent 35%,transparent 65%,rgba(0,0,0,.18));
 }
 .camera-viewport::before {
-  content:"";position:absolute;z-index:-1;inset:0;
+  content:"";position:absolute;z-index:4;inset:0;
   background:radial-gradient(ellipse at 50% 48%,transparent 4%,rgba(0,0,0,.12) 60%,rgba(0,0,0,.58) 100%);
   pointer-events:none;
 }
 .camera-plane { position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d; }
 .camera-auditorium {
-  z-index:-3;inset:0;
+  z-index:1;inset:0;
   transform:translate3d(0,var(--auditorium-y,0px),-72px) scale(var(--auditorium-scale,1.04));
-  background:linear-gradient(180deg,transparent 37%,rgba(5,3,3,.15) 53%,rgba(4,2,2,.78) 100%);
+  background:linear-gradient(180deg,transparent 37%,rgba(5,3,3,.08) 53%,rgba(4,2,2,.48) 100%);
 }
 .camera-auditorium::before {
   content:"";position:absolute;inset:auto -12% -6%;height:39%;
@@ -349,31 +349,31 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
     repeating-linear-gradient(180deg,rgba(99,18,22,.22) 0 7px,rgba(16,7,7,.38) 8px 18px,rgba(4,3,3,.52) 19px 28px);
   clip-path:polygon(0 12%,100% 12%,100% 100%,0 100%);
   transform:perspective(420px) rotateX(-13deg);transform-origin:50% 100%;
-  opacity:.4;
+  opacity:.32;
   -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 33%);
   mask-image:linear-gradient(180deg,transparent 0%,#000 33%);
 }
 .camera-aisle {
-  z-index:-2;inset:42% 0 -12%;
+  z-index:2;inset:42% 0 -12%;
   transform:translate3d(0,var(--aisle-y,0px),-34px) scale(var(--aisle-scale,1.02));
   clip-path:polygon(48% 0,52% 0,69% 100%,31% 100%);
   background:linear-gradient(180deg,rgba(239,173,96,.015),rgba(165,91,45,.055) 72%,rgba(39,18,13,.16));
   filter:blur(1px) drop-shadow(0 -4px 18px rgba(226,146,75,.07));
 }
 .camera-spotlight {
-  z-index:-1;inset:-5% -20% 0;
+  z-index:3;inset:-5% -20% 0;
   opacity:var(--spotlight-opacity,.2);
   transform:translate3d(0,var(--spotlight-y,0px),-12px) scale(var(--spotlight-scale,1));
   background:radial-gradient(ellipse 28% 60% at 50% 44%,rgba(255,221,166,.2),rgba(214,148,84,.09) 40%,transparent 76%);
   transition:opacity .12s linear;
 }
 .camera-proscenium {
-  z-index:2;inset:0;
+  z-index:5;inset:0;
   opacity:var(--proscenium-opacity,1);
   transform:translate3d(0,var(--proscenium-y,0px),18px) scale(var(--proscenium-scale,1));
   background:
-    linear-gradient(90deg,rgba(42,5,9,.88),rgba(87,12,19,.36) 5%,transparent 16%,transparent 84%,rgba(87,12,19,.36) 95%,rgba(42,5,9,.88)),
-    linear-gradient(180deg,rgba(31,4,7,.75),transparent 10%,transparent 88%,rgba(9,4,4,.36));
+    linear-gradient(90deg,rgba(42,5,9,.68),rgba(87,12,19,.26) 5%,transparent 16%,transparent 84%,rgba(87,12,19,.26) 95%,rgba(42,5,9,.68)),
+    linear-gradient(180deg,rgba(31,4,7,.5),transparent 10%,transparent 88%,rgba(9,4,4,.2));
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 5%,transparent 18%,transparent 82%,#000 95%,#000 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 5%,transparent 18%,transparent 82%,#000 95%,#000 100%);
 }
@@ -382,7 +382,7 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
 .camera-proscenium::after { right:0;border-left:1px solid rgba(223,157,88,.34);box-shadow:inset 18px 0 28px rgba(0,0,0,.5); }
 .stage-production,.stage-intermission {
   position:absolute;
-  z-index:3;
+  z-index:6;
   inset:0;
   width:min(1120px,100%);
   margin:auto;
@@ -1094,7 +1094,7 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
   body.homepage #elsar5a-stage-world > header nav a:first-child { display:none; }
   .cinema-opening { min-height:100vh;min-height:100svh; }
   .cinema-plate img { object-position:50% 47%; }
-  .opening-copy { position:absolute;left:50%;top:50%;width:min(91%,580px);margin:0;transform:translate(-50%,-50%); }
+  .opening-copy { position:relative;left:auto;top:auto;width:min(91%,580px);margin:0 auto;transform:none; }
   .opening-copy .logo-reveal { margin-inline:auto; }
   .opening-team-name,.opening-identity,.opening-identity p { margin-inline:auto;text-align:center; }
 body[data-intro-state="push"] .opening-copy,
@@ -1458,3 +1458,216 @@ body.modal-open {
     width: 100%;
   }
 }
+
+/*
+ * Homepage overture: a single automatic shot from the physical stage into
+ * the existing Elsar5a world. GSAP only changes transform and opacity here;
+ * the static CSS remains a complete no-JS and reduced-motion fallback.
+ */
+body.cinema-intro-playing {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body.cinema-intro-playing .cinema-home { touch-action: none; }
+body.cinema-intro-playing:not(.cinema-website-stage) #elsar5a-stage-world > header {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+body.cinema-intro-playing.cinema-website-stage #elsar5a-stage-world > header {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity .42s ease, visibility .42s ease;
+}
+.cinema-opening { z-index: 55; }
+.opening-blackout {
+  position: absolute;
+  z-index: 4;
+  inset: -8%;
+  pointer-events: none;
+  opacity: 0;
+  background: #000;
+  transform: scale(.82);
+  transform-origin: 50% 48%;
+  will-change: transform, opacity;
+}
+.camera-track {
+  position: fixed;
+  z-index: 53;
+  inset: 0;
+  height: 100svh;
+  min-height: 100svh;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+}
+.camera-track .camera-viewport { background: transparent; }
+.camera-viewport { height: 100svh; min-height: 100svh; }
+.website-world {
+  position: absolute;
+  z-index: -6;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 72% 60% at 50% 0%, rgba(101,16,25,.32), transparent 75%),
+    linear-gradient(180deg, var(--cinema-ink) 0%, var(--cinema-void) 70%);
+  will-change: opacity;
+}
+body.cinema-website-stage .camera-track {
+  visibility: visible;
+  pointer-events: auto;
+}
+body.cinema-website-stage .camera-world { pointer-events: none; }
+body.cinema-complete .cinema-opening { display: none; }
+body.cinema-complete .camera-track {
+  position: relative;
+  z-index: 1;
+  inset: auto;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+body.cinema-complete .camera-viewport {
+  position: relative;
+  top: auto;
+  height: auto;
+  min-height: 100svh;
+  overflow: visible;
+}
+body.cinema-complete .stage-production {
+  position: relative;
+  inset: auto;
+  min-height: 100svh;
+  margin: 0 auto;
+  width: min(680px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(12px, 2vh, 22px);
+  padding: calc(66px + env(safe-area-inset-top)) 0 calc(26px + env(safe-area-inset-bottom));
+  text-align: center;
+  transform-origin: 50% 50%;
+}
+body.cinema-complete.cinema-static-fallback .camera-world { opacity: .24; transform: none; }
+body.cinema-complete.cinema-static-fallback .stage-intermission {
+  position: relative;
+  inset: auto;
+  width: min(680px, calc(100% - 32px));
+  min-height: 100svh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transform: none;
+  padding: calc(66px + env(safe-area-inset-top)) 0 calc(26px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+body.cinema-complete.cinema-static-fallback .production-poster-wrap,
+body.cinema-complete.cinema-static-fallback .production-poster-missing,
+body.cinema-complete.cinema-static-fallback .production-information,
+body.cinema-complete.cinema-static-fallback .cinematic-showtimes,
+body.cinema-complete.cinema-static-fallback [data-production-step] {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+.production-poster-wrap {
+  width: clamp(190px, 22vw, 330px);
+  margin: 0 auto;
+  perspective: 1400px;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+.production-poster-frame {
+  transform: none;
+  transform-style: preserve-3d;
+  background: #090606;
+}
+.production-information {
+  align-self: auto;
+  max-width: 590px;
+  text-align: center;
+  will-change: transform, opacity;
+}
+.production-description { margin-inline: auto; }
+.production-meta { justify-content: center; }
+.cinematic-showtimes {
+  order: 3;
+  width: min(100%, 580px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.cinematic-showtime-card {
+  min-height: 114px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 13px 14px;
+  color: #f7ead5;
+  text-decoration: none;
+  text-align: center;
+  background: rgba(31, 15, 15, .84);
+  border: 1px solid rgba(214,164,91,.38);
+  box-shadow: inset 0 1px 0 rgba(255,238,205,.08), 0 12px 28px rgba(0,0,0,.24);
+  transition: transform .18s cubic-bezier(.16,1,.3,1), background-color .18s ease, border-color .18s ease;
+}
+.cinematic-showtime-card:hover,
+.cinematic-showtime-card:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(78, 25, 29, .9);
+  border-color: rgba(245,204,132,.72);
+}
+.cinematic-showtime-date { color: rgba(247,233,210,.72); font-size: 11px; }
+.cinematic-showtime-time { color: #fff7e9; font-weight: 800; font-size: 17px; }
+.cinematic-showtime-state { color: #dbcaa8; font-size: 11px; }
+.cinematic-showtime-state.is-low { color: #f2bf6e; }
+.cinematic-showtime-state.is-critical { color: #f08a79; }
+.cinematic-showtime-action { margin-top: 4px; color: #edc27d; font-size: 12px; font-weight: 800; }
+
+@media (max-width: 760px) {
+  .stage-production { width: min(100% - 28px, 480px); gap: 9px; padding-top: calc(58px + env(safe-area-inset-top)); }
+  .production-poster-wrap { width: min(48vw, 225px); }
+  .cinematic-showtimes { gap: 8px; }
+  .cinematic-showtime-card { min-height: 104px; padding: 10px 7px; }
+  .cinematic-showtime-time { font-size: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.cinema-intro-playing { overflow: auto; }
+  .opening-blackout { display: none; }
+  .camera-track,
+  body.cinema-complete .camera-track {
+    position: relative;
+    z-index: 1;
+    inset: auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  .camera-viewport,
+  body.cinema-complete .camera-viewport { position: relative; height: auto; min-height: 100svh; }
+  .website-world { opacity: 1; }
+  .camera-world { opacity: .24; }
+  .stage-production { position: relative; min-height: 100svh; inset: auto; opacity: 1; transform: none; }
+  .production-poster-wrap,
+  .production-poster-missing,
+  .production-information,
+  .cinematic-showtimes,
+  [data-production-step] { opacity: 1; transform: none; }
+}
+.no-js .camera-track { position: relative; z-index: 1; inset: auto; height: auto; min-height: 0; overflow: visible; opacity: 1; visibility: visible; pointer-events: auto; }
+.no-js .website-world { opacity: 1; }

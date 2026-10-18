@@ -1,6 +1,6 @@
 /*
- * Elsar5a automatic theatre overture and scroll-driven production reveal.
- * Scroll work is passive and paints at most once per animation frame.
+ * Elsar5a automatic theatre overture.
+ * One GSAP playhead owns the full transition; scroll never advances it.
  */
 (function () {
   'use strict';
@@ -11,192 +11,177 @@
   var motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   var reducedMotion = !!(motionQuery && motionQuery.matches);
   var curtain = document.getElementById('cinema-curtain');
+  var opening = document.getElementById('opening');
   var track = document.getElementById('camera-journey');
+  var plate = opening ? opening.querySelector('.cinema-plate') : null;
+  var openingScrim = opening ? opening.querySelector('.opening-scrim') : null;
+  var blackout = document.getElementById('opening-blackout');
+  var openingCopy = opening ? opening.querySelector('.opening-copy') : null;
+  var logo = opening ? opening.querySelector('.logo-reveal') : null;
+  var teamName = opening ? opening.querySelector('.opening-team-name') : null;
+  var openingLines = opening ? Array.prototype.slice.call(opening.querySelectorAll('.opening-identity p')) : [];
   var world = document.getElementById('camera-world');
+  var websiteWorld = document.getElementById('website-world');
   var auditorium = document.getElementById('camera-auditorium');
   var aisle = document.getElementById('camera-aisle');
   var spotlight = document.getElementById('camera-spotlight');
   var proscenium = document.getElementById('camera-proscenium');
+  var siteHeader = document.querySelector('#elsar5a-stage-world > header');
   var production = document.getElementById('stage-production');
+  var productionInformation = production ? production.querySelector('.production-information') : null;
   var intermission = document.getElementById('stage-intermission');
-  var productionSteps = production ? Array.prototype.slice.call(production.querySelectorAll('[data-production-step]')) : [];
-  var timers = [];
+  var productionSteps = production ? Array.prototype.slice.call(production.querySelectorAll('[data-production-step]')).filter(function (step) {
+    return step.getAttribute('data-production-step') !== 'showtimes';
+  }) : [];
+  var showtimeCards = production ? Array.prototype.slice.call(production.querySelectorAll('[data-showtime-card]')) : [];
+  var cinematicShowtimes = production ? production.querySelector('.cinematic-showtimes') : null;
+  var master = null;
   var done = false;
-  var pendingFrame = false;
-  var lastProgress = -1;
+  var blockedKeys = { ArrowDown: true, ArrowUp: true, PageDown: true, PageUp: true, Home: true, End: true, Space: true };
 
-  function later(delay, callback) {
-    timers.push(window.setTimeout(callback, delay));
+  function lockScroll(event) { event.preventDefault(); }
+  function lockKeys(event) { if (blockedKeys[event.code] || blockedKeys[event.key]) event.preventDefault(); }
+  function lockIntroScroll() {
+    window.addEventListener('wheel', lockScroll, { passive: false });
+    window.addEventListener('touchmove', lockScroll, { passive: false });
+    window.addEventListener('keydown', lockKeys);
   }
-
-  function clearTimers() {
-    timers.forEach(function (timer) { window.clearTimeout(timer); });
-    timers = [];
+  function unlockIntroScroll() {
+    window.removeEventListener('wheel', lockScroll);
+    window.removeEventListener('touchmove', lockScroll);
+    window.removeEventListener('keydown', lockKeys);
   }
-
-  function releaseReveal() {
-    [production, intermission].forEach(function (panel) {
-      if (panel) panel.removeAttribute('inert');
-    });
-  }
-
-  function finish() {
+  function releaseExperience() {
     if (done) return;
     done = true;
-    clearTimers();
     body.dataset.introState = 'complete';
     body.classList.remove('cinema-intro-playing');
-    if (curtain) curtain.dataset.state = 'open';
-    requestCameraUpdate();
+    body.classList.add('cinema-complete');
+    if (opening) opening.setAttribute('aria-hidden', 'true');
+    if (track) track.removeAttribute('inert');
+    if (production) production.removeAttribute('inert');
+    if (intermission) intermission.removeAttribute('inert');
+    if (siteHeader) siteHeader.removeAttribute('inert');
+    unlockIntroScroll();
   }
-
-  function startOverture() {
-    if (window.history && 'scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
-    window.scrollTo(0, 0);
-
-    if (!curtain || reducedMotion) {
-      finish();
-      releaseReveal();
+  function showReducedMotionContent() {
+    body.dataset.introState = 'complete';
+    body.classList.remove('cinema-intro-playing');
+    body.classList.add('cinema-complete', 'cinema-static-fallback');
+    if (curtain) curtain.dataset.state = 'open';
+    if (opening) opening.setAttribute('aria-hidden', 'true');
+    if (track) track.removeAttribute('inert');
+    if (production) production.removeAttribute('inert');
+    if (intermission) intermission.removeAttribute('inert');
+    if (siteHeader) siteHeader.removeAttribute('inert');
+    unlockIntroScroll();
+  }
+  function buildTimeline() {
+    var gsap = window.gsap;
+    if (!gsap || !opening || !track) {
+      showReducedMotionContent();
       return;
     }
-
+    if (window.history && 'scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+    lockIntroScroll();
     body.classList.add('cinema-intro-playing');
     body.dataset.introState = 'theatre';
-    later(220, function () { if (!done) curtain.dataset.state = 'ignite'; });
-    later(680, function () { if (!done) curtain.dataset.state = 'draw'; });
-    later(2480, function () { if (!done) curtain.dataset.state = 'open'; });
-    later(2660, function () { if (!done) body.dataset.introState = 'logo'; });
-    later(3060, function () { if (!done) body.dataset.introState = 'name'; });
-    later(3440, function () { if (!done) body.dataset.introState = 'manifesto'; });
-    later(4260, function () { if (!done) body.dataset.introState = 'push'; });
-    later(6100, finish);
-  }
+    if (siteHeader) siteHeader.setAttribute('inert', '');
 
-  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
-
-  function setStep(step, progress, start, end, fromX) {
-    var amount = clamp((progress - start) / (end - start), 0, 1);
-    step.style.setProperty('--step-opacity', amount.toFixed(4));
-    step.style.setProperty('--step-x', Math.round((1 - amount) * fromX) + 'px');
-    step.style.setProperty('--step-y', Math.round((1 - amount) * 14) + 'px');
-  }
-
-  function paintCamera() {
-    pendingFrame = false;
-    if (!track || reducedMotion || !done) return;
-
-    var bounds = track.getBoundingClientRect();
-    var travel = Math.max(1, track.offsetHeight - window.innerHeight);
-    var progress = clamp(-bounds.top / travel, 0, 1);
-    if (Math.abs(progress - lastProgress) < 0.002) return;
-    lastProgress = progress;
-
-    var viewport = window.innerHeight;
-    var posterProgress = clamp((progress - 0.34) / 0.21, 0, 1);
-    var reveal = clamp((progress - 0.34) / 0.21, 0, 1);
-    if (world) {
-      world.style.setProperty('--world-scale', (1.08 + progress * 0.25).toFixed(4));
-      world.style.setProperty('--world-z', (-145 + Math.round(progress * 112)) + 'px');
-      world.style.setProperty('--world-y', (-Math.round(progress * viewport * 0.035)) + 'px');
-    }
-    if (auditorium) {
-      auditorium.style.setProperty('--auditorium-scale', (1.01 + progress * 0.18).toFixed(4));
-      auditorium.style.setProperty('--auditorium-y', Math.round(progress * viewport * 0.07) + 'px');
-    }
-    if (aisle) {
-      aisle.style.setProperty('--aisle-scale', (1 + progress * 0.31).toFixed(4));
-      aisle.style.setProperty('--aisle-y', Math.round(progress * viewport * 0.16) + 'px');
-    }
-    if (spotlight) {
-      spotlight.style.setProperty('--spotlight-opacity', (0.16 + progress * 0.5).toFixed(4));
-      spotlight.style.setProperty('--spotlight-scale', (1 + progress * 0.46).toFixed(4));
-      spotlight.style.setProperty('--spotlight-y', Math.round(progress * viewport * 0.04) + 'px');
-    }
-    if (proscenium) {
-      proscenium.style.setProperty('--proscenium-scale', (1 + progress * 0.23).toFixed(4));
-      proscenium.style.setProperty('--proscenium-y', Math.round(progress * viewport * 0.075) + 'px');
-      proscenium.style.setProperty('--proscenium-opacity', clamp(1 - (progress - 0.76) / 0.24, 0, 1).toFixed(4));
-    }
+    gsap.set(track, { autoAlpha: 0 });
+    gsap.set(websiteWorld, { autoAlpha: 0 });
+    gsap.set(world, { autoAlpha: 1, scale: 1.08, transformPerspective: 1200 });
+    gsap.set(auditorium, { autoAlpha: 1, x: 0, y: 0, z: -72, scale: 1.04, transformPerspective: 1200 });
+    gsap.set(aisle, { autoAlpha: 1, x: 0, y: 0, z: -34, scale: 1.02, transformPerspective: 1200 });
+    gsap.set(spotlight, { autoAlpha: .2, x: 0, y: 0, z: -12, scale: 1, transformPerspective: 1200 });
+    gsap.set(proscenium, { autoAlpha: 1, x: 0, y: 0, z: 18, scale: 1, transformPerspective: 1200 });
+    gsap.set(blackout, { autoAlpha: 0, scale: .82 });
+    gsap.set(openingCopy, { autoAlpha: 1, y: 0, z: 0, scale: 1, transformPerspective: 1200 });
+    gsap.set(logo, { autoAlpha: 0, y: 18, scale: .88 });
+    gsap.set(teamName, { autoAlpha: 0, y: 14 });
+    gsap.set(openingLines, { autoAlpha: 0, y: 18 });
     if (production) {
-      var titleProgress = clamp((progress - 0.49) / 0.12, 0, 1);
-      var actionProgress = clamp((progress - 0.82) / 0.13, 0, 1);
-      production.style.setProperty('--production-opacity', reveal.toFixed(4));
-      production.style.setProperty('--production-y', Math.round((1 - reveal) * viewport * 0.035) + 'px');
-      production.style.setProperty('--production-scale', (0.97 + reveal * 0.03).toFixed(4));
-      production.style.setProperty('--poster-opacity', posterProgress.toFixed(4));
-      production.style.setProperty('--poster-y', Math.round((1 - posterProgress) * viewport * 0.035) + 'px');
-      production.style.setProperty('--poster-z', Math.round((1 - posterProgress) * -520) + 'px');
-      production.style.setProperty('--poster-rotate-y', ((1 - posterProgress) * 10) + 'deg');
-      production.style.setProperty('--poster-rotate-x', ((1 - posterProgress) * 3) + 'deg');
-      production.style.setProperty('--poster-scale', (0.58 + posterProgress * 0.42).toFixed(4));
-      production.style.setProperty('--information-opacity', clamp((progress - 0.49) / 0.38, 0, 1).toFixed(4));
-      production.style.setProperty('--information-y', Math.round((1 - titleProgress) * 13) + 'px');
-      productionSteps.forEach(function (step) {
-        var name = step.getAttribute('data-production-step');
-        if (name === 'title') setStep(step, progress, 0.49, 0.61, -16);
-        else if (name === 'description') setStep(step, progress, 0.56, 0.69, 15);
-        else if (name === 'meta') setStep(step, progress, 0.63, 0.76, -15);
-        else if (name === 'times') setStep(step, progress, 0.69, 0.79, 15);
-        else if (name === 'status') setStep(step, progress, 0.75, 0.86, 14);
-        else if (name === 'action') setStep(step, progress, 0.82, 0.95, 0);
-      });
-      if (actionProgress >= 0.98) production.removeAttribute('inert');
-      else production.setAttribute('inert', '');
+      gsap.set(production, { autoAlpha: 0, y: 20 });
+      gsap.set(production.querySelectorAll('.production-poster-wrap, .production-poster-missing'), { autoAlpha: 0, z: -1150, y: 28, scale: .2, rotationY: -58, rotationX: 14, transformPerspective: 1400 });
+      gsap.set(productionInformation, { autoAlpha: 0, y: 18 });
+      gsap.set(productionSteps, { autoAlpha: 0, y: 18 });
+      gsap.set(cinematicShowtimes, { autoAlpha: 0, y: 18 });
+      gsap.set(showtimeCards, { autoAlpha: 0, y: 26 });
     }
-    if (intermission) {
-      intermission.style.setProperty('--intermission-opacity', reveal.toFixed(4));
-      intermission.style.setProperty('--intermission-y', Math.round((1 - reveal) * viewport * 0.035) + 'px');
-      if (reveal >= 1) intermission.removeAttribute('inert');
-      else intermission.setAttribute('inert', '');
-    }
-    var cue = document.querySelector('.camera-cue');
-    if (cue) cue.style.setProperty('--cue-opacity', clamp(1 - progress * 2.5, 0, 1).toFixed(4));
-    document.querySelector('.cinema-home').style.setProperty('--camera-progress', progress.toFixed(4));
-    if (curtain && progress > 0.97) curtain.classList.add('is-passed');
-  }
+    if (intermission) gsap.set(intermission, { autoAlpha: 0, y: 16 });
 
-  function requestCameraUpdate() {
-    if (!done || reducedMotion || pendingFrame || !track) return;
-    pendingFrame = true;
-    window.requestAnimationFrame(paintCamera);
-  }
+    master = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    master
+      .addLabel('CURTAIN')
+      .call(function () { if (curtain) curtain.dataset.state = 'ignite'; }, null, '+=0.20')
+      .call(function () { if (curtain) curtain.dataset.state = 'draw'; }, null, '+=0.45')
+      .call(function () { if (curtain) curtain.dataset.state = 'open'; }, null, '+=1.25')
+      .addLabel('IDENTITY')
+      .to(logo, { autoAlpha: 1, y: 0, scale: 1, duration: .72 }, '+=.25')
+      .to(teamName, { autoAlpha: 1, y: 0, duration: .5 }, '-=.36')
+      .to(openingLines, { autoAlpha: 1, y: 0, duration: .52, stagger: .18 }, '-=.18')
+      .addLabel('IDENTITY_HOLD')
+      .to({}, { duration: 1.65 })
+      .addLabel('IDENTITY_EXIT')
+      .to(openingCopy, { autoAlpha: 0, y: -34, z: 120, scale: 1.16, duration: .9, ease: 'power2.in' })
+      .addLabel('EMPTY_STAGE')
+      .to({}, { duration: .9 })
+      .addLabel('CAMERA_PUSH')
+      .to(track, { autoAlpha: 1, duration: .6, ease: 'power2.out' })
+      .to(plate, { autoAlpha: 0, scale: 1.18, duration: .72, ease: 'power2.inOut' }, '<')
+      .to(openingScrim, { autoAlpha: 0, duration: .6, ease: 'power2.out' }, '<')
+      // Different apparent travel rates make the established theatre planes read as depth.
+      .to(world, { scale: 1.36, y: -18, z: 92, duration: 2.25, ease: 'power3.inOut' }, '<')
+      .to(auditorium, { scale: 1.48, y: 48, z: 28, duration: 2.25, ease: 'power3.inOut' }, '<')
+      .to(aisle, { scale: 2.02, y: 118, z: 134, duration: 2.25, ease: 'power3.inOut' }, '<')
+      .to(spotlight, { autoAlpha: .62, scale: 1.38, y: -16, duration: 2.1, ease: 'power2.out' }, '<')
+      .to(proscenium, { autoAlpha: .14, scale: 1.32, z: 170, duration: 2.05, ease: 'power3.in' }, '<')
+      .to(blackout, { autoAlpha: 1, scale: 1, duration: 1.1, ease: 'power2.in' }, '-=1.05')
+      .to(curtain, { autoAlpha: 0, duration: .42, ease: 'power2.in' }, '<')
+      .addLabel('BLACK')
+      .to({}, { duration: .6 })
+      .set(opening, { zIndex: 52 })
+      .set(track, { autoAlpha: 1 })
+      .call(function () { body.classList.add('cinema-website-stage'); })
+      .to(websiteWorld, { autoAlpha: 1, duration: .85, ease: 'power2.out' })
+      .to(world, { autoAlpha: 1, scale: 1.36, duration: .5, ease: 'power2.in' }, '<')
+      .addLabel('WEBSITE_ENVIRONMENT');
 
-  function setReducedMotionContent() {
-    releaseReveal();
     if (production) {
-      ['--production-opacity', '--poster-opacity', '--information-opacity'].forEach(function (property) {
-        production.style.setProperty(property, '1');
-      });
-      productionSteps.forEach(function (step) {
-        step.style.setProperty('--step-opacity', '1');
-        step.style.setProperty('--step-x', '0px');
-        step.style.setProperty('--step-y', '0px');
-      });
+      var poster = production.querySelector('.production-poster-wrap, .production-poster-missing');
+      master
+        .set(production, { autoAlpha: 1, y: 0 })
+        .addLabel('POSTER_REVEAL')
+        .to(poster, { autoAlpha: 1, z: -180, y: 8, scale: .68, rotationY: 24, rotationX: -8, duration: .72, ease: 'power2.out' })
+        .to(poster, { z: 0, y: 0, scale: 1, rotationY: 0, rotationX: 0, duration: 1.25, ease: 'power4.out' })
+        .addLabel('POSTER_SETTLED')
+        .addLabel('PRODUCTION_INFO')
+        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .36, ease: 'power2.out' }, '+=.16')
+        .to(productionSteps, { autoAlpha: 1, y: 0, duration: .42, stagger: .14, ease: 'power2.out' }, '+=.22')
+        .to(cinematicShowtimes, { autoAlpha: 1, y: 0, duration: .36, ease: 'power2.out' }, '-=.08')
+        .to(showtimeCards, { autoAlpha: 1, y: 0, duration: .36, stagger: .16, ease: 'power2.out' }, '-=.12')
+        .addLabel('SHOWTIMES');
+    } else if (intermission) {
+      master.to(intermission, { autoAlpha: 1, y: 0, duration: .55, ease: 'power2.out' }, '+=.28');
     }
-    if (intermission) intermission.style.setProperty('--intermission-opacity', '1');
+    master.addLabel('INTERACTIVE').call(releaseExperience);
   }
 
   if (motionQuery) {
     var onMotionPreference = function (event) {
       if (!event.matches) return;
       reducedMotion = true;
-      finish();
-      setReducedMotionContent();
+      if (master) master.kill();
+      unlockIntroScroll();
+      showReducedMotionContent();
     };
     if (motionQuery.addEventListener) motionQuery.addEventListener('change', onMotionPreference);
     else if (motionQuery.addListener) motionQuery.addListener(onMotionPreference);
   }
 
-  if (production || intermission) (production || intermission).setAttribute('inert', '');
-  if (!reducedMotion) {
-    window.addEventListener('scroll', requestCameraUpdate, { passive: true });
-    window.addEventListener('resize', requestCameraUpdate, { passive: true });
-    window.addEventListener('orientationchange', requestCameraUpdate, { passive: true });
-  } else {
-    setReducedMotionContent();
-  }
-
-  startOverture();
+  if (reducedMotion) showReducedMotionContent();
+  else buildTimeline();
 
   // Existing showtime-selection modal controller.
   if (!window.__elsar5aModalInit) {

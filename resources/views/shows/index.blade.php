@@ -59,6 +59,7 @@
             <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" fetchpriority="high" decoding="async">
         </div>
         <div class="opening-scrim" aria-hidden="true"></div>
+        <div class="opening-blackout" id="opening-blackout" aria-hidden="true"></div>
         <div class="opening-copy">
             <h1 id="team-title" class="sr-only">فريق الصرخة المسرحي</h1>
             <div class="logo-reveal"><img src="{{ asset('images/sarkha-logo.png') }}" alt="شعار فريق الصرخة المسرحي" width="112" height="112" fetchpriority="high"></div>
@@ -71,18 +72,19 @@
         <a class="opening-archive" href="{{ route('archive') }}">الأرشيف <span aria-hidden="true">↗</span></a>
     </section>
 
-    <section class="camera-track" id="camera-journey" aria-label="رحلة إلى داخل المسرح">
+    <section class="camera-track" id="camera-journey" aria-label="العرض القادم" inert>
         <div class="camera-viewport">
             <div class="camera-world" id="camera-world" aria-hidden="true">
                 <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" decoding="async">
                 <div class="camera-grade"></div>
             </div>
+            <div class="website-world" id="website-world" aria-hidden="true"></div>
             <div class="camera-plane camera-auditorium" id="camera-auditorium" aria-hidden="true"></div>
             <div class="camera-plane camera-aisle" id="camera-aisle" aria-hidden="true"></div>
             <div class="camera-plane camera-spotlight" id="camera-spotlight" aria-hidden="true"></div>
             <div class="camera-plane camera-proscenium" id="camera-proscenium" aria-hidden="true"></div>
             @if($featuredShow && $featuredTime)
-                <article class="stage-production" id="stage-production" aria-labelledby="featured-title">
+                <article class="stage-production" id="stage-production" aria-labelledby="featured-title" inert>
                     @if($featuredPoster)
                         <div class="production-poster-wrap">
                             <span class="production-light" aria-hidden="true"></span>
@@ -123,6 +125,28 @@
                             @endif
                         @endif
                     </div>
+                    @if($featuredBookableTimes->isNotEmpty() && !$featuredSoldOut)
+                        <div class="cinematic-showtimes" data-production-step="showtimes" aria-label="مواعيد الحجز المتاحة">
+                            @foreach($featuredBookableTimes->take(2) as $showtime)
+                                @php
+                                    $showtimeClock = $showtime->time ? \Carbon\Carbon::parse($showtime->time) : null;
+                                    $showtimeRemaining = (int) $showtime->homepage_remaining_tickets;
+                                    $showtimeCritical = $showtimeRemaining > 0 && $showtimeRemaining <= 10;
+                                    $showtimeLow = !$showtimeCritical && ($showtimeRemaining <= 25 || ((int) $showtime->total_tickets > 0 && $showtimeRemaining / (int) $showtime->total_tickets <= .25));
+                                @endphp
+                                <a class="cinematic-showtime-card" data-showtime-card href="{{ route('bookings.create', $showtime) }}" aria-label="احجز عرض {{ $featuredShow->title }} يوم {{ $showtime->date?->format('d/m/Y') }}">
+                                    <span class="cinematic-showtime-date">{{ $showtime->date?->format('d/m/Y') }}</span>
+                                    @if($showtimeClock)<span class="cinematic-showtime-time">{{ $showtimeClock->format('g:i') }} {{ $showtimeClock->format('A') === 'PM' ? 'م' : 'ص' }}</span>@endif
+                                    <span class="cinematic-showtime-state {{ $showtimeCritical ? 'is-critical' : ($showtimeLow ? 'is-low' : '') }}">
+                                        @if($showtimeCritical) متبقي {{ $showtimeRemaining }} {{ $showtimeRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط
+                                        @elseif($showtimeLow) متبقي عدد محدود
+                                        @else متاح للحجز @endif
+                                    </span>
+                                    <span class="cinematic-showtime-action">احجز الآن</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                 </article>
             @else
                 <div class="stage-intermission" id="stage-intermission">
@@ -132,8 +156,6 @@
                     <a href="{{ route('archive') }}">اكتشف العروض السابقة <span aria-hidden="true">↗</span></a>
                 </div>
             @endif
-
-            <p class="camera-cue" aria-hidden="true">تقدّم نحو الخشبة</p>
         </div>
     </section>
 
