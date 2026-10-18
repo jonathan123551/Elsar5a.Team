@@ -7,7 +7,8 @@
 @section('content')
 <style>
 /* ============================================================
-   ELSAR5A CINEMATIC CONFIRMATION — APPLE DARK GLASS (SINGLE SCREEN)
+   ELSAR5A CINEMATIC CONFIRMATION — REFINED APPLE DARK GLASS
+   True Visual Centering • Layered Depth • Single-Screen Experience
    ============================================================ */
 
 /* 1. VIEWPORT & NO-SCROLL ARCHITECTURE */
@@ -23,27 +24,30 @@ body.cg-body-locked {
     touch-action: manipulation;
 }
 
+/* Container precisely calculates available viewport below fixed site header */
 .cg-main-viewport {
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
     max-width: 100% !important;
     height: calc(100vh - 58px) !important;
     height: calc(100dvh - 58px) !important;
     max-height: calc(100vh - 58px) !important;
     max-height: calc(100dvh - 58px) !important;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     overflow: hidden !important;
     box-sizing: border-box;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
 }
 
-/* 2. MAIN CONFIRMATION STAGE WRAPPER */
+/* 2. MAIN STAGE WRAPPER (BALANCED NEGATIVE SPACE) */
 .cg-stage {
     width: 100%;
     max-width: 440px;
-    padding: 0 14px;
-    margin: auto;
+    padding: 0 16px;
     box-sizing: border-box;
     display: flex;
     justify-content: center;
@@ -51,50 +55,54 @@ body.cg-body-locked {
 
 @media (min-width: 768px) {
     .cg-stage {
-        max-width: 500px;
-        padding: 0 20px;
+        max-width: 490px;
+        padding: 0 24px;
     }
 }
 
-/* 3. PRIMARY LEVEL-2 APPLE DARK GLASS CARD */
+/* 3. PRIMARY APPLE DARK GLASS SURFACE */
 .cg-card {
     position: relative;
     width: 100%;
-    background: rgba(24, 10, 16, 0.52);
-    backdrop-filter: blur(32px) saturate(210%) contrast(105%);
-    -webkit-backdrop-filter: blur(32px) saturate(210%) contrast(105%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 22px;
-    padding: clamp(14px, 2.4vh, 22px) clamp(14px, 3.2vw, 24px);
+    /* Translucent, luminous frosted dark glass allowing ambient stage glow to breathe */
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(22, 10, 16, 0.40);
+    backdrop-filter: blur(32px) saturate(190%) contrast(104%);
+    -webkit-backdrop-filter: blur(32px) saturate(190%) contrast(104%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 26px;
+    padding: clamp(20px, 3vh, 28px) clamp(18px, 4.2vw, 28px);
     box-shadow:
-        0 24px 60px -12px rgba(0, 0, 0, 0.85),
+        0 24px 60px -12px rgba(0, 0, 0, 0.82),
         0 0 35px -8px rgba(245, 158, 11, 0.08),
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.22);
+        inset 0 1px 0 rgba(255, 255, 255, 0.32),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.22);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: clamp(8px, 1.6vh, 13px);
+    gap: clamp(12px, 2vh, 18px);
     animation: cgCardReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @media (min-width: 640px) {
     .cg-card {
-        border-radius: 26px;
+        border-radius: 30px;
+        padding: 30px 32px;
+        gap: 20px;
     }
 }
 
-/* Subtle ambient gold specular rim light */
+/* Ambient top specular rim */
 .cg-card::before {
     content: "";
     position: absolute;
     top: 0;
-    inset-inline: 18%;
+    inset-inline: 14%;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(253, 230, 138, 0.55), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45) 25%, rgba(253, 230, 138, 0.7) 50%, rgba(255, 255, 255, 0.45) 75%, transparent);
     pointer-events: none;
 }
 
-/* 4. SUCCESS HEADER & ANIMATED EMBLEM */
+/* 4. SUCCESS HEADER & REFINED EMBLEM */
 .cg-hero {
     text-align: center;
     display: flex;
@@ -107,18 +115,18 @@ body.cg-body-locked {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, rgba(16, 185, 129, 0.28) 0%, rgba(16, 185, 129, 0.08) 65%, rgba(10, 4, 7, 0.5) 100%);
-    border: 1.5px solid rgba(52, 211, 153, 0.5);
+    background: radial-gradient(circle at 35% 30%, rgba(52, 211, 153, 0.25) 0%, rgba(16, 185, 129, 0.06) 65%, rgba(10, 4, 7, 0.4) 100%);
+    border: 1px solid rgba(52, 211, 153, 0.45);
     box-shadow:
-        0 8px 20px -3px rgba(0, 0, 0, 0.55),
-        0 0 20px -2px rgba(16, 185, 129, 0.32),
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.38);
+        0 6px 18px -3px rgba(0, 0, 0, 0.55),
+        0 0 18px -2px rgba(16, 185, 129, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
     display: flex;
     align-items: center;
     justify-content: center;
     color: #34d399;
-    margin-bottom: 7px;
-    animation: cgBadgePop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    margin-bottom: 9px;
+    animation: cgBadgePop 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cg-check-svg {
@@ -126,28 +134,28 @@ body.cg-body-locked {
     height: 22px;
     stroke-dasharray: 40;
     stroke-dashoffset: 40;
-    animation: cgCheckDraw 0.45s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: cgCheckDraw 0.42s 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .cg-title {
     font-family: 'Alexandria', -apple-system, BlinkMacSystemFont, "Readex Pro", sans-serif;
-    font-size: clamp(1.12rem, 3.3vw, 1.35rem);
+    font-size: clamp(1.18rem, 3.6vw, 1.42rem);
     font-weight: 800;
     line-height: 1.25;
     letter-spacing: -0.015em;
     color: #fce7b0;
-    text-shadow: 0 2px 14px rgba(245, 158, 11, 0.25);
+    text-shadow: 0 2px 14px rgba(245, 158, 11, 0.22);
     margin: 0;
-    animation: cgFadeUp 0.42s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: cgFadeUp 0.4s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cg-greeting {
-    font-size: clamp(0.78rem, 2.2vw, 0.86rem);
-    color: #c9c3c7;
-    margin-top: 3px;
+    font-size: clamp(0.82rem, 2.3vw, 0.90rem);
+    color: #c4bcc1;
+    margin-top: 4px;
     margin-bottom: 0;
     font-weight: 400;
-    animation: cgFadeUp 0.42s 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: cgFadeUp 0.4s 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cg-customer-name {
@@ -155,53 +163,56 @@ body.cg-body-locked {
     font-weight: 600;
 }
 
-/* 5. LEVEL-3 GLASS: BOOKING SUMMARY (2-COLUMN GRID - GUARANTEED ZERO COLLISION) */
-.cg-summary {
-    display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid rgba(255, 255, 255, 0.075);
-    border-radius: 14px;
-    padding: 7px 11px;
+/* 5. SECONDARY GLASS LAYER: BOOKING SUMMARY (CLEAN FULL-WIDTH ROWS, ZERO TRUNCATION) */
+.cg-summary-shelf {
+    background: rgba(255, 255, 255, 0.038);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 10px 14px;
     box-shadow:
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.05),
-        0 4px 14px -3px rgba(0, 0, 0, 0.35);
-    animation: cgFadeUp 0.44s 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.cg-sum-col {
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        0 4px 14px -3px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    min-width: 0;
+    gap: 8px;
+    animation: cgFadeUp 0.42s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cg-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.cg-summary-row + .cg-summary-row {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 8px;
 }
 
 .cg-sum-label {
-    font-size: 0.68rem;
-    color: #9c9096;
+    font-size: 0.74rem;
+    color: #a89ba2;
     font-weight: 500;
-    margin-bottom: 2px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.cg-sum-value-wrap {
     display: flex;
     align-items: center;
     gap: 5px;
-    min-width: 0;
+    flex-shrink: 0;
+}
+
+.cg-sum-val-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    justify-content: flex-end;
 }
 
 .cg-ref-code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: clamp(0.76rem, 2.4vw, 0.88rem);
+    font-size: clamp(0.82rem, 2.7vw, 0.94rem);
     font-weight: 700;
     color: #fbbf24;
-    letter-spacing: 0.02em;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    letter-spacing: 0.03em;
     white-space: nowrap;
     user-select: all;
 }
@@ -211,9 +222,9 @@ body.cg-body-locked {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 7px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.12);
     color: #d1d5db;
@@ -241,35 +252,31 @@ body.cg-body-locked {
 }
 
 .cg-amount-val {
-    font-size: clamp(0.86rem, 2.7vw, 0.98rem);
+    font-size: clamp(0.92rem, 2.9vw, 1.04rem);
     font-weight: 700;
     color: #34d399;
     letter-spacing: -0.01em;
     white-space: nowrap;
 }
 
-/* 6. LEVEL-3 GLASS: TIMELINE STATUS ("الخطوة الجاية") */
-.cg-timeline {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
-    padding: 8px 11px 9px;
-    box-shadow:
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.04),
-        0 4px 16px -4px rgba(0, 0, 0, 0.35);
-    animation: cgFadeUp 0.44s 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* 6. NEXT STEP STATUS TIMELINE (INTEGRATED, NON-BOXED FLOW) */
+.cg-timeline-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 2px 4px;
+    animation: cgFadeUp 0.42s 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cg-tl-header {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 700;
     color: #fde68a;
     padding-bottom: 6px;
-    margin-bottom: 7px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .cg-tl-list {
@@ -279,10 +286,10 @@ body.cg-body-locked {
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 9px;
 }
 
-/* Elegant status connecting hairline */
+/* Connecting hairline */
 .cg-tl-list::before {
     content: "";
     position: absolute;
@@ -339,7 +346,7 @@ body.cg-body-locked {
 
 .cg-tl-body {
     flex: 1;
-    font-size: clamp(0.72rem, 2.1vw, 0.78rem);
+    font-size: clamp(0.75rem, 2.2vw, 0.82rem);
     line-height: 1.45;
     color: #e5e1e4;
     text-align: right;
@@ -355,16 +362,15 @@ body.cg-body-locked {
     font-weight: 600;
 }
 
-/* 7. LEVEL-3 GLASS: SUPPORT & REASSURANCE NOTE */
-.cg-support {
+/* 7. LIGHTWEIGHT SUPPORT ROW (INLINE, NON-BOXED) */
+.cg-support-row {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
-    background: rgba(245, 158, 11, 0.04);
-    border: 1px solid rgba(245, 158, 11, 0.15);
-    border-radius: 11px;
-    padding: 6px 10px;
-    animation: cgFadeUp 0.44s 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+    text-align: center;
+    padding: 2px 4px;
+    animation: cgFadeUp 0.42s 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cg-support-icon {
@@ -375,30 +381,30 @@ body.cg-body-locked {
 }
 
 .cg-support-text {
-    font-size: clamp(0.68rem, 1.95vw, 0.74rem);
+    font-size: clamp(0.72rem, 2.05vw, 0.78rem);
     line-height: 1.35;
-    color: #bfb5bb;
+    color: #b5abb1;
     margin: 0;
 }
 
 .cg-support-text strong {
-    color: #f3eff2;
+    color: #f1ecf0;
     font-weight: 500;
 }
 
-/* 8. LEVEL-4 GLASS: FINAL TACTILE HOMEPAGE BUTTON */
+/* 8. REFINED APPLE-STYLE CTA PILL (BALANCED PROPORTIONS) */
 .cg-btn-home {
     position: relative;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 7px;
     width: 100%;
-    min-height: 43px;
-    padding: 8px 16px;
+    min-height: 42px;
+    padding: 9px 22px;
     border-radius: 9999px;
-    background: linear-gradient(180deg, rgba(245, 158, 11, 0.20) 0%, rgba(217, 119, 6, 0.10) 100%);
-    border: 1.5px solid rgba(245, 158, 11, 0.45);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.08) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.38);
     color: #fef3c7;
     font-family: 'Alexandria', -apple-system, BlinkMacSystemFont, "Readex Pro", sans-serif;
     font-size: 0.88rem;
@@ -406,29 +412,29 @@ body.cg-body-locked {
     letter-spacing: -0.01em;
     text-decoration: none;
     box-shadow:
-        0 8px 20px -4px rgba(0, 0, 0, 0.5),
-        0 0 16px -3px rgba(245, 158, 11, 0.22),
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.20);
-    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        0 6px 18px -4px rgba(0, 0, 0, 0.45),
+        0 0 16px -3px rgba(245, 158, 11, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.20);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-tap-highlight-color: transparent;
-    animation: cgFadeUp 0.44s 0.40s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: cgFadeUp 0.42s 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cg-btn-home:hover {
-    background: linear-gradient(180deg, rgba(245, 158, 11, 0.30) 0%, rgba(217, 119, 6, 0.18) 100%);
-    border-color: rgba(245, 158, 11, 0.75);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.26) 0%, rgba(217, 119, 6, 0.14) 100%);
+    border-color: rgba(245, 158, 11, 0.70);
     color: #ffffff;
     box-shadow:
-        0 12px 26px -4px rgba(0, 0, 0, 0.6),
-        0 0 24px -2px rgba(245, 158, 11, 0.38),
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.30);
+        0 10px 24px -4px rgba(0, 0, 0, 0.55),
+        0 0 22px -2px rgba(245, 158, 11, 0.30),
+        inset 0 1px 0 rgba(255, 255, 255, 0.30);
     transform: translateY(-1px);
 }
 
 .cg-btn-home:active {
     transform: translateY(1px);
-    background: rgba(245, 158, 11, 0.16);
-    box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.4);
+    background: rgba(245, 158, 11, 0.14);
+    box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.4);
 }
 
 .cg-btn-home:focus-visible {
@@ -446,11 +452,11 @@ body.cg-body-locked {
     transform: translateX(-3px);
 }
 
-/* 9. KEYFRAME ANIMATIONS */
+/* 9. MOTION KEYFRAMES */
 @keyframes cgCardReveal {
     from {
         opacity: 0;
-        transform: translateY(12px) scale(0.98);
+        transform: translateY(10px) scale(0.985);
     }
     to {
         opacity: 1;
@@ -461,7 +467,7 @@ body.cg-body-locked {
 @keyframes cgBadgePop {
     from {
         opacity: 0;
-        transform: scale(0.8);
+        transform: scale(0.88);
     }
     to {
         opacity: 1;
@@ -478,7 +484,7 @@ body.cg-body-locked {
 @keyframes cgFadeUp {
     from {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(6px);
     }
     to {
         opacity: 1;
@@ -493,9 +499,9 @@ body.cg-body-locked {
     .cg-check-svg,
     .cg-title,
     .cg-greeting,
-    .cg-summary,
-    .cg-timeline,
-    .cg-support,
+    .cg-summary-shelf,
+    .cg-timeline-flow,
+    .cg-support-row,
     .cg-btn-home,
     .cg-btn-chevron {
         animation: none !important;
@@ -510,10 +516,10 @@ body.cg-body-locked {
 <div class="cg-stage">
     <div class="cg-card" role="region" aria-labelledby="cg-heading">
 
-        {{-- 1. Hero / Success State --}}
+        {{-- 1. Success State Header --}}
         <div class="cg-hero">
             <div class="cg-emblem" aria-hidden="true">
-                <svg class="cg-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="cg-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
             </div>
@@ -527,11 +533,11 @@ body.cg-body-locked {
             </p>
         </div>
 
-        {{-- 2. Booking Information Summary (Two-column grid - zero overlap) --}}
-        <div class="cg-summary" role="region" aria-label="بيانات الحجز">
-            <div class="cg-sum-col">
+        {{-- 2. Secondary Glass Layer: Booking Summary Shelf (Full width rows - Zero Truncation) --}}
+        <div class="cg-summary-shelf" role="region" aria-label="بيانات الحجز">
+            <div class="cg-summary-row">
                 <span class="cg-sum-label">
-                    <svg class="w-3 h-3 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect width="14" height="18" x="5" y="3" rx="2"></rect>
                         <line x1="9" x2="15" y1="7" y2="7"></line>
                         <line x1="9" x2="15" y1="11" y2="11"></line>
@@ -539,7 +545,7 @@ body.cg-body-locked {
                     </svg>
                     <span>رقم الحجز</span>
                 </span>
-                <div class="cg-sum-value-wrap">
+                <div class="cg-sum-val-wrap">
                     <span id="bookingRefCode" class="cg-ref-code" title="{{ $booking->reference_code }}">{{ $booking->reference_code }}</span>
                     <button type="button"
                             id="btnCopyRef"
@@ -547,7 +553,7 @@ body.cg-body-locked {
                             onclick="copyBookingRef('{{ $booking->reference_code }}')"
                             aria-label="نسخ رقم الحجز"
                             title="نسخ رقم الحجز">
-                        <svg id="copyIcon" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <svg id="copyIcon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
                             <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
                         </svg>
@@ -555,16 +561,16 @@ body.cg-body-locked {
                 </div>
             </div>
 
-            <div class="cg-sum-col">
+            <div class="cg-summary-row">
                 <span class="cg-sum-label">
-                    <svg class="w-3 h-3 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"></circle>
                         <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path>
                         <path d="M12 18V6"></path>
                     </svg>
                     <span>إجمالي المبلغ</span>
                 </span>
-                <div class="cg-sum-value-wrap">
+                <div class="cg-sum-val-wrap">
                     <span class="cg-amount-val">
                         {{ is_numeric($booking->total_price) ? number_format((float)$booking->total_price, 2) : $booking->total_price }} جنيه
                     </span>
@@ -572,8 +578,8 @@ body.cg-body-locked {
             </div>
         </div>
 
-        {{-- 3. Next Step Timeline ("الخطوة الجاية") --}}
-        <div class="cg-timeline" role="region" aria-label="الخطوة الجاية">
+        {{-- 3. Next Step Timeline (Seamless flow within card) --}}
+        <div class="cg-timeline-flow" role="region" aria-label="الخطوة الجاية">
             <div class="cg-tl-header">
                 <svg class="w-3.5 h-3.5 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -599,7 +605,7 @@ body.cg-body-locked {
                         <span class="cg-dot dot-emerald"></span>
                     </div>
                     <div class="cg-tl-body">
-                        بعد <span class="accent-emerald">تأكيد الحجز</span>، سيتم إرسال <strong>التذكرة</strong> مباشرة على <strong>رقم الواتساب المُسجَّل</strong>.
+                        بعد <span class="accent-emerald">تأكيد الحجز</span>، سيتم إرسال <strong>التذكرة</strong> على <strong>رقم الواتساب المُسجَّل</strong>.
                     </div>
                 </li>
 
@@ -615,8 +621,8 @@ body.cg-body-locked {
             </ul>
         </div>
 
-        {{-- 4. Reassurance / Support Note --}}
-        <div class="cg-support" role="note">
+        {{-- 4. Reassurance / Support (Lightweight inline row) --}}
+        <div class="cg-support-row" role="note">
             <svg class="cg-support-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -627,7 +633,7 @@ body.cg-body-locked {
             </p>
         </div>
 
-        {{-- 5. Final CTA Button — Return to Website Homepage --}}
+        {{-- 5. Final CTA Button — Refined Apple Glass Pill --}}
         <a href="{{ route('home') }}" id="btnReturnHome" class="cg-btn-home" aria-label="الرجوع للصفحة الرئيسية">
             <svg class="cg-btn-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="m15 18-6-6 6-6"></path>
