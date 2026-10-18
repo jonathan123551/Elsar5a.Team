@@ -214,6 +214,7 @@ class Phase2AStageAndScarcityTest extends TestCase
         $this->assertStringContainsString("radial-gradient(circle at 20% 0, rgba(251,191,36,.2)", $css);
         $this->assertStringNotContainsString('skipAndContinue', $script);
         $this->assertStringNotContainsString("addEventListener('scroll'", $script);
+        $this->assertStringContainsString("is-settled", $script);
         $this->assertStringContainsString('scale: 2.02, y: 118, z: 134', $script);
         $this->assertStringContainsString("showReducedMotionContent();", $script);
         $this->assertStringContainsString('window.scrollTo(0, 0)', $script);

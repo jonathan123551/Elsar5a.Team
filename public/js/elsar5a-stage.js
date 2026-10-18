@@ -57,6 +57,11 @@
     body.dataset.introState = 'complete';
     body.classList.remove('cinema-intro-playing');
     body.classList.add('cinema-complete');
+    var posterEl = document.querySelector('.production-poster-wrap, .production-poster-missing');
+    if (posterEl) {
+      posterEl.classList.remove('is-flying');
+      posterEl.classList.add('is-settled');
+    }
     if (opening) opening.setAttribute('aria-hidden', 'true');
     if (track) track.removeAttribute('inert');
     if (production) production.removeAttribute('inert');
@@ -247,4 +252,18 @@
       }
     });
   }
+
+  // Prevent accidental double-tap zoom on iOS Safari interactive elements
+  var lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    var now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      var interactive = event.target.closest('a, button, [role="button"], .cinematic-showtime-card, .theatre-location-btn');
+      if (interactive) {
+        event.preventDefault();
+        interactive.click();
+      }
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
 })();

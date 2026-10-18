@@ -20,20 +20,26 @@
 
 <style>
 /* ============================================================
-   ELSAR5A THEATRE BOX OFFICE — PRECISE REFINED EXPERIENCE
+   ELSAR5A THEATRE BOX OFFICE — APPLE-INSPIRED GLASS & TYPOGRAPHY
    ============================================================ */
 :root {
-    --th-bg: #07090e;
-    --th-card-bg: rgba(15, 20, 30, 0.88);
+    --th-bg: #090406;
+    /* Deep theatrical burgundy/maroon container gradient matching background */
+    --th-card-bg: linear-gradient(180deg, rgba(34, 15, 20, 0.90) 0%, rgba(18, 8, 12, 0.94) 100%);
     --th-card-border: rgba(255, 255, 255, 0.08);
+    --th-card-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.75), 0 0 35px -8px rgba(120, 20, 35, 0.12);
+    /* Surface hierarchy */
+    --th-surface-dark: rgba(13, 5, 8, 0.65);
+    --th-surface-elevated: rgba(32, 13, 18, 0.75);
     --th-amber: #f59e0b;
     --th-amber-light: #fde68a;
     --th-amber-glow: rgba(245, 158, 11, 0.25);
     --th-emerald: #10b981;
     --th-emerald-glow: rgba(16, 185, 129, 0.25);
     --th-text-main: #f9fafb;
-    --th-text-muted: #9ca3af;
-    --th-text-dim: #6b7280;
+    --th-text-muted: #a3999d;
+    --th-text-dim: #786e72;
+    --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Arabic", system-ui, -apple-system-subpixel, sans-serif;
 }
 
 html {
@@ -46,7 +52,9 @@ html {
     margin-inline: auto;
     padding: 0 1rem 3.5rem;
     color: var(--th-text-main);
-    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--apple-font);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 @media (min-width: 640px) {
@@ -55,90 +63,107 @@ html {
     }
 }
 
-/* 1. FRAMELESS STICKY STEP NAVIGATION — NO BOXES, PURE ALEXANDRIA TYPOGRAPHY */
+/* 1. APPLE-INSPIRED TRANSLUCENT GLASS FLOATING STEP NAVIGATION */
 .bo-sticky-nav-wrap {
     position: sticky;
     top: 50px;
     z-index: 30;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 0.65rem 0.5rem;
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0.5rem;
     margin-bottom: 1.25rem;
-    transition: background 0.25s ease, backdrop-filter 0.25s ease;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.bo-sticky-nav-wrap.is-scrolled {
-    background: rgba(7, 9, 14, 0.82);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-}
-
-.bo-steps-bar {
+.bo-glass-pill {
+    pointer-events: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
     max-width: 440px;
-    margin-inline: auto;
-    padding-inline: 0.25rem;
-    font-family: 'Alexandria', 'Readex Pro', sans-serif;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(26, 11, 16, 0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.55),
+        0 4px 12px rgba(0, 0, 0, 0.35),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 1px 0 rgba(0, 0, 0, 0.3);
+    font-family: var(--apple-font);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bo-sticky-nav-wrap.is-scrolled .bo-glass-pill {
+    background: rgba(18, 7, 11, 0.88);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.65),
+        0 6px 16px rgba(0, 0, 0, 0.4),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .bo-step-item {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
     cursor: pointer;
     user-select: none;
-    transition: all 0.22s ease;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0.25rem 0.6rem;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
 }
 
 .bo-step-num {
-    font-family: 'Alexandria', sans-serif;
-    font-size: 1.35rem;
-    font-weight: 800;
-    line-height: 1;
-    margin-bottom: 0.25rem;
+    font-family: var(--apple-font);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 0.15rem;
+    font-variant-numeric: tabular-nums;
     transition: all 0.22s ease;
 }
 
 .bo-step-name {
-    font-family: 'Alexandria', 'Readex Pro', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 700;
+    font-family: var(--apple-font);
+    font-size: 0.78rem;
+    font-weight: 500;
     line-height: 1.2;
     transition: all 0.22s ease;
+    letter-spacing: -0.01em;
 }
 
 /* INACTIVE STEP: Dimmed / Muted */
 .bo-step-item.is-inactive {
-    opacity: 0.35;
-    color: #6b7280;
+    opacity: 0.4;
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .bo-step-item.is-inactive .bo-step-num {
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .bo-step-item.is-inactive .bo-step-name {
-    color: #9ca3af;
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .bo-step-item.is-inactive:hover {
-    opacity: 0.65;
+    opacity: 0.75;
 }
 
-/* COMPLETED STEP: Green */
+/* COMPLETED STEP: Semantic Emerald Green */
 .bo-step-item.is-completed {
-    opacity: 0.9;
-    color: #10b981;
+    opacity: 0.95;
+    color: #34d399;
 }
 
 .bo-step-item.is-completed .bo-step-num {
@@ -148,37 +173,39 @@ html {
 
 .bo-step-item.is-completed .bo-step-name {
     color: #34d399;
-    font-weight: 700;
+    font-weight: 600;
 }
 
-/* CURRENT ACTIVE STEP: Yellow ("YOU ARE HERE") */
+/* CURRENT ACTIVE STEP: Apple Warm Amber/Yellow with soft glass bloom */
 .bo-step-item.is-active {
     opacity: 1;
-    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.14);
+    box-shadow: 0 0 16px -2px rgba(245, 158, 11, 0.35),
+        inset 0 1px 0 rgba(253, 230, 138, 0.25);
 }
 
 .bo-step-item.is-active .bo-step-num {
     color: #fbbf24;
-    font-size: 1.6rem;
-    font-weight: 900;
-    text-shadow: 0 0 16px rgba(245, 158, 11, 0.7), 0 0 4px #fbbf24;
-    transform: translateY(-1px);
+    font-size: 1.25rem;
+    font-weight: 800;
+    text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
 }
 
 .bo-step-item.is-active .bo-step-name {
-    color: #fef08a;
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    color: #fde68a;
+    font-weight: 700;
 }
 
 /* 2. SECTION CARDS — MINIMAL HEADERS, NO NUMBER BOXES */
 .bo-section {
     background: var(--th-card-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--th-card-border);
     border-radius: 1.25rem;
     padding: 1.25rem;
     margin-bottom: 1.25rem;
-    box-shadow: 0 15px 35px -15px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--th-card-shadow);
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -189,8 +216,8 @@ html {
 }
 
 .bo-section.is-active-focus {
-    border-color: rgba(245, 158, 11, 0.4);
-    box-shadow: 0 0 25px -8px var(--th-amber-glow);
+    border-color: rgba(245, 158, 11, 0.45);
+    box-shadow: 0 0 25px -6px var(--th-amber-glow), var(--th-card-shadow);
 }
 
 .bo-section.is-section-done {
@@ -208,16 +235,17 @@ html {
 }
 
 .bo-section-title {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.05rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
     margin: 0;
+    letter-spacing: -0.01em;
 }
 
 .bo-status-pill {
     font-size: 0.72rem;
-    font-weight: 700;
+    font-weight: 600;
     padding: 0.2rem 0.55rem;
     border-radius: 9999px;
     display: inline-flex;
@@ -227,7 +255,7 @@ html {
 }
 
 .bo-status-pill.status-pending {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     color: var(--th-text-dim);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -258,32 +286,32 @@ html {
     text-align: right;
     padding: 0.9rem 1rem;
     border-radius: 1rem;
-    border: 1.5px solid var(--th-card-border);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid rgba(255, 255, 255, 0.07);
+    background: var(--th-surface-dark);
     text-decoration: none;
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .bo-showtime-card.is-active {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.05));
-    border-color: rgba(245, 158, 11, 0.65);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(34, 14, 20, 0.85));
+    border-color: rgba(245, 158, 11, 0.70);
     box-shadow: 0 0 20px -5px var(--th-amber-glow);
 }
 
 .bo-showtime-card:not(.is-active) {
-    opacity: 0.65;
+    opacity: 0.72;
 }
 
 .bo-showtime-card:not(.is-active):hover {
-    opacity: 0.9;
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.2);
+    opacity: 0.95;
+    background: var(--th-surface-elevated);
+    border-color: rgba(255, 255, 255, 0.16);
 }
 
 .bo-showtime-label {
     font-size: 0.72rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--th-text-dim);
     display: flex;
     align-items: center;
@@ -295,23 +323,25 @@ html {
 }
 
 .bo-showtime-time {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.15rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
     margin-top: 0.25rem;
     display: block;
+    font-variant-numeric: tabular-nums;
 }
 
 .bo-showtime-date {
     font-size: 0.75rem;
     color: var(--th-text-muted);
     margin-top: 0.15rem;
+    font-variant-numeric: tabular-nums;
 }
 
 /* 4. TACTILE TICKET COUNTER — STRICT PLUS ON RIGHT, MINUS ON LEFT */
 .bo-counter-box {
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--th-surface-dark);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1rem;
     padding: 1.1rem 1rem;
@@ -335,11 +365,11 @@ html {
     width: 52px;
     height: 52px;
     border-radius: 1rem;
-    border: 1.5px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    background: var(--th-surface-elevated);
     color: #ffffff;
     font-size: 1.6rem;
-    font-weight: 800;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -351,8 +381,9 @@ html {
 }
 
 .bo-counter-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(48, 19, 27, 0.9);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #fde68a;
 }
 
 .bo-counter-btn:active {
@@ -366,9 +397,9 @@ html {
 }
 
 .bo-counter-number {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 2.35rem;
-    font-weight: 900;
+    font-weight: 800;
     color: #ffffff;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -383,7 +414,7 @@ html {
 
 .bo-counter-ledger {
     font-size: 0.95rem;
-    font-weight: 700;
+    font-weight: 600;
     color: #fde68a;
     display: flex;
     align-items: center;
@@ -391,10 +422,11 @@ html {
 }
 
 .bo-counter-price-val {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.2rem;
-    font-weight: 900;
+    font-weight: 800;
     color: #ffffff;
+    font-variant-numeric: tabular-nums;
 }
 
 /* 5. PAYMENT SECTION */
@@ -412,8 +444,8 @@ html {
 }
 
 .bo-pay-item {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--th-card-border);
+    background: var(--th-surface-dark);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 1rem;
     padding: 0.85rem 1rem;
     display: flex;
@@ -424,27 +456,55 @@ html {
 }
 
 .bo-pay-item:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(245, 158, 11, 0.30);
+    background: var(--th-surface-elevated);
 }
 
 .bo-pay-info {
     min-width: 0;
 }
 
+.bo-pay-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.2rem;
+}
+
+.bo-pay-logo {
+    height: 15px;
+    width: auto;
+    object-fit: contain;
+    display: inline-block;
+    vertical-align: middle;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+    opacity: 0.95;
+    flex-shrink: 0;
+}
+
+.bo-pay-logo--wallets {
+    max-width: 56px;
+}
+
+.bo-pay-logo--instapay {
+    max-width: 52px;
+}
+
 .bo-pay-name {
-    font-size: 0.72rem;
+    font-size: 0.76rem;
     color: var(--th-text-muted);
-    font-weight: 700;
-    display: block;
+    font-weight: 600;
+    display: inline-block;
 }
 
 .bo-pay-num {
+    display: block;
     font-size: 1rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
     letter-spacing: 0.02em;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--apple-font);
+    font-variant-numeric: tabular-nums;
 }
 
 .bo-copy-btn {
@@ -452,7 +512,7 @@ html {
     padding: 0.4rem 0.85rem;
     border-radius: 0.65rem;
     font-size: 0.78rem;
-    font-weight: 800;
+    font-weight: 700;
     background: rgba(245, 158, 11, 0.12);
     border: 1px solid rgba(245, 158, 11, 0.4);
     color: #fbbf24;
@@ -485,10 +545,11 @@ html {
 }
 
 .bo-required-amount-val {
-    font-family: 'Alexandria', sans-serif;
+    font-family: var(--apple-font);
     font-size: 1.15rem;
-    font-weight: 900;
+    font-weight: 800;
     color: #ffffff;
+    font-variant-numeric: tabular-nums;
 }
 
 /* 6. RECEIPT DROPZONE & COMPLETED STATE */
@@ -499,9 +560,9 @@ html {
 .bo-dropzone {
     display: block;
     cursor: pointer;
-    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border: 2px dashed rgba(255, 255, 255, 0.14);
     border-radius: 1rem;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--th-surface-dark);
     padding: 1.1rem 1rem;
     text-align: center;
     transition: all 0.25s ease;
@@ -510,7 +571,7 @@ html {
 
 .bo-dropzone:hover {
     border-color: rgba(245, 158, 11, 0.5);
-    background: rgba(245, 158, 11, 0.04);
+    background: rgba(32, 13, 18, 0.65);
 }
 
 .bo-dropzone.has-file {
@@ -528,7 +589,7 @@ html {
 
 .bo-drop-title {
     font-size: 0.9rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #ffffff;
 }
 
@@ -562,7 +623,7 @@ html {
 
 .bo-preview-status {
     font-size: 0.85rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #34d399;
     display: flex;
     align-items: center;
@@ -580,7 +641,7 @@ html {
 
 .bo-preview-change-btn {
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 600;
     color: #fbbf24;
     text-decoration: underline;
     margin-top: 0.2rem;
@@ -595,19 +656,20 @@ html {
 .bo-field-label {
     display: block;
     font-size: 0.78rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--th-text-muted);
     margin-bottom: 0.35rem;
 }
 
 .bo-input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(11, 4, 7, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 0.85rem;
     padding: 0.75rem 0.9rem;
     font-size: 0.95rem;
     color: #ffffff;
+    font-family: var(--apple-font);
     transition: all 0.2s ease;
     box-sizing: border-box;
     -webkit-appearance: none;
@@ -616,8 +678,8 @@ html {
 .bo-input:focus {
     outline: none;
     border-color: #f59e0b;
-    background: rgba(0, 0, 0, 0.55);
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    background: rgba(18, 7, 11, 0.90);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
 }
 
 .bo-input::placeholder {
@@ -626,7 +688,7 @@ html {
 
 /* Attendee card */
 .bo-attendee-card {
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--th-surface-dark);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1rem;
     padding: 0.9rem;
@@ -638,8 +700,8 @@ html {
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.65rem;
-    font-size: 0.75rem;
-    font-weight: 800;
+    font-size: 0.8rem;
+    font-weight: 700;
     color: #fbbf24;
 }
 
@@ -653,11 +715,12 @@ html {
     margin-top: 1rem;
     padding: 0.85rem 1rem;
     border-radius: 0.85rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px dashed rgba(255, 255, 255, 0.12);
-    color: #6b7280;
+    background: rgba(18, 7, 11, 0.50);
+    border: 1px dashed rgba(255, 255, 255, 0.10);
+    color: var(--th-text-dim);
     font-size: 0.9rem;
-    font-weight: 700;
+    font-weight: 600;
+    font-family: var(--apple-font);
     cursor: pointer;
     transition: all 0.25s ease;
     opacity: 0.7;
@@ -668,7 +731,7 @@ html {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.08));
     border: 1.5px solid rgba(245, 158, 11, 0.65);
     color: #fbbf24;
-    font-weight: 800;
+    font-weight: 700;
     box-shadow: 0 4px 20px -3px rgba(245, 158, 11, 0.35);
     opacity: 1;
 }
@@ -691,8 +754,9 @@ html {
     width: 100%;
     padding: 1.05rem 1.5rem;
     border-radius: 1.15rem;
-    font-size: 1.1rem;
-    font-weight: 900;
+    font-size: 1.05rem;
+    font-weight: 800;
+    font-family: var(--apple-font);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -705,9 +769,9 @@ html {
 }
 
 #submitBtn.is-muted {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(18, 7, 11, 0.55);
     color: var(--th-text-dim);
-    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
     box-shadow: none;
 }
 
@@ -777,8 +841,9 @@ html {
     transform: translateX(-50%) translateY(20px);
     background: #10b981;
     color: #ffffff;
-    font-weight: 800;
+    font-weight: 700;
     font-size: 0.85rem;
+    font-family: var(--apple-font);
     padding: 0.6rem 1.25rem;
     border-radius: 9999px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
@@ -798,9 +863,9 @@ html {
 
 <div class="boxoffice-container">
 
-    {{-- 1. FRAMELESS STICKY STEP NAVIGATION (NO BOXES, NUMBERS ABOVE LABELS, 1-4) --}}
+    {{-- 1. APPLE-INSPIRED TRANSLUCENT GLASS FLOATING STEP NAVIGATION --}}
     <div class="bo-sticky-nav-wrap" id="stickyNavWrap">
-        <nav class="bo-steps-bar" aria-label="مراحل الحجز">
+        <nav class="bo-glass-pill" aria-label="مراحل الحجز">
             <div class="bo-step-item is-active" id="stepNav-1" onclick="navigateToStep(1)">
                 <span class="bo-step-num">1</span>
                 <span class="bo-step-name">التذاكر</span>
@@ -946,7 +1011,14 @@ html {
                 @if ($transferWallet && !preg_match('/^0+$/', $transferWallet))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
-                            <span class="bo-pay-name">📱 فودافون كاش / محفظة</span>
+                            <div class="bo-pay-header">
+                                <img src="{{ asset('images/payments/wallets.png') }}"
+                                     alt=""
+                                     class="bo-pay-logo bo-pay-logo--wallets"
+                                     aria-hidden="true"
+                                     loading="lazy">
+                                <span class="bo-pay-name">محفظة</span>
+                            </div>
                             <span class="bo-pay-num" dir="ltr">{{ $transferWallet }}</span>
                         </div>
                         <button type="button"
@@ -960,7 +1032,14 @@ html {
                 @if ($transferInsta && !preg_match('/^0+$/', $transferInsta))
                     <div class="bo-pay-item">
                         <div class="bo-pay-info">
-                            <span class="bo-pay-name">⚡ حساب InstaPay</span>
+                            <div class="bo-pay-header">
+                                <img src="{{ asset('images/payments/instapay.png') }}"
+                                     alt=""
+                                     class="bo-pay-logo bo-pay-logo--instapay"
+                                     aria-hidden="true"
+                                     loading="lazy">
+                                <span class="bo-pay-name">حساب InstaPay</span>
+                            </div>
                             <span class="bo-pay-num" dir="ltr">{{ $transferInsta }}</span>
                         </div>
                         <button type="button"
@@ -980,8 +1059,7 @@ html {
                     {{-- Empty State --}}
                     <div id="dropzoneEmpty">
                         <span class="bo-drop-icon" aria-hidden="true">📎</span>
-                        <p class="bo-drop-title">اضغط لرفع لقطة شاشة التحويل (إيصال الدفع)</p>
-                        <p class="bo-drop-subtitle">حجم أقل من 20MB • لقطات iPhone وجميع الأجهزة مدعومة</p>
+                        <p class="bo-drop-title">اضغط لرفع صورة إيصال التحويل</p>
                     </div>
 
                     {{-- Preview State --}}
@@ -1233,7 +1311,9 @@ html {
         }
     } catch (e) {}
 
-    // --- Render Attendee Fields (Label and Placeholder: strictly "الاسم") ---
+    // --- Render Ticket Attendee Fields ---
+    // Every ticket is clearly numbered: "التذكرة 1", "التذكرة 2", "التذكرة 3", etc. (NO "مرافق")
+    // WhatsApp field label explicitly states purpose: "رقم الواتساب لاستلام التذكرة *"
     function renderAttendeeFields() {
         attendeesContainer.innerHTML = '';
 
@@ -1245,43 +1325,23 @@ html {
             var card = document.createElement('div');
             card.className = 'bo-attendee-card';
 
-            if (i === 1) {
-                card.innerHTML =
-                    '<div class="bo-attendee-header">' +
-                        '<span>👤</span>' +
-                        '<span>التذكرة 1 — صاحب الحجز</span>' +
+            card.innerHTML =
+                '<div class="bo-attendee-header">' +
+                    '<span>🎟️</span>' +
+                    '<span>التذكرة ' + i + '</span>' +
+                '</div>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
+                    '<div class="bo-field-group">' +
+                        '<label class="bo-field-label">الاسم *</label>' +
+                        '<input type="text" name="names[]" value="' + valName + '"' +
+                               ' class="bo-input" placeholder="الاسم" required autocomplete="name">' +
                     '</div>' +
-                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
-                        '<div class="bo-field-group">' +
-                            '<label class="bo-field-label">الاسم *</label>' +
-                            '<input type="text" name="names[]" value="' + valName + '"' +
-                                   ' class="bo-input" placeholder="الاسم" required autocomplete="name">' +
-                        '</div>' +
-                        '<div class="bo-field-group">' +
-                            '<label class="bo-field-label">رقم الواتساب *</label>' +
-                            '<input type="tel" name="phones[]" value="' + valPhone + '"' +
-                                   ' class="bo-input" placeholder="01xxxxxxxxx" required autocomplete="tel" dir="ltr">' +
-                        '</div>' +
-                    '</div>';
-            } else {
-                card.innerHTML =
-                    '<div class="bo-attendee-header text-amber-300/90">' +
-                        '<span>🎟️</span>' +
-                        '<span>التذكرة ' + i + ' — بيانات المرافق</span>' +
+                    '<div class="bo-field-group">' +
+                        '<label class="bo-field-label">رقم الواتساب لاستلام التذكرة *</label>' +
+                        '<input type="tel" name="phones[]" value="' + valPhone + '"' +
+                               ' class="bo-input" placeholder="01xxxxxxxxx" required ' + (i === 1 ? 'autocomplete="tel"' : '') + ' dir="ltr">' +
                     '</div>' +
-                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">' +
-                        '<div class="bo-field-group mb-0">' +
-                            '<label class="bo-field-label">اسم المرافق ' + i + ' *</label>' +
-                            '<input type="text" name="names[]" value="' + valName + '"' +
-                                   ' class="bo-input" placeholder="الاسم" required>' +
-                        '</div>' +
-                        '<div class="bo-field-group mb-0">' +
-                            '<label class="bo-field-label">رقم واتساب المرافق ' + i + ' *</label>' +
-                            '<input type="tel" name="phones[]" value="' + valPhone + '"' +
-                                   ' class="bo-input" placeholder="01xxxxxxxxx" required dir="ltr">' +
-                        '</div>' +
-                    '</div>';
-            }
+                '</div>';
 
             attendeesContainer.appendChild(card);
         }
@@ -1397,7 +1457,7 @@ html {
     // Rule:
     // ACTIVE / CURRENT STEP  -> YELLOW (#fbbf24) "YOU ARE HERE"
     // COMPLETED STEP         -> GREEN  (#10b981)
-    // INACTIVE / NOT REACHED -> DIMMED (#6b7280, 0.35 opacity)
+    // INACTIVE / NOT REACHED -> DIMMED (rgba(255,255,255,0.45))
     function updateStepNavDisplay() {
         var navItems = [
             { el: stepNav1, isDone: validateStep1() },
@@ -1592,7 +1652,7 @@ html {
     window.addEventListener('scroll', function() {
         var scrollY = window.scrollY || window.pageYOffset;
 
-        // Sticky frameless blur activation
+        // Sticky glass elevation activation
         if (stickyNavWrap) {
             if (scrollY > 30) {
                 stickyNavWrap.classList.add('is-scrolled');

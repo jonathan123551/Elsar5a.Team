@@ -85,18 +85,30 @@ body.homepage .cinema-home button:focus-visible {
   outline-offset: 4px;
   box-shadow: 0 0 0 5px rgba(8,6,5,.9) !important;
 }
+html, body,
+a, button, input, select, textarea, label, [role="button"],
+.cinematic-showtime-card, .stage-production, .cinema-home,
+.production-poster-wrap, .production-information, .theatre-location-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 body.homepage main.home-main {
   width: 100% !important;
   max-width: none !important;
   margin: 0 !important;
   padding: 0 !important;
 }
+body.homepage.cinema-complete,
+body.homepage.cinema-complete #elsar5a-stage-world,
+body.homepage.cinema-complete .cinema-home {
+  background: #020617 !important;
+}
 body.homepage #elsar5a-stage-world > footer {
   position: relative;
   z-index: 2;
   margin: 0 !important;
-  border-top: 1px solid rgba(214,164,91,.22);
-  background: #080605;
+  border-top: 0 !important;
+  background: transparent !important;
 }
 body.homepage #elsar5a-stage-world > footer > div:first-child { display:none; }
 body.homepage #elsar5a-stage-world > footer .max-w-5xl {
@@ -390,16 +402,15 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   opacity:var(--production-opacity,0);
   transform:translate3d(0,var(--production-y,38px),0) scale(var(--production-scale,.91));
   transform-origin:center 58%;
-  transition:opacity .18s linear;
 }
-.production-poster-wrap { position:relative; width:min(100%,390px); justify-self:center; perspective:1000px; }
+.production-poster-wrap { position:relative; width:min(100%,390px); justify-self:center; perspective:1400px; }
 .production-poster-wrap,.production-poster-missing {
-  opacity:var(--poster-opacity,0);
-  transform:perspective(1100px) translate3d(0,var(--poster-y,28px),var(--poster-z,-440px)) rotateY(var(--poster-rotate-y,8deg)) rotateX(var(--poster-rotate-x,3deg)) scale(var(--poster-scale,.56));
-  transform-style:preserve-3d;
-  transform-origin:50% 55%;
-  backface-visibility:hidden;
-  will-change:transform,opacity;
+  opacity: 1;
+  transform: none;
+  transform-style: preserve-3d;
+  transform-origin: center;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 .production-information {
   opacity:var(--information-opacity,0);
@@ -1094,30 +1105,10 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   .opening-identity,.opening-identity p { margin-inline:auto;text-align:center; }
   .opening-identity p { margin-bottom:6px; }
   .opening-archive { bottom:max(19px,env(safe-area-inset-bottom)); }
-  .camera-track { height:285svh; }
   .camera-world { transform-origin:50% 57%; }
   .camera-auditorium::before { height:35%;opacity:.38; }
   .camera-proscenium::before,.camera-proscenium::after { width:15%; }
   .camera-aisle { inset:44% 0 -12%; }
-  .stage-production {
-    inset:0;grid-template-columns:1fr;grid-template-rows:auto 1fr;align-content:center;justify-items:center;gap:12px;
-    padding:calc(70px + env(safe-area-inset-top)) 20px calc(48px + env(safe-area-inset-bottom));
-    transform:translate3d(0,var(--production-y,34px),0) scale(var(--production-scale,.93));
-  }
-  .production-poster-wrap { width:min(52vw,235px); }
-  .production-light { top:-13%;height:122%; }
-  .production-poster-frame { max-height:38svh;padding:5px; }
-  .production-poster-frame img { height:min(36svh,330px); }
-  .production-poster-missing { min-height:0;height:min(35svh,300px);width:auto;padding:18px 35px;aspect-ratio:.7; }
-  .production-information { width:min(100%,520px);align-self:start;text-align:center; }
-  .production-kicker { margin-bottom:5px;font-size:10px; }
-  .production-information h2 { font-size:clamp(22px,6vw,31px); }
-  .production-description { margin:6px auto 0;font-size:12px;line-height:1.6; }
-  .production-meta { justify-content:center;gap:8px 18px;margin:9px 0 2px; }
-  .production-meta dt { font-size:10px; }
-  .production-meta dd { font-size:12px; }
-  .ticket-state { min-height:22px;margin:3px 0 4px;font-size:11px; }
-  .booking-cta { min-height:46px;padding:0 18px;font-size:13px; }
   .stage-intermission { padding:calc(68px + env(safe-area-inset-top)) 18px calc(34px + env(safe-area-inset-bottom)); }
   .intermission-copy { max-width:28ch;margin:3px 0 0;color:rgba(246,230,207,.74);font-size:13px;line-height:1.8; }
   .camera-cue { font-size:10px; }
@@ -1169,9 +1160,6 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
 @media (max-width:370px) {
   .opening-identity p { font-size:11px; }
   body.homepage #elsar5a-stage-world > header nav a { padding-inline:6px !important;font-size:10px !important; }
-  .stage-production { padding-inline:14px; }
-  .production-poster-wrap { width:min(49vw,210px); }
-  .production-information h2 { font-size:21px; }
 }
 @media (min-width:761px) and (max-height:700px) {
   .stage-production { padding-block:76px 26px; }
@@ -1473,12 +1461,20 @@ body.cinema-intro-playing.cinema-website-stage #elsar5a-stage-world > header {
 }
 .cinema-opening { z-index: 55; }
 .cinema-intro-playing .stage-production {
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:8px;
-  padding:calc(68px + env(safe-area-inset-top)) 20px calc(36px + env(safe-area-inset-bottom));
+  position: relative;
+  inset: auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(14px, 2.2vh, 24px);
+  width: min(720px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: calc(72px + env(safe-area-inset-top)) 0 calc(36px + env(safe-area-inset-bottom));
+  text-align: center;
+  transform-origin: 50% 50%;
+  perspective: 1400px;
 }
 .opening-blackout {
   position: absolute;
@@ -1533,6 +1529,7 @@ body.cinema-complete .camera-track {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+  background: #020617;
 }
 body.cinema-complete .camera-viewport {
   position: relative;
@@ -1540,6 +1537,7 @@ body.cinema-complete .camera-viewport {
   height: auto;
   min-height: 100svh;
   overflow: visible;
+  background: #020617;
 }
 body.cinema-complete .camera-track.has-no-featured-production .camera-viewport { min-height:0; }
 body.cinema-complete .stage-intermission {
@@ -1561,15 +1559,16 @@ body.cinema-complete .stage-production {
   inset: auto;
   min-height: 100svh;
   margin: 0 auto;
-  width: min(680px, calc(100% - 32px));
+  width: min(720px, calc(100% - 32px));
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: clamp(12px, 2vh, 22px);
-  padding: calc(66px + env(safe-area-inset-top)) 0 calc(26px + env(safe-area-inset-bottom));
+  gap: clamp(14px, 2.2vh, 24px);
+  padding: calc(72px + env(safe-area-inset-top)) 0 calc(36px + env(safe-area-inset-bottom));
   text-align: center;
   transform-origin: 50% 50%;
+  perspective: 1400px;
 }
 body.cinema-complete.cinema-static-fallback .camera-world { opacity: .24; transform: none; }
 body.cinema-complete.cinema-static-fallback .stage-intermission {
@@ -1597,86 +1596,623 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
   transform: none;
 }
 .production-poster-wrap {
-  width: clamp(190px, 22vw, 330px);
+  width: min(100%, 350px);
   margin: 0 auto;
   perspective: 1400px;
   transform-style: preserve-3d;
+  transform-origin: center;
   will-change: transform, opacity;
 }
 .production-poster-frame {
-  position:relative;
-  width:100%;
-  max-height:none;
-  padding:0;
-  overflow:visible;
-  border:0;
-  box-shadow:none;
+  position: relative;
+  width: 100%;
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  box-shadow: none;
   transform: none;
   transform-style: preserve-3d;
-  background:transparent;
+  background: transparent;
 }
-.production-poster-frame::after { display:none; }
+.production-poster-frame::after { display: none; }
 .production-poster-frame img {
-  display:block;
-  width:auto;
-  max-width:100%;
-  height:min(60svh,590px);
-  margin-inline:auto;
-  object-fit:contain;
-  background:transparent;
-  filter:drop-shadow(0 28px 42px rgba(0,0,0,.62)) saturate(1.06);
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: min(50svh, 480px);
+  margin-inline: auto;
+  object-fit: contain;
+  background: transparent;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 25%);
+  filter: drop-shadow(0 20px 45px rgba(0,0,0,.75)) drop-shadow(0 0 20px rgba(214,164,91,.14)) saturate(1.06);
 }
-.cinema-intro-playing .production-poster-frame img { height:min(52svh,500px); }
+.production-poster-frame img:hover {
+  transform: scale(1.015);
+  filter: drop-shadow(0 26px 54px rgba(0,0,0,.82)) drop-shadow(0 0 30px rgba(214,164,91,.22)) saturate(1.08);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
+}
+
+@keyframes poster-flight {
+  0% {
+    opacity: 0;
+    transform:
+      scale(0.08)
+      rotateZ(-150deg)
+      rotateX(30deg)
+      rotateY(-360deg);
+  }
+
+  18% {
+    opacity: 1;
+    transform:
+      scale(0.22)
+      rotateZ(-110deg)
+      rotateX(22deg)
+      rotateY(-285deg);
+  }
+
+  48% {
+    opacity: 1;
+    transform:
+      scale(0.46)
+      rotateZ(-45deg)
+      rotateX(12deg)
+      rotateY(-140deg);
+  }
+
+  78% {
+    opacity: 1;
+    transform:
+      scale(0.82)
+      rotateZ(-8deg)
+      rotateX(4deg)
+      rotateY(-25deg);
+  }
+
+  92% {
+    opacity: 1;
+    transform:
+      scale(1.035)
+      rotateZ(2deg)
+      rotateX(0deg)
+      rotateY(5deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      scale(1)
+      rotateZ(0deg)
+      rotateX(0deg)
+      rotateY(0deg);
+  }
+}
+
+.production-poster-wrap.is-flying,
+.production-poster-missing.is-flying {
+  display: block;
+  transform-origin: center;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 25%);
+  animation: poster-flight 3.6s cubic-bezier(0.42, 0, 0.2, 1) 0.15s both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+body.cinema-complete .production-poster-wrap,
+body.cinema-complete .production-poster-missing,
+.production-poster-wrap.is-settled,
+.production-poster-missing.is-settled {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .production-poster-wrap,
+  .production-poster-wrap.is-flying,
+  .production-poster-missing,
+  .production-poster-missing.is-flying {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 .production-information {
   align-self: auto;
-  max-width: 590px;
+  max-width: 580px;
   text-align: center;
   will-change: transform, opacity;
 }
-.production-description { margin-inline: auto; }
-.production-meta { justify-content: center; }
+.production-information h2 {
+  margin: 0;
+  color: #fffdf9;
+  font-family: var(--font-display, 'Alexandria', serif);
+  font-weight: 800;
+  font-size: clamp(28px, 5.5vw, 44px);
+  line-height: 1.25;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.8), 0 0 35px rgba(214, 164, 91, 0.28);
+}
+.production-description {
+  max-width: 44ch;
+  margin: 10px auto 0;
+  color: rgba(241, 233, 220, 0.84);
+  font-size: 13.5px;
+  line-height: 1.75;
+  font-family: var(--font-sans, 'Readex Pro', sans-serif);
+  text-wrap: pretty;
+}
+
+/* Clickable Theatre Location Button */
+.production-location-wrap {
+  margin-top: 11px;
+  display: flex;
+  justify-content: center;
+}
+.theatre-location-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 15px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(214, 164, 91, 0.26);
+  color: #fce7c0;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: manipulation;
+}
+.theatre-location-btn:hover,
+.theatre-location-btn:focus-visible {
+  background: rgba(214, 164, 91, 0.16);
+  border-color: rgba(245, 204, 132, 0.65);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(214, 164, 91, 0.22);
+}
+.theatre-location-btn:active {
+  transform: scale(0.97);
+}
+
+.production-status-wrap {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.production-showtimes-hint {
+  margin: 0;
+  color: #e5c07b;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  touch-action: manipulation;
+}
+.production-showtimes-hint:hover {
+  color: #f7e2a9;
+  text-decoration: underline;
+  opacity: 0.95;
+}
+.ticket-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ticket-state::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ticket-state--healthy {
+  color: #6ee7b7;
+  border-color: rgba(110, 231, 183, 0.25);
+}
+.ticket-state--low {
+  color: #fde68a;
+  border-color: rgba(253, 230, 138, 0.25);
+}
+.ticket-state--critical,
+.ticket-state--soldout {
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.25);
+}
+
+/* Showtime Cards — Subtle Transparent Glassmorphism */
 .cinematic-showtimes {
   order: 3;
-  width: min(100%, 580px);
+  width: min(100%, 560px);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  opacity: 0;
+  gap: 12px;
+  margin-top: 18px;
   will-change: transform, opacity;
 }
+
 .cinematic-showtime-card {
-  min-height: 114px;
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  padding: 13px 14px;
-  color: #f7ead5;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px 14px 12px;
+  min-height: 160px;
+  border-radius: 14px;
   text-decoration: none;
-  text-align: center;
-  background: rgba(31, 15, 15, .84);
-  border: 1px solid rgba(214,164,91,.38);
-  box-shadow: inset 0 1px 0 rgba(255,238,205,.08), 0 12px 28px rgba(0,0,0,.24);
-  transition: transform .18s cubic-bezier(.16,1,.3,1), background-color .18s ease, border-color .18s ease;
+  text-align: right;
+  color: #f1e9dc;
+
+  /* Subtle transparent dark glass */
+  background: rgba(12, 8, 6, 0.38);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+
+  /* Very thin low-opacity border */
+  border: 1px solid rgba(214, 164, 91, 0.14);
+  box-shadow:
+    0 8px 24px -6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 238, 205, 0.08);
+
+  /* Compositor-only transitions */
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+
+  touch-action: manipulation;
+  overflow: hidden;
 }
+
+.cinematic-showtime-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 238, 205, 0.04) 0%,
+    transparent 40%
+  );
+  pointer-events: none;
+}
+
 .cinematic-showtime-card:hover,
 .cinematic-showtime-card:focus-visible {
-  transform: translateY(-2px);
-  background: rgba(78, 25, 29, .9);
-  border-color: rgba(245,204,132,.72);
+  transform: translateY(-3px);
+  border-color: rgba(214, 164, 91, 0.3);
+  box-shadow:
+    0 14px 36px -6px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 245, 225, 0.14);
 }
-.cinematic-showtime-date { color: rgba(247,233,210,.72); font-size: 11px; }
-.cinematic-showtime-time { color: #fff7e9; font-weight: 800; font-size: 17px; }
-.cinematic-showtime-state { color: #dbcaa8; font-size: 11px; }
-.cinematic-showtime-state.is-low { color: #f2bf6e; }
-.cinematic-showtime-state.is-critical { color: #f08a79; }
-.cinematic-showtime-action { margin-top: 4px; color: #edc27d; font-size: 12px; font-weight: 800; }
+
+.cinematic-showtime-card:active {
+  transform: scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* Card Information Hierarchy */
+.st-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.st-day-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(229, 192, 123, 0.9);
+}
+.st-date-val {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(241, 233, 220, 0.55);
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+}
+
+.st-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 3px;
+}
+.st-time-num {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.st-time-ampm {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(241, 233, 220, 0.7);
+}
+
+.st-seam {
+  height: 1px;
+  width: 100%;
+  margin: 10px 0 8px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(214, 164, 91, 0.16) 30%,
+    rgba(214, 164, 91, 0.16) 70%,
+    transparent 100%
+  );
+}
+
+.st-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.st-avail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.st-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.st-avail-chip.is-healthy { color: #a7f3d0; }
+.st-avail-chip.is-healthy .st-dot { background: #34d399; box-shadow: 0 0 5px rgba(52, 211, 153, 0.5); }
+.st-avail-chip.is-low { color: #fde68a; }
+.st-avail-chip.is-low .st-dot { background: #fbbf24; box-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }
+.st-avail-chip.is-critical { color: #fca5a5; }
+.st-avail-chip.is-critical .st-dot { background: #f87171; box-shadow: 0 0 5px rgba(248, 113, 113, 0.5); }
+.st-avail-chip.is-soldout { color: #fca5a5; }
+.st-avail-chip.is-soldout .st-dot { background: #ef4444; }
+
+.st-price-block {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  direction: ltr;
+}
+.st-price-amount {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.st-price-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(241, 233, 220, 0.55);
+}
+
+.st-cta-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(214, 164, 91, 0.18);
+  border: 1px solid rgba(214, 164, 91, 0.22);
+  color: #f0cf91;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.cinematic-showtime-card:hover .st-cta-btn,
+.cinematic-showtime-card:focus-visible .st-cta-btn {
+  background: rgba(214, 164, 91, 0.28);
+  color: #fce7c0;
+}
+.st-cta-icon {
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+.cinematic-showtime-card:hover .st-cta-icon {
+  transform: translateX(-3px);
+}
+
+.showtimes-more-wrap {
+  order: 4;
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+.showtimes-more-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(241, 233, 220, 0.6);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+.showtimes-more-link:hover {
+  color: #fff;
+  border-color: rgba(214, 164, 91, 0.3);
+  background: rgba(214, 164, 91, 0.08);
+}
 
 @media (max-width: 760px) {
-  .stage-production { width: min(100% - 28px, 480px); gap: 9px; padding-top: calc(58px + env(safe-area-inset-top)); }
-  .production-poster-wrap { width: min(48vw, 225px); }
-  .cinematic-showtimes { gap: 8px; }
-  .cinematic-showtime-card { min-height: 104px; padding: 10px 7px; }
-  .cinematic-showtime-time { font-size: 15px; }
+  .stage-production,
+  .cinema-intro-playing .stage-production,
+  body.cinema-complete .stage-production {
+    position: relative;
+    inset: auto;
+    min-height: 100svh;
+    width: min(100% - 24px, 480px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding-top: calc(54px + env(safe-area-inset-top));
+    padding-bottom: 28px;
+    text-align: center;
+    transform-origin: 50% 50%;
+    perspective: 1400px;
+  }
+  .production-poster-wrap {
+    width: min(74vw, 295px);
+    transform-origin: center;
+  }
+  .production-poster-frame img {
+    height: min(44svh, 420px);
+    border-radius: 12px;
+  }
+  .production-information h2 {
+    font-size: clamp(24px, 6.5vw, 36px);
+  }
+  .cinematic-showtimes {
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .cinematic-showtime-card {
+    min-width: 0;
+    min-height: 136px;
+    padding: 10px 10px 8px;
+  }
+  .st-day-name {
+    font-size: 11.5px;
+  }
+  .st-date-val {
+    font-size: 10px;
+  }
+  .st-time-row {
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .st-time-num {
+    font-size: 19px;
+  }
+  .st-time-ampm {
+    font-size: 10.5px;
+  }
+  .st-seam {
+    margin: 6px 0;
+  }
+  .st-meta-row {
+    margin-bottom: 7px;
+    gap: 4px;
+  }
+  .st-avail-chip {
+    font-size: 9.5px;
+    gap: 4px;
+  }
+  .st-dot {
+    width: 4px;
+    height: 4px;
+  }
+  .st-price-block {
+    gap: 2px;
+  }
+  .st-price-amount {
+    font-size: 12.5px;
+  }
+  .st-price-label {
+    font-size: 9px;
+  }
+  .st-cta-btn {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    gap: 4px;
+  }
+  .st-cta-icon {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 375px) {
+  .stage-production,
+  .cinema-intro-playing .stage-production,
+  body.cinema-complete .stage-production {
+    width: calc(100% - 16px);
+    gap: 10px;
+    padding-top: calc(50px + env(safe-area-inset-top));
+    padding-bottom: 22px;
+  }
+  .production-poster-wrap {
+    width: min(72vw, 260px);
+  }
+  .production-poster-frame img {
+    height: min(40svh, 360px);
+  }
+  .cinematic-showtimes {
+    gap: 6px;
+  }
+  .cinematic-showtime-card {
+    min-height: 128px;
+    padding: 8px 8px 7px;
+  }
+  .st-day-name {
+    font-size: 11px;
+  }
+  .st-date-val {
+    font-size: 9px;
+  }
+  .st-time-num {
+    font-size: 17px;
+  }
+  .st-time-ampm {
+    font-size: 9.5px;
+  }
+  .st-seam {
+    margin: 5px 0 4px;
+  }
+  .st-meta-row {
+    margin-bottom: 6px;
+    gap: 2px;
+  }
+  .st-avail-chip {
+    font-size: 8.5px;
+  }
+  .st-price-amount {
+    font-size: 11.5px;
+  }
+  .st-cta-btn {
+    min-height: 26px;
+    font-size: 10px;
+    padding: 0 6px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
