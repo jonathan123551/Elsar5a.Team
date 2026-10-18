@@ -44,6 +44,18 @@
     $featuredLow = !$featuredSoldOut && !$featuredCritical && (
         $featuredRemaining <= 25 || ((int) $featuredTime->total_tickets > 0 && $featuredRemaining / (int) $featuredTime->total_tickets <= .25)
     );
+    $rawDesc = $featuredShow?->description ?? '';
+    $locationUrl = null;
+    $cleanDesc = $rawDesc;
+    if ($rawDesc && preg_match('/(https?:\/\/[^\s<]+)/i', $rawDesc, $urlMatches)) {
+        $locationUrl = $urlMatches[1];
+        $cleanDesc = trim(preg_replace('/https?:\/\/[^\s<]+/i', '', $rawDesc));
+        $cleanDesc = rtrim($cleanDesc, " -:—،,\t\n\r");
+    }
+    $locationLabel = 'موقع المسرح على الخريطة';
+    if ($locationUrl && (str_contains($locationUrl, 'maps') || str_contains($locationUrl, 'goo.gl'))) {
+        $locationLabel = 'موقع المسرح على الخريطة (Google Maps)';
+    }
 @endphp
 
 @if(request()->routeIs('home'))
@@ -98,32 +110,28 @@
                         </div>
                     @endif
                     <div class="production-information">
-                        <p class="production-kicker">العرض القادم على خشبة المسرح</p>
                         <h2 id="featured-title" data-production-step="title">{{ $featuredShow->title }}</h2>
-                        @if($featuredShow->description)<p class="production-description" data-production-step="description">{{ $featuredShow->description }}</p>@endif
-                        <dl class="production-meta" data-production-step="meta">
-                            <div><dt>التاريخ</dt><dd>{{ $featuredDate }}</dd></div>
-                            @if($featuredClock)<div><dt>الوقت</dt><dd>{{ $featuredClock->format('g:i') }} {{ $featuredClock->format('A') === 'PM' ? 'م' : 'ص' }}</dd></div>@endif
-                            @if($featuredTime->ticket_price !== null)<div><dt>التذكرة</dt><dd>{{ number_format((float) $featuredTime->ticket_price, 0) }} ج.م</dd></div>@endif
-                        </dl>
-                        @if($featuredBookableTimes->count() > 1)
-                            <p class="production-showtimes-hint" data-production-step="times">{{ $featuredBookableTimes->count() }} مواعيد متاحة — اختر موعد العرض للمتابعة</p>
+                        @if($cleanDesc)<p class="production-description" data-production-step="description">{{ $cleanDesc }}</p>@endif
+                        @if($locationUrl)
+                            <div class="production-location-wrap" data-production-step="location">
+                                <a href="{{ $locationUrl }}" target="_blank" rel="noopener noreferrer" class="theatre-location-btn">
+                                    <span class="location-pin" aria-hidden="true">📍</span>
+                                    <span>{{ $locationLabel }}</span>
+                                    <span class="location-external" aria-hidden="true">↗</span>
+                                </a>
+                            </div>
                         @endif
-                        @if($featuredSoldOut)
-                            <p class="ticket-state ticket-state--soldout" role="status" data-production-step="status">اكتملت التذاكر</p>
-                            <a class="booking-cta booking-cta--quiet" data-production-step="action" href="{{ route('shows.show', $featuredShow) }}">تفاصيل العرض</a>
-                        @else
-                            <p class="ticket-state {{ $featuredCritical ? 'ticket-state--critical' : ($featuredLow ? 'ticket-state--low' : 'ticket-state--healthy') }}" role="status" data-production-step="status">
-                                @if($featuredCritical) متبقي {{ $featuredRemaining }} {{ $featuredRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط
+                        <div class="production-status-wrap" data-production-step="status">
+                            <span class="ticket-state {{ $featuredSoldOut ? 'ticket-state--soldout' : ($featuredCritical ? 'ticket-state--critical' : ($featuredLow ? 'ticket-state--low' : 'ticket-state--healthy')) }}" role="status">
+                                @if($featuredSoldOut) اكتملت التذاكر
+                                @elseif($featuredCritical) متبقي {{ $featuredRemaining }} {{ $featuredRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط
                                 @elseif($featuredLow) متبقي عدد محدود من التذاكر
                                 @else متاح للحجز الآن @endif
-                            </p>
+                            </span>
                             @if($featuredBookableTimes->count() > 1)
-                                <a class="booking-cta" data-production-step="action" href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" role="button">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
-                            @else
-                                <a class="booking-cta" data-production-step="action" href="{{ route('bookings.create', $featuredTime) }}">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
+                                <a href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" class="production-showtimes-hint" data-production-step="times" role="button">{{ $featuredBookableTimes->count() }} مواعيد متاحة <span aria-hidden="true">↗</span></a>
                             @endif
-                        @endif
+                        </div>
                     </div>
                     @if($featuredBookableTimes->isNotEmpty() && !$featuredSoldOut)
                         <div class="cinematic-showtimes" data-production-step="showtimes" aria-label="مواعيد الحجز المتاحة">
@@ -133,18 +141,76 @@
                                     $showtimeRemaining = (int) $showtime->homepage_remaining_tickets;
                                     $showtimeCritical = $showtimeRemaining > 0 && $showtimeRemaining <= 10;
                                     $showtimeLow = !$showtimeCritical && ($showtimeRemaining <= 25 || ((int) $showtime->total_tickets > 0 && $showtimeRemaining / (int) $showtime->total_tickets <= .25));
+                                    $arabicDays = [
+                                        'Sunday' => 'الأحد',
+                                        'Monday' => 'الإثنين',
+                                        'Tuesday' => 'الثلاثاء',
+                                        'Wednesday' => 'الأربعاء',
+                                        'Thursday' => 'الخميس',
+                                        'Friday' => 'الجمعة',
+                                        'Saturday' => 'السبت',
+                                    ];
+                                    $rawDay = $showtime->date ? $showtime->date->format('l') : '';
+                                    $arabicDayName = $arabicDays[$rawDay] ?? ($showtime->date?->translatedFormat('l') ?? '');
                                 @endphp
-                                <a class="cinematic-showtime-card" data-showtime-card href="{{ route('bookings.create', $showtime) }}" aria-label="احجز عرض {{ $featuredShow->title }} يوم {{ $showtime->date?->format('d/m/Y') }}">
-                                    <span class="cinematic-showtime-date">{{ $showtime->date?->format('d/m/Y') }}</span>
-                                    @if($showtimeClock)<span class="cinematic-showtime-time">{{ $showtimeClock->format('g:i') }} {{ $showtimeClock->format('A') === 'PM' ? 'م' : 'ص' }}</span>@endif
-                                    <span class="cinematic-showtime-state {{ $showtimeCritical ? 'is-critical' : ($showtimeLow ? 'is-low' : '') }}">
-                                        @if($showtimeCritical) متبقي {{ $showtimeRemaining }} {{ $showtimeRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط
-                                        @elseif($showtimeLow) متبقي عدد محدود
-                                        @else متاح للحجز @endif
-                                    </span>
-                                    <span class="cinematic-showtime-action">احجز الآن</span>
+                                <a class="cinematic-showtime-card"
+                                   data-showtime-card
+                                   href="{{ route('bookings.create', $showtime) }}"
+                                   aria-label="احجز عرض {{ $featuredShow->title }} يوم {{ $showtime->date?->format('d/m/Y') }}">
+                                    
+                                    {{-- 1. Date --}}
+                                    <div class="st-date-row">
+                                        <span class="st-day-name">{{ $arabicDayName }}</span>
+                                        <span class="st-date-val">{{ $showtime->date?->format('d/m/Y') }}</span>
+                                    </div>
+
+                                    {{-- 2. Time --}}
+                                    <div class="st-time-row">
+                                        <span class="st-time-num">{{ $showtimeClock ? $showtimeClock->format('g:i') : '' }}</span>
+                                        <span class="st-time-ampm">{{ $showtimeClock ? ($showtimeClock->format('A') === 'PM' ? 'مساءً' : 'صباحاً') : '' }}</span>
+                                    </div>
+
+                                    {{-- Glass Seam Divider --}}
+                                    <div class="st-seam" aria-hidden="true"></div>
+
+                                    {{-- 3 & 4. Meta Row: Availability & Price --}}
+                                    <div class="st-meta-row">
+                                        <div class="st-avail-chip {{ $showtimeCritical ? 'is-critical' : ($showtimeLow ? 'is-low' : 'is-healthy') }}">
+                                            <span class="st-dot" aria-hidden="true"></span>
+                                            <span>
+                                                @if($showtimeCritical) متبقي {{ $showtimeRemaining }} فقط
+                                                @elseif($showtimeLow) متبقي عدد محدود
+                                                @else متاح للحجز @endif
+                                            </span>
+                                        </div>
+
+                                        @if($showtime->ticket_price !== null)
+                                            <div class="st-price-block">
+                                                <span class="st-price-amount">{{ number_format((float) $showtime->ticket_price, 0) }}</span>
+                                                <span class="st-price-label">ج.م</span>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    {{-- 5. Booking CTA inside Card --}}
+                                    <div class="st-cta-btn" data-production-step="action">
+                                        <span>احجز الآن</span>
+                                        <span class="st-cta-icon" aria-hidden="true">←</span>
+                                    </div>
                                 </a>
                             @endforeach
+                        </div>
+                        @if($featuredBookableTimes->count() > 2)
+                            <div class="showtimes-more-wrap">
+                                <a href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" class="showtimes-more-link" role="button">
+                                    <span>+ {{ $featuredBookableTimes->count() - 2 }} مواعيد أخرى متاحة (عرض الكل)</span>
+                                    <span aria-hidden="true">↗</span>
+                                </a>
+                            </div>
+                        @endif
+                    @elseif($featuredSoldOut)
+                        <div class="production-soldout-action">
+                            <a class="booking-cta booking-cta--quiet" data-production-step="action" href="{{ route('shows.show', $featuredShow) }}">تفاصيل العرض</a>
                         </div>
                     @endif
                 </article>
