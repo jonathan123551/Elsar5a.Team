@@ -1105,30 +1105,10 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   .opening-identity,.opening-identity p { margin-inline:auto;text-align:center; }
   .opening-identity p { margin-bottom:6px; }
   .opening-archive { bottom:max(19px,env(safe-area-inset-bottom)); }
-  .camera-track { height:285svh; }
   .camera-world { transform-origin:50% 57%; }
   .camera-auditorium::before { height:35%;opacity:.38; }
   .camera-proscenium::before,.camera-proscenium::after { width:15%; }
   .camera-aisle { inset:44% 0 -12%; }
-  .stage-production {
-    inset:0;grid-template-columns:1fr;grid-template-rows:auto 1fr;align-content:center;justify-items:center;gap:12px;
-    padding:calc(70px + env(safe-area-inset-top)) 20px calc(48px + env(safe-area-inset-bottom));
-    transform:translate3d(0,var(--production-y,34px),0) scale(var(--production-scale,.93));
-  }
-  .production-poster-wrap { width:min(52vw,235px); }
-  .production-light { top:-13%;height:122%; }
-  .production-poster-frame { max-height:38svh;padding:5px; }
-  .production-poster-frame img { height:min(36svh,330px); }
-  .production-poster-missing { min-height:0;height:min(35svh,300px);width:auto;padding:18px 35px;aspect-ratio:.7; }
-  .production-information { width:min(100%,520px);align-self:start;text-align:center; }
-  .production-kicker { margin-bottom:5px;font-size:10px; }
-  .production-information h2 { font-size:clamp(22px,6vw,31px); }
-  .production-description { margin:6px auto 0;font-size:12px;line-height:1.6; }
-  .production-meta { justify-content:center;gap:8px 18px;margin:9px 0 2px; }
-  .production-meta dt { font-size:10px; }
-  .production-meta dd { font-size:12px; }
-  .ticket-state { min-height:22px;margin:3px 0 4px;font-size:11px; }
-  .booking-cta { min-height:46px;padding:0 18px;font-size:13px; }
   .stage-intermission { padding:calc(68px + env(safe-area-inset-top)) 18px calc(34px + env(safe-area-inset-bottom)); }
   .intermission-copy { max-width:28ch;margin:3px 0 0;color:rgba(246,230,207,.74);font-size:13px;line-height:1.8; }
   .camera-cue { font-size:10px; }
@@ -1180,9 +1160,6 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
 @media (max-width:370px) {
   .opening-identity p { font-size:11px; }
   body.homepage #elsar5a-stage-world > header nav a { padding-inline:6px !important;font-size:10px !important; }
-  .stage-production { padding-inline:14px; }
-  .production-poster-wrap { width:min(49vw,210px); }
-  .production-information h2 { font-size:21px; }
 }
 @media (min-width:761px) and (max-height:700px) {
   .stage-production { padding-block:76px 26px; }
@@ -1484,15 +1461,19 @@ body.cinema-intro-playing.cinema-website-stage #elsar5a-stage-world > header {
 }
 .cinema-opening { z-index: 55; }
 .cinema-intro-playing .stage-production {
+  position: relative;
+  inset: auto;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 14px;
+  gap: clamp(14px, 2.2vh, 24px);
   width: min(720px, calc(100% - 32px));
   margin: 0 auto;
   padding: calc(72px + env(safe-area-inset-top)) 0 calc(36px + env(safe-area-inset-bottom));
   text-align: center;
+  transform-origin: 50% 50%;
 }
 .opening-blackout {
   position: absolute;
@@ -1999,10 +1980,20 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
   .stage-production,
   .cinema-intro-playing .stage-production,
   body.cinema-complete .stage-production {
+    position: relative;
+    inset: auto;
+    min-height: 100svh;
     width: min(100% - 24px, 480px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     gap: 12px;
     padding-top: calc(54px + env(safe-area-inset-top));
     padding-bottom: 28px;
+    text-align: center;
+    transform-origin: 50% 50%;
   }
   .production-poster-wrap {
     width: min(74vw, 295px);
@@ -2015,17 +2006,121 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
     font-size: clamp(24px, 6.5vw, 36px);
   }
   .cinematic-showtimes {
-    grid-template-columns: 1fr;
-    width: min(100%, 380px);
-    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
     margin-top: 10px;
   }
   .cinematic-showtime-card {
-    min-height: 165px;
-    padding: 14px 14px 12px;
+    min-width: 0;
+    min-height: 136px;
+    padding: 10px 10px 8px;
+  }
+  .st-day-name {
+    font-size: 11.5px;
+  }
+  .st-date-val {
+    font-size: 10px;
+  }
+  .st-time-row {
+    gap: 4px;
+    margin-top: 2px;
   }
   .st-time-num {
-    font-size: 23px;
+    font-size: 19px;
+  }
+  .st-time-ampm {
+    font-size: 10.5px;
+  }
+  .st-seam {
+    margin: 6px 0;
+  }
+  .st-meta-row {
+    margin-bottom: 7px;
+    gap: 4px;
+  }
+  .st-avail-chip {
+    font-size: 9.5px;
+    gap: 4px;
+  }
+  .st-dot {
+    width: 4px;
+    height: 4px;
+  }
+  .st-price-block {
+    gap: 2px;
+  }
+  .st-price-amount {
+    font-size: 12.5px;
+  }
+  .st-price-label {
+    font-size: 9px;
+  }
+  .st-cta-btn {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    gap: 4px;
+  }
+  .st-cta-icon {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 375px) {
+  .stage-production,
+  .cinema-intro-playing .stage-production,
+  body.cinema-complete .stage-production {
+    width: calc(100% - 16px);
+    gap: 10px;
+    padding-top: calc(50px + env(safe-area-inset-top));
+    padding-bottom: 22px;
+  }
+  .production-poster-wrap {
+    width: min(72vw, 260px);
+  }
+  .production-poster-frame img {
+    height: min(40svh, 360px);
+  }
+  .cinematic-showtimes {
+    gap: 6px;
+  }
+  .cinematic-showtime-card {
+    min-height: 128px;
+    padding: 8px 8px 7px;
+  }
+  .st-day-name {
+    font-size: 11px;
+  }
+  .st-date-val {
+    font-size: 9px;
+  }
+  .st-time-num {
+    font-size: 17px;
+  }
+  .st-time-ampm {
+    font-size: 9.5px;
+  }
+  .st-seam {
+    margin: 5px 0 4px;
+  }
+  .st-meta-row {
+    margin-bottom: 6px;
+    gap: 2px;
+  }
+  .st-avail-chip {
+    font-size: 8.5px;
+  }
+  .st-price-amount {
+    font-size: 11.5px;
+  }
+  .st-cta-btn {
+    min-height: 26px;
+    font-size: 10px;
+    padding: 0 6px;
   }
 }
 
