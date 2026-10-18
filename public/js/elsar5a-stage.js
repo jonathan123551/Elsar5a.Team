@@ -91,19 +91,6 @@
     if (openingArchive) openingArchive.setAttribute('inert', '');
     if (siteHeader) siteHeader.setAttribute('inert', '');
 
-    if (window.CustomEase) {
-      try {
-        gsap.registerPlugin(window.CustomEase);
-        window.CustomEase.create('posterArrive', 'M0,0 C0.16,1 0.3,1 1,1');
-      } catch (e) {}
-    }
-    var posterEase = (window.CustomEase && gsap.parseEase('posterArrive')) ? 'posterArrive' : 'power4.out';
-    var isMobile = window.innerWidth <= 768;
-    var posterStartY = isMobile ? -130 : -160;
-    var posterStartRotZ = isMobile ? -140 : -160;
-    var posterStartRotX = isMobile ? 28 : 35;
-    var posterStartRotY = -360;
-
     gsap.set(track, { autoAlpha: 0 });
     gsap.set(websiteWorld, { autoAlpha: 0 });
     gsap.set(world, { autoAlpha: 1, scale: 1.08, transformPerspective: 1200 });
@@ -116,17 +103,8 @@
     gsap.set(logo, { autoAlpha: 0, y: 18, scale: .88 });
     gsap.set(openingLines, { autoAlpha: 0, y: 18, scale: .97, filter: 'blur(3px)' });
     if (production) {
-      gsap.set(production, { autoAlpha: 0, y: 0 });
-      gsap.set(production.querySelectorAll('.production-poster-wrap, .production-poster-missing'), {
-        autoAlpha: 0,
-        y: posterStartY,
-        scale: 0.08,
-        rotation: posterStartRotZ,
-        rotationX: posterStartRotX,
-        rotationY: posterStartRotY,
-        transformPerspective: 1400,
-        transformOrigin: '50% 50%'
-      });
+      gsap.set(production, { autoAlpha: 0, y: 20 });
+      gsap.set(production.querySelectorAll('.production-poster-wrap, .production-poster-missing'), { autoAlpha: 0, z: -1500, y: 22, scale: .28, rotationY: -64, rotationX: 13, transformPerspective: 1600 });
       gsap.set(productionInformation, { autoAlpha: 0, y: 18 });
       gsap.set(productionSteps, { autoAlpha: 0, y: 18 });
       if (productionSteps[0]) gsap.set(productionSteps[0], { scale: .96, filter: 'blur(8px)' });
@@ -186,19 +164,13 @@
       master
         .set(production, { autoAlpha: 1, y: 0 })
         .addLabel('POSTER_REVEAL')
-        .to(poster, {
-          autoAlpha: 1,
-          y: 0,
-          scale: 1,
-          rotation: 0,
-          rotationX: 0,
-          rotationY: 0,
-          duration: 2.4,
-          ease: posterEase
-        })
+        .to(poster, { autoAlpha: 1, z: -760, y: 10, scale: .48, rotationY: 20, rotationX: -6, duration: .95, ease: 'power2.out' })
+        .to(poster, { z: -250, y: -2, scale: .78, rotationY: -13, rotationX: 4, duration: .82, ease: 'power2.inOut' })
+        .to(poster, { z: 28, y: 0, scale: 1, rotationY: 4, rotationX: -1.5, duration: 1.05, ease: 'power4.out' })
+        .to(poster, { z: 0, rotationY: 0, rotationX: 0, duration: .48, ease: 'power2.out' })
         .addLabel('POSTER_SETTLED')
         .addLabel('PRODUCTION_INFO')
-        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .35, ease: 'power2.out' }, '+=.4')
+        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .3, ease: 'power2.out' }, '+=.75')
         .to(productionSteps[0], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .62, ease: 'power2.out' }, '+=.12')
         .to(productionSteps.slice(1), { autoAlpha: 1, y: 0, duration: .42, stagger: .22, ease: 'power2.out' }, '+=.12')
         .to(cinematicShowtimes, { autoAlpha: 1, y: 0, duration: .38, ease: 'power2.out' }, '+=.2')
