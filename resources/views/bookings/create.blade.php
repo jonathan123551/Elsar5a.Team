@@ -23,17 +23,22 @@
    ELSAR5A THEATRE BOX OFFICE — APPLE-INSPIRED GLASS & TYPOGRAPHY
    ============================================================ */
 :root {
-    --th-bg: #07090e;
-    --th-card-bg: rgba(15, 20, 30, 0.88);
+    --th-bg: #090406;
+    /* Deep theatrical burgundy/maroon container gradient matching background */
+    --th-card-bg: linear-gradient(180deg, rgba(34, 15, 20, 0.90) 0%, rgba(18, 8, 12, 0.94) 100%);
     --th-card-border: rgba(255, 255, 255, 0.08);
+    --th-card-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.75), 0 0 35px -8px rgba(120, 20, 35, 0.12);
+    /* Surface hierarchy */
+    --th-surface-dark: rgba(13, 5, 8, 0.65);
+    --th-surface-elevated: rgba(32, 13, 18, 0.75);
     --th-amber: #f59e0b;
     --th-amber-light: #fde68a;
     --th-amber-glow: rgba(245, 158, 11, 0.25);
     --th-emerald: #10b981;
     --th-emerald-glow: rgba(16, 185, 129, 0.25);
     --th-text-main: #f9fafb;
-    --th-text-muted: #9ca3af;
-    --th-text-dim: #6b7280;
+    --th-text-muted: #a3999d;
+    --th-text-dim: #786e72;
     --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Arabic", system-ui, -apple-system-subpixel, sans-serif;
 }
 
@@ -80,24 +85,24 @@ html {
     max-width: 440px;
     padding: 0.35rem 0.75rem;
     border-radius: 9999px;
-    background: rgba(18, 22, 34, 0.65);
-    backdrop-filter: blur(20px) saturate(190%);
-    -webkit-backdrop-filter: blur(20px) saturate(190%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.45),
-        0 4px 12px rgba(0, 0, 0, 0.25),
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.18),
-        inset 0 -1px 1px 0 rgba(0, 0, 0, 0.25);
+    background: rgba(26, 11, 16, 0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.55),
+        0 4px 12px rgba(0, 0, 0, 0.35),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 1px 0 rgba(0, 0, 0, 0.3);
     font-family: var(--apple-font);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bo-sticky-nav-wrap.is-scrolled .bo-glass-pill {
-    background: rgba(14, 18, 28, 0.82);
-    border-color: rgba(255, 255, 255, 0.16);
-    box-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.6),
-        0 6px 16px rgba(0, 0, 0, 0.35),
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.22);
+    background: rgba(18, 7, 11, 0.88);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.65),
+        0 6px 16px rgba(0, 0, 0, 0.4),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .bo-step-item {
@@ -155,7 +160,7 @@ html {
     opacity: 0.75;
 }
 
-/* COMPLETED STEP: Apple Subtle Emerald Green */
+/* COMPLETED STEP: Semantic Emerald Green */
 .bo-step-item.is-completed {
     opacity: 0.95;
     color: #34d399;
@@ -194,11 +199,13 @@ html {
 /* 2. SECTION CARDS — MINIMAL HEADERS, NO NUMBER BOXES */
 .bo-section {
     background: var(--th-card-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--th-card-border);
     border-radius: 1.25rem;
     padding: 1.25rem;
     margin-bottom: 1.25rem;
-    box-shadow: 0 15px 35px -15px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--th-card-shadow);
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -209,8 +216,8 @@ html {
 }
 
 .bo-section.is-active-focus {
-    border-color: rgba(245, 158, 11, 0.4);
-    box-shadow: 0 0 25px -8px var(--th-amber-glow);
+    border-color: rgba(245, 158, 11, 0.45);
+    box-shadow: 0 0 25px -6px var(--th-amber-glow), var(--th-card-shadow);
 }
 
 .bo-section.is-section-done {
@@ -248,7 +255,7 @@ html {
 }
 
 .bo-status-pill.status-pending {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     color: var(--th-text-dim);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -279,27 +286,27 @@ html {
     text-align: right;
     padding: 0.9rem 1rem;
     border-radius: 1rem;
-    border: 1.5px solid var(--th-card-border);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid rgba(255, 255, 255, 0.07);
+    background: var(--th-surface-dark);
     text-decoration: none;
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .bo-showtime-card.is-active {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.05));
-    border-color: rgba(245, 158, 11, 0.65);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(34, 14, 20, 0.85));
+    border-color: rgba(245, 158, 11, 0.70);
     box-shadow: 0 0 20px -5px var(--th-amber-glow);
 }
 
 .bo-showtime-card:not(.is-active) {
-    opacity: 0.65;
+    opacity: 0.72;
 }
 
 .bo-showtime-card:not(.is-active):hover {
-    opacity: 0.9;
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.2);
+    opacity: 0.95;
+    background: var(--th-surface-elevated);
+    border-color: rgba(255, 255, 255, 0.16);
 }
 
 .bo-showtime-label {
@@ -334,7 +341,7 @@ html {
 
 /* 4. TACTILE TICKET COUNTER — STRICT PLUS ON RIGHT, MINUS ON LEFT */
 .bo-counter-box {
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--th-surface-dark);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1rem;
     padding: 1.1rem 1rem;
@@ -358,8 +365,8 @@ html {
     width: 52px;
     height: 52px;
     border-radius: 1rem;
-    border: 1.5px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    background: var(--th-surface-elevated);
     color: #ffffff;
     font-size: 1.6rem;
     font-weight: 700;
@@ -374,8 +381,9 @@ html {
 }
 
 .bo-counter-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(48, 19, 27, 0.9);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #fde68a;
 }
 
 .bo-counter-btn:active {
@@ -436,8 +444,8 @@ html {
 }
 
 .bo-pay-item {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--th-card-border);
+    background: var(--th-surface-dark);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 1rem;
     padding: 0.85rem 1rem;
     display: flex;
@@ -448,8 +456,8 @@ html {
 }
 
 .bo-pay-item:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(245, 158, 11, 0.30);
+    background: var(--th-surface-elevated);
 }
 
 .bo-pay-info {
@@ -525,9 +533,9 @@ html {
 .bo-dropzone {
     display: block;
     cursor: pointer;
-    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border: 2px dashed rgba(255, 255, 255, 0.14);
     border-radius: 1rem;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--th-surface-dark);
     padding: 1.1rem 1rem;
     text-align: center;
     transition: all 0.25s ease;
@@ -536,7 +544,7 @@ html {
 
 .bo-dropzone:hover {
     border-color: rgba(245, 158, 11, 0.5);
-    background: rgba(245, 158, 11, 0.04);
+    background: rgba(32, 13, 18, 0.65);
 }
 
 .bo-dropzone.has-file {
@@ -628,8 +636,8 @@ html {
 
 .bo-input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(11, 4, 7, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 0.85rem;
     padding: 0.75rem 0.9rem;
     font-size: 0.95rem;
@@ -643,8 +651,8 @@ html {
 .bo-input:focus {
     outline: none;
     border-color: #f59e0b;
-    background: rgba(0, 0, 0, 0.55);
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    background: rgba(18, 7, 11, 0.90);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
 }
 
 .bo-input::placeholder {
@@ -653,7 +661,7 @@ html {
 
 /* Attendee card */
 .bo-attendee-card {
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--th-surface-dark);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1rem;
     padding: 0.9rem;
@@ -680,9 +688,9 @@ html {
     margin-top: 1rem;
     padding: 0.85rem 1rem;
     border-radius: 0.85rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px dashed rgba(255, 255, 255, 0.12);
-    color: #6b7280;
+    background: rgba(18, 7, 11, 0.50);
+    border: 1px dashed rgba(255, 255, 255, 0.10);
+    color: var(--th-text-dim);
     font-size: 0.9rem;
     font-weight: 600;
     font-family: var(--apple-font);
@@ -734,9 +742,9 @@ html {
 }
 
 #submitBtn.is-muted {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(18, 7, 11, 0.55);
     color: var(--th-text-dim);
-    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
     box-shadow: none;
 }
 
