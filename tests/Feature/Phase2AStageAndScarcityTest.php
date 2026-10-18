@@ -36,12 +36,12 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('id="cinema-curtain"', false);
         $response->assertDontSee('cinema-skip', false);
         $response->assertDontSee('تخطّي الافتتاحية', false);
-        $response->assertSee('class="opening-team-name"', false);
+        $response->assertDontSee('opening-team-name', false);
         $response->assertSee('Alexandria:wght@700;800;900', false);
         $response->assertSee('Readex+Pro:wght@400;500;600;700', false);
         $response->assertSee('css/elsar5a-stage.css', false);
         $response->assertSee('js/elsar5a-stage.js', false);
-        $response->assertSee('class="camera-track"', false);
+        $response->assertSee('class="camera-track has-featured-production"', false);
         $response->assertSee('class="camera-world"', false);
         $response->assertSee('class="camera-plane camera-auditorium"', false);
         $response->assertSee('class="camera-plane camera-aisle"', false);
@@ -53,9 +53,21 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertDontSee('فرقة الصرخة المسرحية', false);
         $response->assertSee('class="sr-only">فريق الصرخة المسرحي</h1>', false);
         $response->assertDontSee('<h1 id="team-title" data-reveal="title">', false);
-        $response->assertSee('فنحن لا نريد سوى حواسكم.', false);
-        $response->assertSee('class="opening-motto"', false);
-        $response->assertSee('نجول نصرخ فيزداد العقل وعياً', false);
+        $response->assertSee('data-opening-phrase="1">لا نريد سوا حواسك', false);
+        $response->assertSee('data-opening-phrase="2">نجول', false);
+        $response->assertSee('data-opening-phrase="3">نصرخ', false);
+        $response->assertSee('data-opening-phrase="4">فيزداد العقل وعيًا', false);
+        $homepageHtml = $response->getContent();
+        $phrasePositions = array_map(fn ($phrase) => strpos($homepageHtml, $phrase), [
+            'data-opening-phrase="1">لا نريد سوا حواسك',
+            'data-opening-phrase="2">نجول',
+            'data-opening-phrase="3">نصرخ',
+            'data-opening-phrase="4">فيزداد العقل وعيًا',
+        ]);
+        $this->assertSame($phrasePositions, array_values(array_unique($phrasePositions)));
+        $sortedPhrasePositions = $phrasePositions;
+        sort($sortedPhrasePositions);
+        $this->assertSame($sortedPhrasePositions, $phrasePositions);
         $response->assertSee('data-production-step="title"', false);
         $response->assertSee('data-production-step="action"', false);
         $response->assertDontSee('class="upcoming-section"', false);
@@ -66,7 +78,7 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertDontSee('class="team-signoff"', false);
         $response->assertDontSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا', false);
         // Essential slogan lines and footer links are present
-        $response->assertSee('class="opening-line"', false);
+        $response->assertSee('class="opening-phrase opening-phrase--final"', false);
         $response->assertDontSee('camera-identity', false);
         $response->assertSee('aria-label="روابط التواصل الاجتماعي"', false);
     }
@@ -163,6 +175,7 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('id="featured-title"', false);
+        $response->assertSee('camera-track has-no-featured-production', false);
         $response->assertSee('خشبة المسرح تستعد للعرض القادم', false);
         $response->assertDontSee('عرض غير نشط', false);
     }
@@ -188,9 +201,16 @@ class Phase2AStageAndScarcityTest extends TestCase
         $this->assertStringContainsString("addLabel('WEBSITE_ENVIRONMENT')", $script);
         $this->assertStringContainsString("addLabel('POSTER_REVEAL')", $script);
         $this->assertStringContainsString("addLabel('SHOWTIMES')", $script);
+        $this->assertStringContainsString("addLabel('LOGO_HOLD')", $script);
+        $this->assertStringContainsString("addLabel('TEXT_SEQUENCE')", $script);
+        $this->assertStringNotContainsString("addLabel('EMPTY_STAGE')", $script);
+        $this->assertStringContainsString("z: 620, scale: 2.85", $script);
+        $this->assertStringContainsString("rotationY: -13", $script);
+        $this->assertStringContainsString("rotationY: 4", $script);
+        $this->assertStringContainsString("radial-gradient(circle at 20% 0, rgba(251,191,36,.2)", $css);
         $this->assertStringNotContainsString('skipAndContinue', $script);
         $this->assertStringNotContainsString("addEventListener('scroll'", $script);
-        $this->assertStringContainsString('rotationY: -58', $script);
+        $this->assertStringContainsString('rotationY: -64', $script);
         $this->assertStringContainsString('scale: 2.02, y: 118, z: 134', $script);
         $this->assertStringContainsString("showReducedMotionContent();", $script);
         $this->assertStringContainsString('window.scrollTo(0, 0)', $script);

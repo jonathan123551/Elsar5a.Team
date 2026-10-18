@@ -205,7 +205,7 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   overflow:hidden;
   perspective:1200px;
   transform-style:preserve-3d;
-  background:#080605;
+  background:transparent;
 }
 .cinema-plate,.opening-scrim { position:absolute; inset:0; overflow:hidden; }
 .cinema-plate { z-index:0;transform-origin:50% 48%;transition:transform 2.25s cubic-bezier(.18,.72,.25,1); }
@@ -224,23 +224,31 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   opacity:.55;
 }
 .opening-copy {
-  position:relative;
+  position:absolute;
   z-index:2;
-  width:min(90%,760px);
-  margin:56px auto 0;
+  inset:0;
+  width:100%;
+  height:100%;
+  margin:0;
   text-align:center;
   text-shadow:0 3px 22px rgba(0,0,0,.8);
-  transform-origin:50% 44%;
+  transform-origin:50% 50%;
   transition:opacity 1.45s ease,transform 2.05s cubic-bezier(.18,.72,.25,1),filter 1.45s ease;
 }
 .cinema-opening .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+.logo-anchor {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+}
 .logo-reveal {
   position:relative;
   width:clamp(82px,16vw,132px);
   aspect-ratio:1;
   display:grid;
   place-items:center;
-  margin:0 auto 18px;
+  margin:0;
   opacity:0;
   transform:translateY(15px) scale(.88);
   filter:drop-shadow(0 9px 16px rgba(0,0,0,.8));
@@ -253,50 +261,38 @@ body.homepage #elsar5a-stage-world > footer .max-w-5xl {
   transform:translateY(17px);
   transition:opacity .9s ease,transform 1.1s var(--cinema-ease);
 }
-.opening-identity { width:min(100%,630px); margin:clamp(14px,3vh,27px) auto 0; }
-.opening-team-name { margin:0 auto;color:#fff8eb;font:700 clamp(19px,4.4vw,27px)/1.4 var(--font-display,sans-serif);letter-spacing:.01em;opacity:0;transform:translateY(12px);transition:opacity .75s ease,transform .85s var(--cinema-ease); }
+.opening-identity {
+  position:absolute;
+  top:50%;
+  left:50%;
+  translate:-50% -50%;
+  width:min(90%,630px);
+  margin:0;
+}
 .opening-identity p {
   margin:0 auto 9px;
-  color:rgba(248,239,225,.88);
-  font-size:clamp(12px,3.2vw,16px);
-  line-height:1.85;
+  color:rgba(248,239,225,.92);
+  font:600 clamp(20px,4.7vw,31px)/1.55 var(--font-display,'Alexandria',sans-serif);
   text-wrap:pretty;
 }
-.opening-identity .opening-line { font-size:clamp(14px,3.5vw,18px); }
-.opening-identity .opening-motto {
+.opening-identity .opening-phrase--final {
   color:#f1c77f;
-  font-size:clamp(18px,4.7vw,25px);
-  font-weight:700;
-  line-height:1.65;
+  font-size:clamp(25px,6vw,39px);
+  font-weight:800;
+  line-height:1.5;
   text-shadow:0 2px 18px rgba(239,177,82,.2);
 }
+.opening-identity .opening-phrase--first { font-size:clamp(22px,5.2vw,34px); }
 .opening-archive {
   position:absolute; z-index:3; left:max(22px,env(safe-area-inset-left)); bottom:max(24px,env(safe-area-inset-bottom));
   color:rgba(246,226,198,.7);font-size:12px;text-decoration:none;letter-spacing:.04em;
 }
 .opening-archive:hover { color:#fff; }
-body[data-intro-state="logo"] .logo-reveal,
-body[data-intro-state="name"] .logo-reveal,
-body[data-intro-state="manifesto"] .logo-reveal,
-body[data-intro-state="complete"] .logo-reveal { opacity:1;transform:none; }
-body[data-intro-state="name"] .opening-line,
-body[data-intro-state="manifesto"] .opening-line,
-body[data-intro-state="complete"] .opening-line,
-body[data-intro-state="manifesto"] .opening-motto,
-body[data-intro-state="continue"] .opening-motto,
-body[data-intro-state="complete"] .opening-motto { opacity:1;transform:none; }
-body[data-intro-state="manifesto"] .opening-motto,
-body[data-intro-state="complete"] .opening-motto { transition-delay:.12s; }
-body[data-intro-state="name"] .opening-team-name,
-body[data-intro-state="manifesto"] .opening-team-name,
-body[data-intro-state="push"] .opening-team-name,
-body[data-intro-state="complete"] .opening-team-name { opacity:1;transform:none; }
-body[data-intro-state="push"] .cinema-plate { transform:translateZ(80px) scale(1.16); }
-body[data-intro-state="push"] .opening-copy,
-body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3d(0,-1.5vh,150px) scale(1.28);filter:blur(1px);pointer-events:none; }
 .no-js .opening-copy > * { opacity:1;transform:none; }
-.no-js .opening-copy [data-reveal] { opacity:1;transform:none; }
-.no-js .opening-team-name { opacity:1;transform:none; }
+.no-js .opening-copy [data-opening-phrase] { opacity:1;transform:none; }
+.no-js .logo-anchor { top:34%; }
+.no-js .logo-reveal { opacity:1;transform:none; }
+.no-js .opening-identity { top:70%; }
 
 /* The short opening is automatic; this same theatre scene continues into the scroll journey. */
 .camera-track {
@@ -318,7 +314,7 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
 }
 .camera-world {
   position:absolute;
-  z-index:0;
+  z-index:1;
   inset:-3%;
   overflow:hidden;
   transform:translate3d(0,var(--world-y,0px),var(--world-z,-120px)) scale(var(--world-scale,1.12));
@@ -338,7 +334,7 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
 }
 .camera-plane { position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d; }
 .camera-auditorium {
-  z-index:1;inset:0;
+  z-index:2;inset:0;
   transform:translate3d(0,var(--auditorium-y,0px),-72px) scale(var(--auditorium-scale,1.04));
   background:linear-gradient(180deg,transparent 37%,rgba(5,3,3,.08) 53%,rgba(4,2,2,.48) 100%);
 }
@@ -1094,13 +1090,8 @@ body[data-intro-state="complete"] .opening-copy { opacity:0;transform:translate3
   body.homepage #elsar5a-stage-world > header nav a:first-child { display:none; }
   .cinema-opening { min-height:100vh;min-height:100svh; }
   .cinema-plate img { object-position:50% 47%; }
-  .opening-copy { position:relative;left:auto;top:auto;width:min(91%,580px);margin:0 auto;transform:none; }
-  .opening-copy .logo-reveal { margin-inline:auto; }
-  .opening-team-name,.opening-identity,.opening-identity p { margin-inline:auto;text-align:center; }
-body[data-intro-state="push"] .opening-copy,
-body[data-intro-state="complete"] .opening-copy { transform:translate3d(-50%,-52%,150px) scale(1.2); }
-  .logo-reveal { margin-bottom:12px; }
-  .opening-identity { margin-top:13px; }
+  .opening-copy { position:absolute;inset:0;width:100%;height:100%;margin:0;transform:none; }
+  .opening-identity,.opening-identity p { margin-inline:auto;text-align:center; }
   .opening-identity p { margin-bottom:6px; }
   .opening-archive { bottom:max(19px,env(safe-area-inset-bottom)); }
   .camera-track { height:285svh; }
@@ -1189,9 +1180,8 @@ body[data-intro-state="complete"] .opening-copy { transform:translate3d(-50%,-52
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { scroll-behavior:auto !important;animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important; }
   .curtain-sequence { display:none; }
-  .cinema-opening [data-reveal],.logo-reveal { opacity:1;transform:none; }
+  .cinema-opening [data-opening-phrase],.logo-reveal { opacity:1;transform:none; }
   body[data-intro-state="complete"] .cinema-opening .opening-copy { opacity:1;transform:none;filter:none;pointer-events:auto; }
-  .opening-team-name { opacity:1;transform:none; }
   .camera-track { height:auto; }
   .camera-viewport { position:relative;height:auto;min-height:100svh; }
   .camera-world { position:absolute;inset:0;transform:none; }
@@ -1468,6 +1458,8 @@ body.cinema-intro-playing {
   overflow: hidden;
   overscroll-behavior: none;
 }
+body.cinema-intro-playing #elsar5a-stage-world > header { pointer-events:none !important; }
+body.cinema-intro-playing .opening-archive { visibility:hidden;opacity:0;pointer-events:none; }
 body.cinema-intro-playing .cinema-home { touch-action: none; }
 body.cinema-intro-playing:not(.cinema-website-stage) #elsar5a-stage-world > header {
   visibility: hidden;
@@ -1480,6 +1472,14 @@ body.cinema-intro-playing.cinema-website-stage #elsar5a-stage-world > header {
   transition: opacity .42s ease, visibility .42s ease;
 }
 .cinema-opening { z-index: 55; }
+.cinema-intro-playing .stage-production {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+  padding:calc(68px + env(safe-area-inset-top)) 20px calc(36px + env(safe-area-inset-bottom));
+}
 .opening-blackout {
   position: absolute;
   z-index: 4;
@@ -1506,13 +1506,15 @@ body.cinema-intro-playing.cinema-website-stage #elsar5a-stage-world > header {
 .camera-viewport { height: 100svh; min-height: 100svh; }
 .website-world {
   position: absolute;
-  z-index: -6;
+  z-index: 0;
   inset: 0;
   opacity: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 72% 60% at 50% 0%, rgba(101,16,25,.32), transparent 75%),
-    linear-gradient(180deg, var(--cinema-ink) 0%, var(--cinema-void) 70%);
+    radial-gradient(circle at top, rgba(255,255,255,.14), transparent 55%),
+    radial-gradient(circle at 20% 0, rgba(251,191,36,.2), transparent 60%),
+    radial-gradient(circle at 80% 0, rgba(239,68,68,.25), transparent 60%),
+    #020617;
   will-change: opacity;
 }
 body.cinema-website-stage .camera-track {
@@ -1538,6 +1540,21 @@ body.cinema-complete .camera-viewport {
   height: auto;
   min-height: 100svh;
   overflow: visible;
+}
+body.cinema-complete .camera-track.has-no-featured-production .camera-viewport { min-height:0; }
+body.cinema-complete .stage-intermission {
+  position:relative;
+  inset:auto;
+  width:min(760px,calc(100% - 32px));
+  min-height:0;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:clamp(34px,7vh,60px) 18px;
+  text-align:center;
+  transform:none;
 }
 body.cinema-complete .stage-production {
   position: relative;
@@ -1587,10 +1604,29 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
   will-change: transform, opacity;
 }
 .production-poster-frame {
+  position:relative;
+  width:100%;
+  max-height:none;
+  padding:0;
+  overflow:visible;
+  border:0;
+  box-shadow:none;
   transform: none;
   transform-style: preserve-3d;
-  background: #090606;
+  background:transparent;
 }
+.production-poster-frame::after { display:none; }
+.production-poster-frame img {
+  display:block;
+  width:auto;
+  max-width:100%;
+  height:min(60svh,590px);
+  margin-inline:auto;
+  object-fit:contain;
+  background:transparent;
+  filter:drop-shadow(0 28px 42px rgba(0,0,0,.62)) saturate(1.06);
+}
+.cinema-intro-playing .production-poster-frame img { height:min(52svh,500px); }
 .production-information {
   align-self: auto;
   max-width: 590px;

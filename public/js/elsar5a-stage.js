@@ -18,8 +18,8 @@
   var blackout = document.getElementById('opening-blackout');
   var openingCopy = opening ? opening.querySelector('.opening-copy') : null;
   var logo = opening ? opening.querySelector('.logo-reveal') : null;
-  var teamName = opening ? opening.querySelector('.opening-team-name') : null;
-  var openingLines = opening ? Array.prototype.slice.call(opening.querySelectorAll('.opening-identity p')) : [];
+  var openingArchive = opening ? opening.querySelector('.opening-archive') : null;
+  var openingLines = opening ? Array.prototype.slice.call(opening.querySelectorAll('[data-opening-phrase]')) : [];
   var world = document.getElementById('camera-world');
   var websiteWorld = document.getElementById('website-world');
   var auditorium = document.getElementById('camera-auditorium');
@@ -87,6 +87,8 @@
     lockIntroScroll();
     body.classList.add('cinema-intro-playing');
     body.dataset.introState = 'theatre';
+    opening.setAttribute('inert', '');
+    if (openingArchive) openingArchive.setAttribute('inert', '');
     if (siteHeader) siteHeader.setAttribute('inert', '');
 
     gsap.set(track, { autoAlpha: 0 });
@@ -99,13 +101,13 @@
     gsap.set(blackout, { autoAlpha: 0, scale: .82 });
     gsap.set(openingCopy, { autoAlpha: 1, y: 0, z: 0, scale: 1, transformPerspective: 1200 });
     gsap.set(logo, { autoAlpha: 0, y: 18, scale: .88 });
-    gsap.set(teamName, { autoAlpha: 0, y: 14 });
-    gsap.set(openingLines, { autoAlpha: 0, y: 18 });
+    gsap.set(openingLines, { autoAlpha: 0, y: 18, scale: .97, filter: 'blur(3px)' });
     if (production) {
       gsap.set(production, { autoAlpha: 0, y: 20 });
-      gsap.set(production.querySelectorAll('.production-poster-wrap, .production-poster-missing'), { autoAlpha: 0, z: -1150, y: 28, scale: .2, rotationY: -58, rotationX: 14, transformPerspective: 1400 });
+      gsap.set(production.querySelectorAll('.production-poster-wrap, .production-poster-missing'), { autoAlpha: 0, z: -1500, y: 22, scale: .28, rotationY: -64, rotationX: 13, transformPerspective: 1600 });
       gsap.set(productionInformation, { autoAlpha: 0, y: 18 });
       gsap.set(productionSteps, { autoAlpha: 0, y: 18 });
+      if (productionSteps[0]) gsap.set(productionSteps[0], { scale: .96, filter: 'blur(8px)' });
       gsap.set(cinematicShowtimes, { autoAlpha: 0, y: 18 });
       gsap.set(showtimeCards, { autoAlpha: 0, y: 26 });
     }
@@ -118,26 +120,35 @@
       .call(function () { if (curtain) curtain.dataset.state = 'draw'; }, null, '+=0.45')
       .call(function () { if (curtain) curtain.dataset.state = 'open'; }, null, '+=1.25')
       .addLabel('IDENTITY')
-      .to(logo, { autoAlpha: 1, y: 0, scale: 1, duration: .72 }, '+=.25')
-      .to(teamName, { autoAlpha: 1, y: 0, duration: .5 }, '-=.36')
-      .to(openingLines, { autoAlpha: 1, y: 0, duration: .52, stagger: .18 }, '-=.18')
-      .addLabel('IDENTITY_HOLD')
-      .to({}, { duration: 1.65 })
+      .to(logo, { autoAlpha: 1, y: 0, scale: 1, duration: .95, ease: 'power2.out' }, '+=.3')
+      .addLabel('LOGO_HOLD')
+      .to({}, { duration: 2.15 })
+      .addLabel('TEXT_SEQUENCE')
+      .to(logo, { autoAlpha: 0, y: -8, scale: .9, duration: .6, ease: 'power2.inOut' }, '+=.15')
+      .to(openingLines[0], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .72, ease: 'power2.out' })
+      .to({}, { duration: .8 })
+      .to(openingLines[0], { autoAlpha: 0, y: -10, filter: 'blur(3px)', duration: .32, ease: 'power2.in' })
+      .to(openingLines[1], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .68, ease: 'power2.out' })
+      .to({}, { duration: .65 })
+      .to(openingLines[1], { autoAlpha: 0, y: -10, filter: 'blur(3px)', duration: .32, ease: 'power2.in' })
+      .to(openingLines[2], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .68, ease: 'power2.out' })
+      .to({}, { duration: .65 })
+      .to(openingLines[2], { autoAlpha: 0, y: -10, filter: 'blur(3px)', duration: .32, ease: 'power2.in' })
+      .to(openingLines[3], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .82, ease: 'power2.out' })
+      .to({}, { duration: 1.2 })
       .addLabel('IDENTITY_EXIT')
-      .to(openingCopy, { autoAlpha: 0, y: -34, z: 120, scale: 1.16, duration: .9, ease: 'power2.in' })
-      .addLabel('EMPTY_STAGE')
-      .to({}, { duration: .9 })
       .addLabel('CAMERA_PUSH')
-      .to(track, { autoAlpha: 1, duration: .6, ease: 'power2.out' })
-      .to(plate, { autoAlpha: 0, scale: 1.18, duration: .72, ease: 'power2.inOut' }, '<')
-      .to(openingScrim, { autoAlpha: 0, duration: .6, ease: 'power2.out' }, '<')
+      .to(track, { autoAlpha: 1, duration: .45, ease: 'power2.out' })
+      .to(openingCopy, { autoAlpha: 0, y: -10, z: 620, scale: 2.85, rotationX: -4, filter: 'blur(5px)', duration: 2.45, ease: 'power3.in' }, '<')
+      .to(plate, { autoAlpha: 0, scale: 2.15, z: 620, duration: 2.35, ease: 'power3.in' }, '<')
+      .to(openingScrim, { autoAlpha: 0, duration: .95, ease: 'power2.in' }, '<')
       // Different apparent travel rates make the established theatre planes read as depth.
       .to(world, { scale: 1.36, y: -18, z: 92, duration: 2.25, ease: 'power3.inOut' }, '<')
       .to(auditorium, { scale: 1.48, y: 48, z: 28, duration: 2.25, ease: 'power3.inOut' }, '<')
       .to(aisle, { scale: 2.02, y: 118, z: 134, duration: 2.25, ease: 'power3.inOut' }, '<')
       .to(spotlight, { autoAlpha: .62, scale: 1.38, y: -16, duration: 2.1, ease: 'power2.out' }, '<')
       .to(proscenium, { autoAlpha: .14, scale: 1.32, z: 170, duration: 2.05, ease: 'power3.in' }, '<')
-      .to(blackout, { autoAlpha: 1, scale: 1, duration: 1.1, ease: 'power2.in' }, '-=1.05')
+      .to(blackout, { autoAlpha: 1, scale: 1.08, duration: .82, ease: 'power2.in' }, '-=.82')
       .to(curtain, { autoAlpha: 0, duration: .42, ease: 'power2.in' }, '<')
       .addLabel('BLACK')
       .to({}, { duration: .6 })
@@ -145,7 +156,7 @@
       .set(track, { autoAlpha: 1 })
       .call(function () { body.classList.add('cinema-website-stage'); })
       .to(websiteWorld, { autoAlpha: 1, duration: .85, ease: 'power2.out' })
-      .to(world, { autoAlpha: 1, scale: 1.36, duration: .5, ease: 'power2.in' }, '<')
+      .to([world, auditorium, aisle, spotlight, proscenium], { autoAlpha: 0, duration: .72, ease: 'power2.inOut' }, '<')
       .addLabel('WEBSITE_ENVIRONMENT');
 
     if (production) {
@@ -153,17 +164,20 @@
       master
         .set(production, { autoAlpha: 1, y: 0 })
         .addLabel('POSTER_REVEAL')
-        .to(poster, { autoAlpha: 1, z: -180, y: 8, scale: .68, rotationY: 24, rotationX: -8, duration: .72, ease: 'power2.out' })
-        .to(poster, { z: 0, y: 0, scale: 1, rotationY: 0, rotationX: 0, duration: 1.25, ease: 'power4.out' })
+        .to(poster, { autoAlpha: 1, z: -760, y: 10, scale: .48, rotationY: 20, rotationX: -6, duration: .95, ease: 'power2.out' })
+        .to(poster, { z: -250, y: -2, scale: .78, rotationY: -13, rotationX: 4, duration: .82, ease: 'power2.inOut' })
+        .to(poster, { z: 28, y: 0, scale: 1, rotationY: 4, rotationX: -1.5, duration: 1.05, ease: 'power4.out' })
+        .to(poster, { z: 0, rotationY: 0, rotationX: 0, duration: .48, ease: 'power2.out' })
         .addLabel('POSTER_SETTLED')
         .addLabel('PRODUCTION_INFO')
-        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .36, ease: 'power2.out' }, '+=.16')
-        .to(productionSteps, { autoAlpha: 1, y: 0, duration: .42, stagger: .14, ease: 'power2.out' }, '+=.22')
-        .to(cinematicShowtimes, { autoAlpha: 1, y: 0, duration: .36, ease: 'power2.out' }, '-=.08')
-        .to(showtimeCards, { autoAlpha: 1, y: 0, duration: .36, stagger: .16, ease: 'power2.out' }, '-=.12')
+        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .3, ease: 'power2.out' }, '+=.75')
+        .to(productionSteps[0], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .62, ease: 'power2.out' }, '+=.12')
+        .to(productionSteps.slice(1), { autoAlpha: 1, y: 0, duration: .42, stagger: .22, ease: 'power2.out' }, '+=.12')
+        .to(cinematicShowtimes, { autoAlpha: 1, y: 0, duration: .38, ease: 'power2.out' }, '+=.2')
+        .to(showtimeCards, { autoAlpha: 1, y: 0, rotationX: 0, duration: .52, stagger: .2, ease: 'power2.out' }, '<+.04')
         .addLabel('SHOWTIMES');
     } else if (intermission) {
-      master.to(intermission, { autoAlpha: 1, y: 0, duration: .55, ease: 'power2.out' }, '+=.28');
+      master.to(intermission, { autoAlpha: 1, y: 0, duration: .55, ease: 'power2.out' }, '+=.5');
     }
     master.addLabel('INTERACTIVE').call(releaseExperience);
   }
