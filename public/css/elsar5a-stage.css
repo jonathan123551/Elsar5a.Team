@@ -1474,6 +1474,7 @@ body.cinema-intro-playing.cinema-website-stage #elsar5a-stage-world > header {
   padding: calc(72px + env(safe-area-inset-top)) 0 calc(36px + env(safe-area-inset-bottom));
   text-align: center;
   transform-origin: 50% 50%;
+  perspective: 1400px;
 }
 .opening-blackout {
   position: absolute;
@@ -1567,6 +1568,7 @@ body.cinema-complete .stage-production {
   padding: calc(72px + env(safe-area-inset-top)) 0 calc(36px + env(safe-area-inset-bottom));
   text-align: center;
   transform-origin: 50% 50%;
+  perspective: 1400px;
 }
 body.cinema-complete.cinema-static-fallback .camera-world { opacity: .24; transform: none; }
 body.cinema-complete.cinema-static-fallback .stage-intermission {
@@ -1598,6 +1600,7 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
   margin: 0 auto;
   perspective: 1400px;
   transform-style: preserve-3d;
+  backface-visibility: hidden;
   will-change: transform, opacity;
 }
 .production-poster-frame {
@@ -1994,6 +1997,7 @@ body.cinema-complete.cinema-static-fallback [data-production-step] {
     padding-bottom: 28px;
     text-align: center;
     transform-origin: 50% 50%;
+    perspective: 1400px;
   }
   .production-poster-wrap {
     width: min(74vw, 295px);

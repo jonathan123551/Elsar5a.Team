@@ -205,12 +205,12 @@ class Phase2AStageAndScarcityTest extends TestCase
         $this->assertStringContainsString("addLabel('TEXT_SEQUENCE')", $script);
         $this->assertStringNotContainsString("addLabel('EMPTY_STAGE')", $script);
         $this->assertStringContainsString("z: 620, scale: 2.85", $script);
-        $this->assertStringContainsString("rotationY: -13", $script);
-        $this->assertStringContainsString("rotationY: 4", $script);
+        $this->assertStringContainsString("posterArrive", $script);
+        $this->assertStringContainsString("posterStartY", $script);
         $this->assertStringContainsString("radial-gradient(circle at 20% 0, rgba(251,191,36,.2)", $css);
         $this->assertStringNotContainsString('skipAndContinue', $script);
         $this->assertStringNotContainsString("addEventListener('scroll'", $script);
-        $this->assertStringContainsString('rotationY: -64', $script);
+        $this->assertStringContainsString('posterStartRotY', $script);
         $this->assertStringContainsString('scale: 2.02, y: 118, z: 134', $script);
         $this->assertStringContainsString("showReducedMotionContent();", $script);
         $this->assertStringContainsString('window.scrollTo(0, 0)', $script);
