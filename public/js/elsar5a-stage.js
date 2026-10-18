@@ -237,4 +237,18 @@
       }
     });
   }
+
+  // Prevent accidental double-tap zoom on iOS Safari interactive elements
+  var lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    var now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      var interactive = event.target.closest('a, button, [role="button"], .cinematic-showtime-card, .theatre-location-btn');
+      if (interactive) {
+        event.preventDefault();
+        interactive.click();
+      }
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
 })();

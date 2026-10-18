@@ -101,7 +101,7 @@
                         <div class="production-poster-wrap">
                             <span class="production-light" aria-hidden="true"></span>
                             <div class="production-poster-frame">
-                                <img src="{{ $featuredPoster }}" alt="ملصق العرض {{ $featuredShow->title }}" width="640" height="900" loading="eager" decoding="async" fetchpriority="high">
+                                <img src="{{ $featuredPoster }}" alt="ملصق العرض {{ $featuredShow->title }}" width="640" height="900" loading="eager" decoding="sync" fetchpriority="high">
                             </div>
                         </div>
                     @else
@@ -121,7 +121,7 @@
                                 </a>
                             </div>
                         @endif
-                        <div class="production-status-wrap" data-production-step="status">
+                        <div class="production-status-wrap sr-only" data-production-step="status">
                             <span class="ticket-state {{ $featuredSoldOut ? 'ticket-state--soldout' : ($featuredCritical ? 'ticket-state--critical' : ($featuredLow ? 'ticket-state--low' : 'ticket-state--healthy')) }}" role="status">
                                 @if($featuredSoldOut) اكتملت التذاكر
                                 @elseif($featuredCritical) متبقي {{ $featuredRemaining }} {{ $featuredRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط
@@ -129,7 +129,7 @@
                                 @else متاح للحجز الآن @endif
                             </span>
                             @if($featuredBookableTimes->count() > 1)
-                                <a href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" class="production-showtimes-hint" data-production-step="times" role="button">{{ $featuredBookableTimes->count() }} مواعيد متاحة <span aria-hidden="true">↗</span></a>
+                                <a href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" class="sr-only">{{ $featuredBookableTimes->count() }} مواعيد متاحة</a>
                             @endif
                         </div>
                     </div>
