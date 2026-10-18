@@ -105,11 +105,11 @@
     if (production) {
       gsap.set(production, { autoAlpha: 0, y: 20 });
       gsap.set(production.querySelectorAll('.production-poster-wrap, .production-poster-missing'), { autoAlpha: 0, z: -1500, y: 22, scale: .28, rotationY: -64, rotationX: 13, transformPerspective: 1600 });
-      gsap.set(productionInformation, { autoAlpha: 0, y: 18 });
-      gsap.set(productionSteps, { autoAlpha: 0, y: 18 });
-      if (productionSteps[0]) gsap.set(productionSteps[0], { scale: .96, filter: 'blur(8px)' });
-      gsap.set(cinematicShowtimes, { autoAlpha: 0, y: 18 });
-      gsap.set(showtimeCards, { autoAlpha: 0, y: 26 });
+      gsap.set(productionInformation, { autoAlpha: 0, y: 0 });
+      gsap.set(productionSteps, { autoAlpha: 0, y: 14 });
+      if (productionSteps[0]) gsap.set(productionSteps[0], { scale: .985 });
+      gsap.set(cinematicShowtimes, { autoAlpha: 0, y: 0 });
+      gsap.set(showtimeCards, { autoAlpha: 0, y: 18 });
     }
     if (intermission) gsap.set(intermission, { autoAlpha: 0, y: 16 });
 
@@ -164,17 +164,27 @@
       master
         .set(production, { autoAlpha: 1, y: 0 })
         .addLabel('POSTER_REVEAL')
-        .to(poster, { autoAlpha: 1, z: -760, y: 10, scale: .48, rotationY: 20, rotationX: -6, duration: .95, ease: 'power2.out' })
-        .to(poster, { z: -250, y: -2, scale: .78, rotationY: -13, rotationX: 4, duration: .82, ease: 'power2.inOut' })
-        .to(poster, { z: 28, y: 0, scale: 1, rotationY: 4, rotationX: -1.5, duration: 1.05, ease: 'power4.out' })
-        .to(poster, { z: 0, rotationY: 0, rotationX: 0, duration: .48, ease: 'power2.out' })
+        .to(poster, {
+          keyframes: {
+            autoAlpha: [0, 1, 1, 1],
+            z: [-1500, -760, -250, 28],
+            y: [22, 10, -2, 0],
+            scale: [.28, .48, .78, 1.035],
+            rotationY: [-64, -40, -13, 4],
+            rotationX: [13, 8, 4, -1.5],
+            easeEach: 'none'
+          },
+          duration: 2.95,
+          ease: 'power2.inOut'
+        })
+        .to(poster, { z: 0, y: 0, scale: 1, rotationY: 0, rotationX: 0, duration: .46, ease: 'power1.out' })
         .addLabel('POSTER_SETTLED')
         .addLabel('PRODUCTION_INFO')
-        .to(productionInformation, { autoAlpha: 1, y: 0, duration: .3, ease: 'power2.out' }, '+=.75')
-        .to(productionSteps[0], { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .62, ease: 'power2.out' }, '+=.12')
-        .to(productionSteps.slice(1), { autoAlpha: 1, y: 0, duration: .42, stagger: .22, ease: 'power2.out' }, '+=.12')
-        .to(cinematicShowtimes, { autoAlpha: 1, y: 0, duration: .38, ease: 'power2.out' }, '+=.2')
-        .to(showtimeCards, { autoAlpha: 1, y: 0, rotationX: 0, duration: .52, stagger: .2, ease: 'power2.out' }, '<+.04')
+        .to(productionInformation, { autoAlpha: 1, duration: .34, ease: 'power2.out' }, '+=.75')
+        .to(productionSteps[0], { autoAlpha: 1, y: 0, scale: 1, duration: .66, ease: 'power2.out' }, '+=.12')
+        .to(productionSteps.slice(1), { autoAlpha: 1, y: 0, duration: .44, stagger: .18, ease: 'power2.out' }, '+=.12')
+        .to(cinematicShowtimes, { autoAlpha: 1, duration: .38, ease: 'power2.out' }, '+=.2')
+        .to(showtimeCards, { autoAlpha: 1, y: 0, rotationX: 0, duration: .5, stagger: .14, ease: 'power2.out' }, '<+.04')
         .addLabel('SHOWTIMES');
     } else if (intermission) {
       master.to(intermission, { autoAlpha: 1, y: 0, duration: .55, ease: 'power2.out' }, '+=.5');

@@ -205,12 +205,15 @@ class Phase2AStageAndScarcityTest extends TestCase
         $this->assertStringContainsString("addLabel('TEXT_SEQUENCE')", $script);
         $this->assertStringNotContainsString("addLabel('EMPTY_STAGE')", $script);
         $this->assertStringContainsString("z: 620, scale: 2.85", $script);
-        $this->assertStringContainsString("rotationY: -13", $script);
-        $this->assertStringContainsString("rotationY: 4", $script);
+        $this->assertStringContainsString('keyframes: {', $script);
+        $this->assertStringContainsString('rotationY: [-64, -40, -13, 4]', $script);
+        $this->assertStringContainsString('scale: [.28, .48, .78, 1.035]', $script);
+        $this->assertStringContainsString('duration: 2.95', $script);
+        $this->assertStringContainsString("ease: 'power2.inOut'", $script);
+        $this->assertStringContainsString("duration: .46, ease: 'power1.out'", $script);
         $this->assertStringContainsString("radial-gradient(circle at 20% 0, rgba(251,191,36,.2)", $css);
         $this->assertStringNotContainsString('skipAndContinue', $script);
         $this->assertStringNotContainsString("addEventListener('scroll'", $script);
-        $this->assertStringContainsString('rotationY: -64', $script);
         $this->assertStringContainsString('scale: 2.02, y: 118, z: 134', $script);
         $this->assertStringContainsString("showReducedMotionContent();", $script);
         $this->assertStringContainsString('window.scrollTo(0, 0)', $script);
