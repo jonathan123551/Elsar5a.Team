@@ -30,6 +30,10 @@
         return asset('storage/' . $normalized);
     };
     $featuredShow = $featuredShow ?? null;
+    $additionalShows = $shows ?? collect();
+    if ($featuredShow) {
+        $additionalShows = $additionalShows->reject(fn ($show) => $show->id === $featuredShow->id)->values();
+    }
     $featuredPoster = $resolvePoster($featuredShow?->poster_path ?? $featuredShow?->poster);
     $featuredBookableTimes = $featuredShow?->showTimes->filter(fn ($time) => !$time->is_sold_out && (int) $time->homepage_remaining_tickets > 0)->values() ?? collect();
     $featuredTime = $featuredBookableTimes->first();
@@ -50,10 +54,6 @@
         <div class="curtain-leaf curtain-leaf--right"></div>
         <div class="curtain-seam"></div>
     </div>
-    <button class="cinema-skip" id="cinema-skip" type="button" aria-label="تخطّي الافتتاحية ومتابعة التصفح">
-        تخطّي الافتتاحية <span aria-hidden="true">↓</span>
-    </button>
-
     <section class="cinema-opening" id="opening" aria-labelledby="team-title">
         <div class="cinema-plate cinema-plate--opening" aria-hidden="true">
             <img src="{{ asset('images/cinematic/theatre/empty-stage.webp') }}" alt="" width="960" height="1440" fetchpriority="high" decoding="async">
@@ -62,14 +62,11 @@
         <div class="opening-copy">
             <h1 id="team-title" class="sr-only">فريق الصرخة المسرحي</h1>
             <div class="logo-reveal"><img src="{{ asset('images/sarkha-logo.png') }}" alt="شعار فريق الصرخة المسرحي" width="112" height="112" fetchpriority="high"></div>
+            <p class="opening-team-name" data-reveal="name">فريق الصرخة المسرحي</p>
             <div class="opening-identity" aria-label="من بيان الفريق">
                 <p class="opening-line" data-reveal="manifesto-1">فنحن لا نريد سوى حواسكم.</p>
                 <p class="opening-motto" data-reveal="manifesto-2">{{ $openingMotto }}</p>
             </div>
-            <a class="opening-scroll" href="#camera-journey" data-reveal="scroll">
-                <span class="opening-scroll-mark" aria-hidden="true"></span>
-                <span>ادخل إلى المسرح</span>
-            </a>
         </div>
         <a class="opening-archive" href="{{ route('archive') }}">الأرشيف <span aria-hidden="true">↗</span></a>
     </section>
@@ -84,15 +81,6 @@
             <div class="camera-plane camera-aisle" id="camera-aisle" aria-hidden="true"></div>
             <div class="camera-plane camera-spotlight" id="camera-spotlight" aria-hidden="true"></div>
             <div class="camera-plane camera-proscenium" id="camera-proscenium" aria-hidden="true"></div>
-            <div class="camera-identity" id="camera-identity" aria-hidden="true">
-                <p class="identity-overline">فريق الصرخة المسرحي</p>
-                <div class="identity-manifesto">
-                    <p class="identity-motto">{{ $openingMotto }}</p>
-                    <p class="identity-sub">فنحن لا نريد سوى حواسكم.</p>
-                </div>
-                <p class="identity-signoff">{{ $manifesto[6] }}</p>
-            </div>
-
             @if($featuredShow && $featuredTime)
                 <article class="stage-production" id="stage-production" aria-labelledby="featured-title">
                     @if($featuredPoster)
@@ -109,26 +97,29 @@
                     @endif
                     <div class="production-information">
                         <p class="production-kicker">العرض القادم على خشبة المسرح</p>
-                        <h2 id="featured-title">{{ $featuredShow->title }}</h2>
-                        @if($featuredShow->description)<p class="production-description">{{ $featuredShow->description }}</p>@endif
-                        <dl class="production-meta">
+                        <h2 id="featured-title" data-production-step="title">{{ $featuredShow->title }}</h2>
+                        @if($featuredShow->description)<p class="production-description" data-production-step="description">{{ $featuredShow->description }}</p>@endif
+                        <dl class="production-meta" data-production-step="meta">
                             <div><dt>التاريخ</dt><dd>{{ $featuredDate }}</dd></div>
                             @if($featuredClock)<div><dt>الوقت</dt><dd>{{ $featuredClock->format('g:i') }} {{ $featuredClock->format('A') === 'PM' ? 'م' : 'ص' }}</dd></div>@endif
                             @if($featuredTime->ticket_price !== null)<div><dt>التذكرة</dt><dd>{{ number_format((float) $featuredTime->ticket_price, 0) }} ج.م</dd></div>@endif
                         </dl>
+                        @if($featuredBookableTimes->count() > 1)
+                            <p class="production-showtimes-hint" data-production-step="times">{{ $featuredBookableTimes->count() }} مواعيد متاحة — اختر موعد العرض للمتابعة</p>
+                        @endif
                         @if($featuredSoldOut)
-                            <p class="ticket-state ticket-state--soldout" role="status">اكتملت التذاكر</p>
-                            <a class="booking-cta booking-cta--quiet" href="{{ route('shows.show', $featuredShow) }}">تفاصيل العرض</a>
+                            <p class="ticket-state ticket-state--soldout" role="status" data-production-step="status">اكتملت التذاكر</p>
+                            <a class="booking-cta booking-cta--quiet" data-production-step="action" href="{{ route('shows.show', $featuredShow) }}">تفاصيل العرض</a>
                         @else
-                            <p class="ticket-state {{ $featuredCritical ? 'ticket-state--critical' : ($featuredLow ? 'ticket-state--low' : 'ticket-state--healthy') }}" role="status">
+                            <p class="ticket-state {{ $featuredCritical ? 'ticket-state--critical' : ($featuredLow ? 'ticket-state--low' : 'ticket-state--healthy') }}" role="status" data-production-step="status">
                                 @if($featuredCritical) متبقي {{ $featuredRemaining }} {{ $featuredRemaining === 1 ? 'تذكرة' : 'تذاكر' }} فقط
                                 @elseif($featuredLow) متبقي عدد محدود من التذاكر
                                 @else متاح للحجز الآن @endif
                             </p>
                             @if($featuredBookableTimes->count() > 1)
-                                <a class="booking-cta" href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" role="button">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
+                                <a class="booking-cta" data-production-step="action" href="#showtime-modal-{{ $featuredShow->id }}" data-open-modal="showtime-modal-{{ $featuredShow->id }}" role="button">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
                             @else
-                                <a class="booking-cta" href="{{ route('bookings.create', $featuredTime) }}">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
+                                <a class="booking-cta" data-production-step="action" href="{{ route('bookings.create', $featuredTime) }}">احجز تذكرتك الآن <span aria-hidden="true">↗</span></a>
                             @endif
                         @endif
                     </div>
@@ -146,6 +137,7 @@
         </div>
     </section>
 
+    @if($additionalShows->isNotEmpty())
     <section class="upcoming-section" id="shows" aria-labelledby="upcoming-heading">
         <header class="section-heading">
             <div>
@@ -158,16 +150,8 @@
                 <span aria-hidden="true">↗</span>
             </a>
         </header>
-        @if($shows->isEmpty())
-            <div class="upcoming-empty">
-                <span class="empty-theatre-icon" aria-hidden="true">🎭</span>
-                <span class="empty-rule" aria-hidden="true"></span>
-                <p>لا توجد عروض معلنة في الوقت الحالي.</p>
-                <a href="{{ route('archive') }}">تصفّح الأرشيف <span aria-hidden="true">↗</span></a>
-            </div>
-        @else
-            <div class="upcoming-list">
-                @foreach($shows as $show)
+        <div class="upcoming-list">
+                @foreach($additionalShows as $show)
                     @php
                         $showPoster = $resolvePoster($show->poster_path ?? $show->poster);
                         $bookableTimes = $show->showTimes->filter(fn ($item) => !$item->is_sold_out && (int) $item->homepage_remaining_tickets > 0)->values();
@@ -257,13 +241,13 @@
                         </div>
                     </article>
                 @endforeach
-            </div>
-        @endif
+        </div>
     </section>
+    @endif
 
     {{-- Showtime Selection Modals --}}
     @php
-        $modalShows = collect([$featuredShow])->filter()->merge($shows)->unique('id');
+        $modalShows = collect([$featuredShow])->filter()->merge($additionalShows)->unique('id');
     @endphp
 
     @foreach($modalShows as $modalShow)

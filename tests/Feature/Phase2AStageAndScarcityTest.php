@@ -34,8 +34,9 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response = $this->get('/');
         $response->assertOk();
         $response->assertSee('id="cinema-curtain"', false);
-        $response->assertSee('id="cinema-skip"', false);
-        $response->assertSee('تخطّي الافتتاحية', false);
+        $response->assertDontSee('cinema-skip', false);
+        $response->assertDontSee('تخطّي الافتتاحية', false);
+        $response->assertSee('class="opening-team-name"', false);
         $response->assertSee('Alexandria:wght@700;800;900', false);
         $response->assertSee('Readex+Pro:wght@400;500;600;700', false);
         $response->assertSee('css/elsar5a-stage.css', false);
@@ -55,16 +56,18 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('فنحن لا نريد سوى حواسكم.', false);
         $response->assertSee('class="opening-motto"', false);
         $response->assertSee('نجول نصرخ فيزداد العقل وعياً', false);
-        $response->assertDontSee('❤ نجول نصرخ فيزداد العقل وعياً ❤', false);
-        $response->assertSee('❤ نجول نصرخ فيزداد العقل وعيا ❤', false);
+        $response->assertSee('data-production-step="title"', false);
+        $response->assertSee('data-production-step="action"', false);
+        $response->assertDontSee('class="upcoming-section"', false);
+        $response->assertDontSee('❤ نجول نصرخ فيزداد العقل وعيا ❤', false);
         // The separate manifesto and team-signoff sections have been removed from the homepage
         $response->assertDontSee('class="manifesto-section"', false);
         $response->assertDontSee('id="manifesto-heading"', false);
         $response->assertDontSee('class="team-signoff"', false);
         $response->assertDontSee('كثيرًا ما فسدت عقولنا من ما حملته لها مدخلاتنا', false);
         // Essential slogan lines and footer links are present
-        $response->assertSee('class="identity-motto"', false);
-        $response->assertSee('class="identity-sub"', false);
+        $response->assertSee('class="opening-line"', false);
+        $response->assertDontSee('camera-identity', false);
         $response->assertSee('aria-label="روابط التواصل الاجتماعي"', false);
     }
 
@@ -80,7 +83,6 @@ class Phase2AStageAndScarcityTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('id="cinema-curtain"', false);
-        $response->assertDontSee('id="cinema-skip"', false);
     }
 
     public function test_obvious_test_shows_are_not_exposed_as_homepage_productions(): void
@@ -108,6 +110,8 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertDontSee('Fhszh', false);
         $response->assertDontSee('test-assessment.jpg', false);
         $response->assertSee('خشبة المسرح تستعد للعرض القادم', false);
+        $response->assertDontSee('class="upcoming-section"', false);
+        $response->assertDontSee('لا توجد عروض معلنة في الوقت الحالي.', false);
     }
 
     public function test_public_shows_listing_and_detail_do_not_advertise_test_placeholders(): void
@@ -205,10 +209,18 @@ class Phase2AStageAndScarcityTest extends TestCase
         $script = file_get_contents(public_path('js/elsar5a-stage.js'));
 
         $this->assertStringContainsString('prefers-reduced-motion: reduce', $css);
+        $this->assertStringContainsString('body[data-intro-state="complete"] .cinema-opening .opening-copy { opacity:1;transform:none;filter:none;pointer-events:auto; }', $css);
+        $this->assertStringContainsString('max-width:760px) and (prefers-reduced-motion: reduce', $css);
         $this->assertStringContainsString('.no-js .camera-track { height:auto; }', $css);
         $this->assertStringContainsString("window.matchMedia('(prefers-reduced-motion: reduce)')", $script);
         $this->assertStringContainsString("panel.removeAttribute('inert')", $script);
-        $this->assertStringContainsString("panel.style.setProperty('--production-opacity', '1')", $script);
+        $this->assertStringContainsString("'--production-opacity'", $script);
+        $this->assertStringContainsString('later(6100, finish)', $script);
+        $this->assertStringNotContainsString('skipAndContinue', $script);
+        $this->assertStringNotContainsString("addEventListener('wheel'", $script);
+        $this->assertStringContainsString("setProperty('--poster-z'", $script);
+        $this->assertStringContainsString('window.scrollTo(0, 0)', $script);
+        $this->assertStringContainsString("curtain.classList.add('is-passed')", $script);
     }
 
     public function test_progressive_scarcity_healthy_inventory(): void
