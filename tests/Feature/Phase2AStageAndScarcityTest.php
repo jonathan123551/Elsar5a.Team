@@ -167,24 +167,34 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertDontSee('عرض غير نشط', false);
     }
 
-    public function test_reduced_motion_uses_static_content_and_releases_hidden_playbill(): void
+    public function test_cinematic_timeline_preserves_reduced_motion_and_releases_the_real_booking_experience(): void
     {
         $css = file_get_contents(public_path('css/elsar5a-stage.css'));
         $script = file_get_contents(public_path('js/elsar5a-stage.js'));
 
         $this->assertStringContainsString('prefers-reduced-motion: reduce', $css);
-        $this->assertStringContainsString('body[data-intro-state="complete"] .cinema-opening .opening-copy { opacity:1;transform:none;filter:none;pointer-events:auto; }', $css);
-        $this->assertStringContainsString('max-width:760px) and (prefers-reduced-motion: reduce', $css);
-        $this->assertStringContainsString('.no-js .camera-track { height:auto; }', $css);
+        $this->assertStringContainsString('body.cinema-complete .camera-track', $css);
+        $this->assertStringContainsString('body.cinema-complete.cinema-static-fallback', $css);
+        $this->assertStringContainsString('.no-js .camera-track { position: relative;', $css);
+        $this->assertStringContainsString('.cinematic-showtimes', $css);
+        $this->assertStringContainsString('background: #000;', $css);
         $this->assertStringContainsString("window.matchMedia('(prefers-reduced-motion: reduce)')", $script);
-        $this->assertStringContainsString("panel.removeAttribute('inert')", $script);
-        $this->assertStringContainsString("'--production-opacity'", $script);
-        $this->assertStringContainsString('later(6100, finish)', $script);
+        $this->assertStringContainsString("production.removeAttribute('inert')", $script);
+        $this->assertStringContainsString("track.removeAttribute('inert')", $script);
+        $this->assertStringContainsString("addLabel('CURTAIN')", $script);
+        $this->assertStringContainsString("addLabel('CAMERA_PUSH')", $script);
+        $this->assertStringContainsString("addLabel('PRODUCTION_INFO')", $script);
+        $this->assertStringContainsString("addLabel('BLACK')", $script);
+        $this->assertStringContainsString("addLabel('WEBSITE_ENVIRONMENT')", $script);
+        $this->assertStringContainsString("addLabel('POSTER_REVEAL')", $script);
+        $this->assertStringContainsString("addLabel('SHOWTIMES')", $script);
         $this->assertStringNotContainsString('skipAndContinue', $script);
-        $this->assertStringNotContainsString("addEventListener('wheel'", $script);
-        $this->assertStringContainsString("setProperty('--poster-z'", $script);
+        $this->assertStringNotContainsString("addEventListener('scroll'", $script);
+        $this->assertStringContainsString('rotationY: -58', $script);
+        $this->assertStringContainsString('scale: 2.02, y: 118, z: 134', $script);
+        $this->assertStringContainsString("showReducedMotionContent();", $script);
         $this->assertStringContainsString('window.scrollTo(0, 0)', $script);
-        $this->assertStringContainsString("curtain.classList.add('is-passed')", $script);
+        $this->assertStringContainsString("curtain.dataset.state = 'open'", $script);
     }
 
     public function test_progressive_scarcity_healthy_inventory(): void
@@ -637,6 +647,8 @@ class Phase2AStageAndScarcityTest extends TestCase
         $response->assertSee('data-open-modal="showtime-modal-' . $show->id . '"', false);
         $response->assertSee('id="showtime-modal-' . $show->id . '"', false);
         $response->assertSee('2 مواعيد متاحة', false);
+        $response->assertSee('class="cinematic-showtimes"', false);
+        $response->assertSee('data-showtime-card', false);
 
         // Modal contains both options with their actual date, time, and ticket price
         $response->assertSee($time1->date->format('d/m/Y'), false);

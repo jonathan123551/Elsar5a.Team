@@ -580,6 +580,7 @@ body.has-sticky-action main {
     </script>
     {{-- Homepage-only cinematic choreography --}}
     @if(request()->routeIs('home'))
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
         <script src="{{ asset('js/elsar5a-stage.js') }}?v={{ file_exists(public_path('js/elsar5a-stage.js')) ? filemtime(public_path('js/elsar5a-stage.js')) : '1.0' }}" defer></script>
     @endif
 </body>
