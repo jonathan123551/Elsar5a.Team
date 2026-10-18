@@ -38,7 +38,7 @@
 
 html {
     scroll-behavior: smooth;
-    scroll-padding-top: 140px;
+    scroll-padding-top: 130px;
 }
 
 .boxoffice-container {
@@ -46,7 +46,7 @@ html {
     margin-inline: auto;
     padding: 0 1rem 3.5rem;
     color: var(--th-text-main);
-    font-family: inherit;
+    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 @media (min-width: 640px) {
@@ -55,34 +55,33 @@ html {
     }
 }
 
-/* 1. STICKY STEP NAVIGATION — NO BOXES, PURE TYPOGRAPHY */
+/* 1. FRAMELESS STICKY STEP NAVIGATION — NO BOXES, PURE ALEXANDRIA TYPOGRAPHY */
 .bo-sticky-nav-wrap {
     position: sticky;
     top: 50px;
     z-index: 30;
-    background: rgba(7, 9, 14, 0.94);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    margin-inline: -1rem;
-    padding: 0.65rem 0.75rem;
-    margin-bottom: 1.5rem;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0.65rem 0.5rem;
+    margin-bottom: 1.25rem;
+    transition: background 0.25s ease, backdrop-filter 0.25s ease;
 }
 
-@media (min-width: 640px) {
-    .bo-sticky-nav-wrap {
-        margin-inline: -1.5rem;
-        padding: 0.75rem 1.5rem;
-    }
+.bo-sticky-nav-wrap.is-scrolled {
+    background: rgba(7, 9, 14, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
 }
 
 .bo-steps-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    max-width: 480px;
+    max-width: 440px;
     margin-inline: auto;
-    padding-inline: 0.5rem;
+    padding-inline: 0.25rem;
+    font-family: 'Alexandria', 'Readex Pro', sans-serif;
 }
 
 .bo-step-item {
@@ -92,32 +91,43 @@ html {
     text-align: center;
     cursor: pointer;
     user-select: none;
-    transition: all 0.25s ease;
+    transition: all 0.22s ease;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0.2rem 0.6rem;
+    padding: 0.25rem 0.6rem;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .bo-step-num {
-    font-size: 1.15rem;
-    font-weight: 900;
+    font-family: 'Alexandria', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 800;
     line-height: 1;
     margin-bottom: 0.25rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    transition: all 0.2s ease;
+    transition: all 0.22s ease;
 }
 
 .bo-step-name {
-    font-size: 0.8rem;
+    font-family: 'Alexandria', 'Readex Pro', sans-serif;
+    font-size: 0.82rem;
     font-weight: 700;
     line-height: 1.2;
-    transition: all 0.2s ease;
+    transition: all 0.22s ease;
 }
 
-/* Inactive / Dimmed */
+/* INACTIVE STEP: Dimmed / Muted */
 .bo-step-item.is-inactive {
     opacity: 0.35;
+    color: #6b7280;
+}
+
+.bo-step-item.is-inactive .bo-step-num {
+    color: #6b7280;
+}
+
+.bo-step-item.is-inactive .bo-step-name {
     color: #9ca3af;
 }
 
@@ -125,38 +135,43 @@ html {
     opacity: 0.65;
 }
 
-/* Active / Current step */
-.bo-step-item.is-active {
-    opacity: 1;
-    color: #10b981;
-}
-
-.bo-step-item.is-active .bo-step-num {
-    color: #34d399;
-    font-size: 1.3rem;
-    text-shadow: 0 0 14px rgba(16, 185, 129, 0.5);
-}
-
-.bo-step-item.is-active .bo-step-name {
-    color: #ffffff;
-    font-weight: 800;
-}
-
-/* Completed step */
+/* COMPLETED STEP: Green */
 .bo-step-item.is-completed {
-    opacity: 0.85;
+    opacity: 0.9;
     color: #10b981;
 }
 
 .bo-step-item.is-completed .bo-step-num {
     color: #10b981;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
 }
 
 .bo-step-item.is-completed .bo-step-name {
-    color: #a7f3d0;
+    color: #34d399;
+    font-weight: 700;
 }
 
-/* 2. SECTION CARDS */
+/* CURRENT ACTIVE STEP: Yellow ("YOU ARE HERE") */
+.bo-step-item.is-active {
+    opacity: 1;
+    color: #fbbf24;
+}
+
+.bo-step-item.is-active .bo-step-num {
+    color: #fbbf24;
+    font-size: 1.6rem;
+    font-weight: 900;
+    text-shadow: 0 0 16px rgba(245, 158, 11, 0.7), 0 0 4px #fbbf24;
+    transform: translateY(-1px);
+}
+
+.bo-step-item.is-active .bo-step-name {
+    color: #fef08a;
+    font-weight: 800;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+/* 2. SECTION CARDS — MINIMAL HEADERS, NO NUMBER BOXES */
 .bo-section {
     background: var(--th-card-bg);
     border: 1px solid var(--th-card-border);
@@ -193,32 +208,11 @@ html {
 }
 
 .bo-section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    font-family: 'Alexandria', sans-serif;
     font-size: 1.05rem;
     font-weight: 800;
     color: #ffffff;
-}
-
-.bo-section-title-badge {
-    width: 24px;
-    height: 24px;
-    border-radius: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 900;
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.bo-section.is-section-done .bo-section-title-badge {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border-color: rgba(16, 185, 129, 0.4);
+    margin: 0;
 }
 
 .bo-status-pill {
@@ -229,6 +223,7 @@ html {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
+    flex-shrink: 0;
 }
 
 .bo-status-pill.status-pending {
@@ -300,6 +295,7 @@ html {
 }
 
 .bo-showtime-time {
+    font-family: 'Alexandria', sans-serif;
     font-size: 1.15rem;
     font-weight: 800;
     color: #ffffff;
@@ -323,6 +319,7 @@ html {
     flex-direction: column;
     align-items: center;
     gap: 0.85rem;
+    transition: all 0.2s ease;
 }
 
 .bo-counter-controls {
@@ -369,12 +366,12 @@ html {
 }
 
 .bo-counter-number {
+    font-family: 'Alexandria', sans-serif;
     font-size: 2.35rem;
     font-weight: 900;
     color: #ffffff;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .bo-counter-sub {
@@ -394,7 +391,7 @@ html {
 }
 
 .bo-counter-price-val {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: 'Alexandria', sans-serif;
     font-size: 1.2rem;
     font-weight: 900;
     color: #ffffff;
@@ -488,7 +485,7 @@ html {
 }
 
 .bo-required-amount-val {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: 'Alexandria', sans-serif;
     font-size: 1.15rem;
     font-weight: 900;
     color: #ffffff;
@@ -651,37 +648,42 @@ html {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
     width: 100%;
     margin-top: 1rem;
-    padding: 0.75rem 1rem;
+    padding: 0.85rem 1rem;
     border-radius: 0.85rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
     color: #6b7280;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.25s ease;
+    opacity: 0.7;
+    touch-action: manipulation;
 }
 
 .bo-next-btn.is-active-cta {
-    background: rgba(245, 158, 11, 0.14);
-    border-color: rgba(245, 158, 11, 0.55);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.08));
+    border: 1.5px solid rgba(245, 158, 11, 0.65);
     color: #fbbf24;
     font-weight: 800;
-    box-shadow: 0 4px 18px -4px rgba(245, 158, 11, 0.3);
+    box-shadow: 0 4px 20px -3px rgba(245, 158, 11, 0.35);
+    opacity: 1;
 }
 
 .bo-next-btn.is-active-cta:hover {
-    background: rgba(245, 158, 11, 0.22);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0.15));
+    border-color: #fbbf24;
     color: #fde68a;
     transform: translateY(-1px);
+    box-shadow: 0 6px 25px -4px rgba(245, 158, 11, 0.45);
 }
 
 /* 9. FINAL SUBMISSION CTA — CLEAN WITHOUT DECORATIVE SPINNER */
 .bo-submit-area {
-    margin-top: 1.5rem;
+    margin-top: 0.75rem;
     text-align: center;
 }
 
@@ -699,29 +701,34 @@ html {
     transition: all 0.25s ease;
     border: none;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
-#submitBtn:not([disabled]) {
+#submitBtn.is-muted {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--th-text-dim);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+}
+
+#submitBtn.is-ready {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
     color: #000000;
     box-shadow: 0 10px 30px -5px rgba(245, 158, 11, 0.5), 0 0 15px rgba(251, 191, 36, 0.3);
 }
 
-#submitBtn:not([disabled]):hover {
+#submitBtn.is-ready:hover {
     transform: translateY(-2px);
     box-shadow: 0 15px 35px -5px rgba(245, 158, 11, 0.6), 0 0 25px rgba(251, 191, 36, 0.4);
 }
 
-#submitBtn:not([disabled]):active {
+#submitBtn.is-ready:active {
     transform: scale(0.98);
 }
 
-#submitBtn[disabled] {
-    background: rgba(255, 255, 255, 0.07);
-    color: var(--th-text-dim);
-    border: 1px dashed rgba(255, 255, 255, 0.15);
-    cursor: not-allowed;
-    box-shadow: none;
+#submitBtn.is-submitting {
+    opacity: 0.85;
+    pointer-events: none;
 }
 
 .bo-submit-hint {
@@ -737,8 +744,8 @@ html {
 
 /* Real submit network spinner */
 .bo-spinner {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border: 2.5px solid rgba(0, 0, 0, 0.25);
     border-top-color: #000;
     border-radius: 50%;
@@ -748,6 +755,18 @@ html {
 
 @keyframes boSpin {
     to { transform: rotate(360deg); }
+}
+
+/* Guided Attention Shake */
+@keyframes boShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
+.bo-shake {
+    animation: boShake 0.45s cubic-bezier(.36,.07,.19,.97) both;
+    border-color: #ef4444 !important;
 }
 
 /* Global copy toast */
@@ -779,22 +798,22 @@ html {
 
 <div class="boxoffice-container">
 
-    {{-- 1. STICKY STEP NAVIGATION (NO BOXES, NUMBERS ABOVE LABELS, 1-4) --}}
-    <div class="bo-sticky-nav-wrap">
+    {{-- 1. FRAMELESS STICKY STEP NAVIGATION (NO BOXES, NUMBERS ABOVE LABELS, 1-4) --}}
+    <div class="bo-sticky-nav-wrap" id="stickyNavWrap">
         <nav class="bo-steps-bar" aria-label="مراحل الحجز">
-            <div class="bo-step-item is-active" id="stepNav-1" onclick="scrollToSection('section-tickets')">
+            <div class="bo-step-item is-active" id="stepNav-1" onclick="navigateToStep(1)">
                 <span class="bo-step-num">1</span>
                 <span class="bo-step-name">التذاكر</span>
             </div>
-            <div class="bo-step-item is-inactive" id="stepNav-2" onclick="scrollToSection('section-payment')">
+            <div class="bo-step-item is-inactive" id="stepNav-2" onclick="navigateToStep(2)">
                 <span class="bo-step-num">2</span>
                 <span class="bo-step-name">التحويل</span>
             </div>
-            <div class="bo-step-item is-inactive" id="stepNav-3" onclick="scrollToSection('section-details')">
+            <div class="bo-step-item is-inactive" id="stepNav-3" onclick="navigateToStep(3)">
                 <span class="bo-step-num">3</span>
                 <span class="bo-step-name">البيانات</span>
             </div>
-            <div class="bo-step-item is-inactive" id="stepNav-4" onclick="scrollToSection('section-submit')">
+            <div class="bo-step-item is-inactive" id="stepNav-4" onclick="navigateToStep(4)">
                 <span class="bo-step-num">4</span>
                 <span class="bo-step-name">الإرسال</span>
             </div>
@@ -829,10 +848,7 @@ html {
         ============================================================ --}}
         <section id="section-tickets" class="bo-section is-active-focus is-section-done">
             <div class="bo-section-header">
-                <div class="bo-section-title">
-                    <span class="bo-section-title-badge">1</span>
-                    <span>الموعد وعدد التذاكر</span>
-                </div>
+                <h2 class="bo-section-title">الموعد وعدد التذاكر</h2>
                 <span class="bo-status-pill status-done" id="status-badge-1">✓ تم التحديد</span>
             </div>
 
@@ -875,7 +891,7 @@ html {
             @endif
 
             {{-- Tactile Ticket Counter — Strict Minus (-) on LEFT, Plus (+) on RIGHT --}}
-            <div class="bo-counter-box">
+            <div class="bo-counter-box" id="ticketCounterBox">
                 <span class="text-xs text-gray-400">حدد عدد التذاكر المطلوبة:</span>
                 <div class="bo-counter-controls" dir="ltr">
                     <button type="button"
@@ -904,8 +920,7 @@ html {
 
             <button type="button"
                     id="btnNextToPayment"
-                    class="bo-next-btn is-active-cta"
-                    onclick="scrollToSection('section-payment')">
+                    class="bo-next-btn is-active-cta">
                 <span>التالي: التحويل والدفع</span>
                 <span>↓</span>
             </button>
@@ -916,10 +931,7 @@ html {
         ============================================================ --}}
         <section id="section-payment" class="bo-section">
             <div class="bo-section-header">
-                <div class="bo-section-title">
-                    <span class="bo-section-title-badge">2</span>
-                    <span>التحويل وإرفاق الإيصال</span>
-                </div>
+                <h2 class="bo-section-title">التحويل وإرفاق الإيصال</h2>
                 <span class="bo-status-pill status-pending" id="status-badge-2">بانتظار الإيصال</span>
             </div>
 
@@ -997,8 +1009,7 @@ html {
 
             <button type="button"
                     id="btnNextToDetails"
-                    class="bo-next-btn"
-                    onclick="scrollToSection('section-details')">
+                    class="bo-next-btn">
                 <span>التالي: بيانات الحجز</span>
                 <span>↓</span>
             </button>
@@ -1006,13 +1017,11 @@ html {
 
         {{-- ============================================================
              SECTION 3: بيانات الحجز (Customer Information)
+             Strictly titled: بيانات الحجز (No Next / Confirm buttons inside)
         ============================================================ --}}
         <section id="section-details" class="bo-section">
             <div class="bo-section-header">
-                <div class="bo-section-title">
-                    <span class="bo-section-title-badge">3</span>
-                    <span>بيانات الحجز والمرافقين</span>
-                </div>
+                <h2 class="bo-section-title">بيانات الحجز</h2>
                 <span class="bo-status-pill status-pending" id="status-badge-3">أدخل البيانات</span>
             </div>
 
@@ -1020,32 +1029,21 @@ html {
             <div id="attendeesContainer" class="space-y-3">
                 {{-- Injected dynamically by JS --}}
             </div>
-
-            <button type="button"
-                    id="btnNextToSubmit"
-                    class="bo-next-btn"
-                    onclick="scrollToSection('section-submit')">
-                <span>التالي: تأكيد وإرسال الحجز</span>
-                <span>↓</span>
-            </button>
         </section>
 
         {{-- ============================================================
-             SECTION 4: تأكيد وإرسال الحجز (Final Submission CTA)
+             SECTION 4: تأكيد الحجز النهائي (Final Submission CTA)
         ============================================================ --}}
         <section id="section-submit" class="bo-section">
             <div class="bo-section-header">
-                <div class="bo-section-title">
-                    <span class="bo-section-title-badge">4</span>
-                    <span>تأكيد الحجز النهائي</span>
-                </div>
+                <h2 class="bo-section-title">تأكيد الحجز النهائي</h2>
                 <span class="bo-status-pill status-pending" id="status-badge-4">في انتظار الإكمال</span>
             </div>
 
             <div class="bo-submit-area">
-                <button type="submit"
+                <button type="button"
                         id="submitBtn"
-                        disabled>
+                        class="is-muted">
                     <span id="submitText">إرسال طلب الحجز 🎟️</span>
                 </button>
 
@@ -1073,12 +1071,15 @@ html {
     if (count < 1) count = 1;
     if (count > maxTickets && maxTickets > 0) count = maxTickets;
 
+    var currentStep = 1; // 1: Tickets, 2: Payment, 3: Details, 4: Submit
+
     // Elements
     var countDisplay      = document.getElementById('ticketCountDisplay');
     var wordLabel         = document.getElementById('ticketWordLabel');
     var totalPriceDisplay = document.getElementById('totalPriceDisplay');
     var requiredPayAmount = document.getElementById('requiredPayAmount');
     var ticketsInput      = document.getElementById('tickets_count');
+    var ticketCounterBox  = document.getElementById('ticketCounterBox');
     var attendeesContainer= document.getElementById('attendeesContainer');
     var screenshotInput   = document.getElementById('screenshot');
     var dropzoneLabel     = document.getElementById('dropzoneLabel');
@@ -1092,11 +1093,11 @@ html {
     var submitHint        = document.getElementById('submitHint');
     var bookingForm       = document.getElementById('bookingForm');
     var copyToast         = document.getElementById('copyToast');
+    var stickyNavWrap     = document.getElementById('stickyNavWrap');
 
     // Next CTA Buttons
     var btnNextToPayment  = document.getElementById('btnNextToPayment');
     var btnNextToDetails  = document.getElementById('btnNextToDetails');
-    var btnNextToSubmit   = document.getElementById('btnNextToSubmit');
 
     // Sticky Step Nav Items (Pure Typography, 1-4)
     var stepNav1 = document.getElementById('stepNav-1');
@@ -1113,6 +1114,13 @@ html {
     var section2 = document.getElementById('section-payment');
     var section3 = document.getElementById('section-details');
     var section4 = document.getElementById('section-submit');
+
+    var sections = [
+        { num: 1, el: section1 },
+        { num: 2, el: section2 },
+        { num: 3, el: section3 },
+        { num: 4, el: section4 }
+    ];
 
     var oldNames  = @json(old('names', []));
     var oldPhones = @json(old('phones', []));
@@ -1132,15 +1140,18 @@ html {
     }
     if (tokenEl) tokenEl.value = savedToken;
 
-    // --- Smooth Scrolling ---
+    // --- Smooth Scrolling with Section Focus ---
+    var isScrollingProgrammatically = false;
     window.scrollToSection = function(id) {
         var el = document.getElementById(id);
         if (el) {
+            isScrollingProgrammatically = true;
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             el.classList.add('is-active-focus');
             setTimeout(function() {
                 el.classList.remove('is-active-focus');
-            }, 1200);
+                isScrollingProgrammatically = false;
+            }, 800);
         }
     };
 
@@ -1190,6 +1201,10 @@ html {
     }
 
     function flashMaxNotice() {
+        if (ticketCounterBox) {
+            ticketCounterBox.classList.add('bo-shake');
+            setTimeout(function() { ticketCounterBox.classList.remove('bo-shake'); }, 600);
+        }
         if (countDisplay.animate) {
             countDisplay.animate([
                 { transform: 'scale(1)', color: '#fff' },
@@ -1218,7 +1233,7 @@ html {
         }
     } catch (e) {}
 
-    // --- Render Attendee Fields (Label and Placeholder: simply "الاسم") ---
+    // --- Render Attendee Fields (Label and Placeholder: strictly "الاسم") ---
     function renderAttendeeFields() {
         attendeesContainer.innerHTML = '';
 
@@ -1322,7 +1337,6 @@ html {
         var copySuccess = function() {
             showToast('✓ تم نسخ الرقم بنجاح');
             if (btn) {
-                var original = btn.textContent;
                 btn.textContent = 'تم النسخ ✓';
                 btn.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/50');
                 setTimeout(function() {
@@ -1356,7 +1370,15 @@ html {
     }
 
     // --- State & Validation Computation ---
-    function areFieldsComplete() {
+    function validateStep1() {
+        return (count >= 1 && count <= maxTickets);
+    }
+
+    function validateStep2() {
+        return (screenshotInput.files && screenshotInput.files.length > 0);
+    }
+
+    function validateStep3() {
         var names = attendeesContainer.querySelectorAll('input[name="names[]"]');
         var phones = attendeesContainer.querySelectorAll('input[name="phones[]"]');
         if (names.length === 0 || phones.length === 0) return false;
@@ -1371,65 +1393,86 @@ html {
         return true;
     }
 
-    function isScreenshotAttached() {
-        return screenshotInput.files && screenshotInput.files.length > 0;
+    // --- Dynamic Step Navigation Color Management ---
+    // Rule:
+    // ACTIVE / CURRENT STEP  -> YELLOW (#fbbf24) "YOU ARE HERE"
+    // COMPLETED STEP         -> GREEN  (#10b981)
+    // INACTIVE / NOT REACHED -> DIMMED (#6b7280, 0.35 opacity)
+    function updateStepNavDisplay() {
+        var navItems = [
+            { el: stepNav1, isDone: validateStep1() },
+            { el: stepNav2, isDone: validateStep2() },
+            { el: stepNav3, isDone: validateStep3() },
+            { el: stepNav4, isDone: (validateStep1() && validateStep2() && validateStep3()) }
+        ];
+
+        for (var i = 0; i < navItems.length; i++) {
+            var stepNum = i + 1;
+            var item = navItems[i];
+
+            if (stepNum === currentStep) {
+                // Current section being viewed: MUST be YELLOW
+                item.el.className = 'bo-step-item is-active';
+            } else if (item.isDone) {
+                // Completed section: GREEN
+                item.el.className = 'bo-step-item is-completed';
+            } else {
+                // Inactive / unreached: DIM
+                item.el.className = 'bo-step-item is-inactive';
+            }
+        }
     }
 
     function recomputeAllStates() {
-        var step1Done = (count >= 1 && count <= maxTickets);
-        var step2Done = isScreenshotAttached();
-        var step3Done = areFieldsComplete();
+        var step1Done = validateStep1();
+        var step2Done = validateStep2();
+        var step3Done = validateStep3();
         var allReady  = step1Done && step2Done && step3Done && (maxTickets > 0);
 
-        // Step 1: Tickets
-        setStepNavState(stepNav1, true, false);
+        // Section 1: Tickets
         badge1.className = 'bo-status-pill status-done';
         badge1.textContent = '✓ تم التحديد';
         section1.classList.add('is-section-done');
         btnNextToPayment.classList.add('is-active-cta');
 
-        // Step 2: Payment & Screenshot
+        // Section 2: Payment
         if (step2Done) {
-            setStepNavState(stepNav2, true, false);
             badge2.className = 'bo-status-pill status-done';
             badge2.textContent = '✓ الإيصال مرفوع';
             section2.classList.add('is-section-done');
             btnNextToDetails.classList.add('is-active-cta');
+            screenshotError.classList.add('hidden');
         } else {
-            setStepNavState(stepNav2, false, true);
             badge2.className = 'bo-status-pill status-pending';
             badge2.textContent = 'بانتظار الإيصال';
             section2.classList.remove('is-section-done');
             btnNextToDetails.classList.remove('is-active-cta');
         }
 
-        // Step 3: Attendees
+        // Section 3: Attendees
         if (step3Done) {
-            setStepNavState(stepNav3, true, false);
             badge3.className = 'bo-status-pill status-done';
             badge3.textContent = '✓ مكتملة (' + count + ')';
             section3.classList.add('is-section-done');
-            btnNextToSubmit.classList.add('is-active-cta');
         } else {
-            setStepNavState(stepNav3, false, step2Done);
             badge3.className = 'bo-status-pill status-pending';
             badge3.textContent = 'أدخل البيانات';
             section3.classList.remove('is-section-done');
-            btnNextToSubmit.classList.remove('is-active-cta');
         }
 
-        // Step 4: Submission
+        // Section 4: Final Submission
         if (allReady) {
-            submitBtn.disabled = false;
+            submitBtn.classList.remove('is-muted');
+            submitBtn.classList.add('is-ready');
             submitHint.textContent = '✓ جميع البيانات جاهزة — اضغط لإرسال طلب الحجز فوراً.';
             submitHint.classList.add('ready');
 
-            setStepNavState(stepNav4, true, false);
             badge4.className = 'bo-status-pill status-done';
             badge4.textContent = 'جاهز للإرسال';
             section4.classList.add('is-section-done');
         } else {
-            submitBtn.disabled = true;
+            submitBtn.classList.remove('is-ready');
+            submitBtn.classList.add('is-muted');
             submitHint.classList.remove('ready');
 
             var missing = [];
@@ -1438,41 +1481,194 @@ html {
 
             submitHint.textContent = 'المتبقي لإرسال الحجز: ' + missing.join(' و ') + '.';
 
-            setStepNavState(stepNav4, false, step3Done);
             badge4.className = 'bo-status-pill status-pending';
             badge4.textContent = 'في انتظار الإكمال';
             section4.classList.remove('is-section-done');
         }
+
+        updateStepNavDisplay();
     }
 
-    function setStepNavState(navEl, isDone, isActive) {
-        if (isDone) {
-            navEl.className = 'bo-step-item is-completed';
-        } else if (isActive) {
-            navEl.className = 'bo-step-item is-active';
-        } else {
-            navEl.className = 'bo-step-item is-inactive';
+    // --- Step Navigation Click Handlers ---
+    window.navigateToStep = function(stepNum) {
+        if (stepNum === 1) {
+            currentStep = 1;
+            updateStepNavDisplay();
+            scrollToSection('section-tickets');
+        } else if (stepNum === 2) {
+            currentStep = 2;
+            updateStepNavDisplay();
+            scrollToSection('section-payment');
+        } else if (stepNum === 3) {
+            if (!validateStep2()) {
+                screenshotError.textContent = 'يرجى إرفاق إيصال التحويل أولاً للمتابعة.';
+                screenshotError.classList.remove('hidden');
+                dropzoneLabel.classList.add('bo-shake');
+                setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+                currentStep = 2;
+                updateStepNavDisplay();
+                scrollToSection('section-payment');
+                return;
+            }
+            currentStep = 3;
+            updateStepNavDisplay();
+            scrollToSection('section-details');
+        } else if (stepNum === 4) {
+            if (!validateStep2()) {
+                screenshotError.textContent = 'يرجى إرفاق إيصال التحويل أولاً للمتابعة.';
+                screenshotError.classList.remove('hidden');
+                dropzoneLabel.classList.add('bo-shake');
+                setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+                currentStep = 2;
+                updateStepNavDisplay();
+                scrollToSection('section-payment');
+                return;
+            }
+            if (!validateStep3()) {
+                currentStep = 3;
+                updateStepNavDisplay();
+                scrollToSection('section-details');
+                triggerMissingInputHighlight();
+                return;
+            }
+            currentStep = 4;
+            updateStepNavDisplay();
+            scrollToSection('section-submit');
         }
+    };
+
+    // --- Next Button Handlers with User Guidance ---
+    btnNextToPayment.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!validateStep1()) {
+            flashMaxNotice();
+            currentStep = 1;
+            updateStepNavDisplay();
+            scrollToSection('section-tickets');
+            return;
+        }
+        currentStep = 2;
+        updateStepNavDisplay();
+        scrollToSection('section-payment');
+    });
+
+    btnNextToDetails.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!validateStep2()) {
+            screenshotError.textContent = 'يرجى إرفاق صورة إيصال التحويل أولاً للمتابعة.';
+            screenshotError.classList.remove('hidden');
+            dropzoneLabel.classList.add('bo-shake');
+            setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+            currentStep = 2;
+            updateStepNavDisplay();
+            scrollToSection('section-payment');
+            return;
+        }
+        currentStep = 3;
+        updateStepNavDisplay();
+        scrollToSection('section-details');
+        setTimeout(function() {
+            var firstInput = attendeesContainer.querySelector('input');
+            if (firstInput) firstInput.focus();
+        }, 400);
+    });
+
+    function triggerMissingInputHighlight() {
+        setTimeout(function() {
+            var inputs = attendeesContainer.querySelectorAll('input');
+            for (var i = 0; i < inputs.length; i++) {
+                var inp = inputs[i];
+                if (!inp.value.trim() || (inp.type === 'tel' && inp.value.trim().length < 8)) {
+                    inp.classList.add('bo-shake');
+                    inp.focus();
+                    setTimeout(function(target) { target.classList.remove('bo-shake'); }, 600, inp);
+                    break;
+                }
+            }
+        }, 300);
     }
 
-    // --- Form Submission Handling with Real Network Loading Spinner ---
+    // --- Scroll Listener for Sticky State & Viewport Step Tracking ---
+    window.addEventListener('scroll', function() {
+        var scrollY = window.scrollY || window.pageYOffset;
+
+        // Sticky frameless blur activation
+        if (stickyNavWrap) {
+            if (scrollY > 30) {
+                stickyNavWrap.classList.add('is-scrolled');
+            } else {
+                stickyNavWrap.classList.remove('is-scrolled');
+            }
+        }
+
+        if (isScrollingProgrammatically) return;
+
+        // Viewport scroll-spy: determine which section user is currently viewing
+        var triggerPoint = scrollY + 160;
+        for (var i = sections.length - 1; i >= 0; i--) {
+            var sec = sections[i];
+            if (sec.el && sec.el.offsetTop <= triggerPoint) {
+                if (currentStep !== sec.num) {
+                    currentStep = sec.num;
+                    updateStepNavDisplay();
+                }
+                break;
+            }
+        }
+    }, { passive: true });
+
+    // --- Submission Button Click: Auto-jump to missing requirement if incomplete ---
     var isSubmitting = false;
 
-    bookingForm.addEventListener('submit', function(e) {
-        if (isSubmitting) {
-            e.preventDefault();
-            return false;
+    submitBtn.addEventListener('click', function(e) {
+        if (isSubmitting) return;
+
+        var step1Done = validateStep1();
+        var step2Done = validateStep2();
+        var step3Done = validateStep3();
+
+        if (!step1Done) {
+            flashMaxNotice();
+            currentStep = 1;
+            updateStepNavDisplay();
+            scrollToSection('section-tickets');
+            return;
         }
 
-        if (submitBtn.disabled) {
-            e.preventDefault();
-            return false;
+        if (!step2Done) {
+            screenshotError.textContent = 'يرجى إرفاق إيصال التحويل أولاً لإتمام الحجز.';
+            screenshotError.classList.remove('hidden');
+            dropzoneLabel.classList.add('bo-shake');
+            setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+            currentStep = 2;
+            updateStepNavDisplay();
+            scrollToSection('section-payment');
+            return;
         }
 
+        if (!step3Done) {
+            currentStep = 3;
+            updateStepNavDisplay();
+            scrollToSection('section-details');
+            triggerMissingInputHighlight();
+            return;
+        }
+
+        // All valid: Execute real submission with network spinner
         isSubmitting = true;
+        submitBtn.classList.remove('is-ready');
+        submitBtn.classList.add('is-submitting');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="bo-spinner" aria-hidden="true"></span> <span>جاري إرسال طلب الحجز...</span>';
         submitHint.textContent = 'يرجى الانتظار ولا تغلق الصفحة حتى اكتمال معالجة الطلب.';
+        bookingForm.submit();
+    });
+
+    bookingForm.addEventListener('submit', function(e) {
+        if (!validateStep1() || !validateStep2() || !validateStep3()) {
+            e.preventDefault();
+            return false;
+        }
     });
 
     // Reset state on bfcache navigation (iOS Safari back-button)
@@ -1480,6 +1676,7 @@ html {
         if (e.persisted) {
             isSubmitting = false;
             submitBtn.disabled = false;
+            submitBtn.classList.remove('is-submitting');
             submitBtn.innerHTML = '<span id="submitText">إرسال طلب الحجز 🎟️</span>';
             recomputeAllStates();
         }
