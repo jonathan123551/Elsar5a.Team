@@ -3,1166 +3,1690 @@
 @section('title', 'حجز تذاكر - ' . $showTime->show->title)
 
 @section('content')
-{{--
-    Public booking flow — mobile-first, cinematic refresh.
+@php
+    use Carbon\Carbon;
 
-    JS / submission contract (PR #9) preserved verbatim:
-      - Form id="bookingForm", novalidate, multipart/form-data.
-      - Hidden inputs name="idempotency_token" (id=idempotencyToken)
-        and name="tickets_count" (id=tickets_count) keep their
-        exact names + ids — the server validates them, the client
-        regenerates the idempotency token per page-load via
-        sessionStorage["booking_token_show_{id}"].
-      - Counter UI: ids #ticketsCount, #maxHint, #totalPriceHint
-        and window.changeCount(±1) (called inline from the +/−
-        buttons) are unchanged.
-      - Names/phones inputs are rendered into #namesContainer by
-        the inline script — input attrs (name=names[]|phones[],
-        required, autocomplete, inputmode, pattern) are unchanged
-        so the server validator still matches.
-      - Screenshot dropzone: ids #screenshot, #screenshotDropzone,
-        #screenshotEmptyState, #screenshotPreviewWrap,
-        #screenshotPreview, #screenshotFileName, #screenshotError
-        with the same hidden/show toggling.
-      - Submit: id="submitBtn" (with the original gray→amber
-        class swap classes preserved so recomputeSubmitState()
-        still flips colours), id="submitLabel", id="submitHint".
-        The submit button itself sits inside a single
-        [data-sticky-action] wrapper so the layout's sticky CTA
-        bootstrapper clones it into the floating footer — the
-        hint stays OUTSIDE that wrapper so it never duplicates.
-      - Tap-to-copy on [data-copy] payment buttons with
-        .copy-hint child — unchanged.
-      - bfcache reset on pageshow — unchanged.
-      - Server-side: BookingController::store uses Cache::add
-        on both the idempotency token AND a per-showtime lock,
-        with FOR UPDATE + aggregate capacity recheck inside the
-        transaction (PR #9). No controller / route change.
+    // Stable showtime list: deterministic sort order ensures physical positions NEVER swap
+    $allShowTimes = $showTime->show->showTimes()
+        ->where('is_sold_out', false)
+        ->orderBy('date', 'asc')
+        ->orderBy('time', 'asc')
+        ->get();
 
-    What's new (presentation only):
-      - Step rail at the top (Transfer · Fill · Confirm).
-      - Cinematic aside card with gradient show title and a
-        polished step-1 transfer panel.
-      - Ticket counter with a subtle "stage glow" pulse on +/−.
-      - Person cards with index pill + soft amber accent.
-      - Screenshot dropzone with a clearer drag-and-tap CTA.
-      - Trust strip under the form (secure / fast / QR).
-      - iOS keyboard: html `scroll-padding-bottom` so the sticky
-        CTA never covers the focused input.
-      - prefers-reduced-motion honoured throughout.
---}}
+    $currentDate = Carbon::parse($showTime->date);
+    $currentTime = Carbon::parse($showTime->time);
+    $timeFormatted = $currentTime->format('g:i') . ($currentTime->format('A') === 'PM' ? ' مساءً' : ' صباحاً');
+@endphp
 
 <style>
-[data-booking] {
-    --bk-radius:   1.5rem;
-    --bk-radius-lg:2rem;
-    --bk-border:   rgba(255,255,255,0.10);
-    --bk-text:     #f1f5fb;
-    --bk-text-2:   rgba(229,231,235,0.82);
-    --bk-text-3:   rgba(229,231,235,0.55);
-    --bk-amber:    #fbbf24;
-    --bk-ease:     cubic-bezier(.2,.7,.2,1);
-}
-
-/* iOS Safari: when an input is focused the OS keyboard slides
-   up. Without this, the sticky CTA can cover the focused field. */
-html { scroll-padding-bottom: 140px; }
-
 /* ============================================================
-   PROGRESS RAIL — three steps at the top of the page so the
-   user immediately understands the flow shape. */
-.bk-rail {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: .55rem;
-    margin-bottom: 1.1rem;
-}
-.bk-step {
-    position: relative;
-    padding: .65rem .7rem;
-    border-radius: 1rem;
-    background: rgba(15,23,42,.55);
-    border: 1px solid var(--bk-border);
-    text-align: center;
-    transition: border-color .3s, background .3s;
-}
-.bk-step.is-active {
-    border-color: rgba(250,204,21,.55);
-    background:
-        linear-gradient(180deg, rgba(250,204,21,.10), rgba(250,204,21,.02));
-    box-shadow: 0 0 24px -8px rgba(250,204,21,.4);
-}
-.bk-step-no {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 9999px;
-    font-size: 11px;
-    font-weight: 800;
-    background: rgba(255,255,255,.06);
-    color: var(--bk-text-2);
-    margin-bottom: .25rem;
-}
-.bk-step.is-active .bk-step-no {
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-}
-.bk-step-label {
-    display: block;
-    font-size: 11px;
-    line-height: 1.2;
-    color: var(--bk-text-2);
-    letter-spacing: .02em;
-}
-.bk-step.is-active .bk-step-label {
-    color: #fde68a;
-    font-weight: 700;
+   ELSAR5A THEATRE BOX OFFICE — PRECISE REFINED EXPERIENCE
+   ============================================================ */
+:root {
+    --th-bg: #07090e;
+    --th-card-bg: rgba(15, 20, 30, 0.88);
+    --th-card-border: rgba(255, 255, 255, 0.08);
+    --th-amber: #f59e0b;
+    --th-amber-light: #fde68a;
+    --th-amber-glow: rgba(245, 158, 11, 0.25);
+    --th-emerald: #10b981;
+    --th-emerald-glow: rgba(16, 185, 129, 0.25);
+    --th-text-main: #f9fafb;
+    --th-text-muted: #9ca3af;
+    --th-text-dim: #6b7280;
 }
 
-/* ============================================================
-   ASIDE — premium "ticket-stub" card. */
-.bk-aside {
-    position: relative;
-    background:
-        linear-gradient(180deg, rgba(2,6,23,.7), rgba(2,6,23,.85));
-    border: 1px solid rgba(250,204,21,.32);
-    border-radius: var(--bk-radius-lg);
-    padding: 1.25rem;
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.04),
-        0 30px 60px -28px rgba(250,204,21,.18);
-    isolation: isolate;
-}
-.bk-aside::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(180deg, rgba(250,204,21,.45), transparent 65%);
-    -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-    pointer-events: none;
-    z-index: -1;
-}
-.bk-aside-eyebrow {
-    font-size: 11px;
-    letter-spacing: .22em;
-    text-transform: uppercase;
-    color: rgba(252,211,77,.85);
-    font-weight: 700;
-}
-.bk-aside-title {
-    font-size: clamp(1.05rem, 3.6vw, 1.2rem);
-    font-weight: 800;
-    line-height: 1.3;
-    margin-top: .35rem;
-    background: linear-gradient(135deg, #fde68a 0%, #fbbf24 50%, #f87171 100%);
-    -webkit-background-clip: text;
-            background-clip: text;
-    color: transparent;
-}
-.bk-aside-meta {
-    margin-top: .85rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .55rem;
-}
-.bk-meta-cell {
-    background: rgba(255,255,255,.04);
-    border: 1px solid var(--bk-border);
-    border-radius: .85rem;
-    padding: .55rem .65rem;
-}
-.bk-meta-cell-label {
-    font-size: 10px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--bk-text-3);
-}
-.bk-meta-cell-value {
-    margin-top: .1rem;
-    font-size: 13px;
-    color: var(--bk-text);
-    font-weight: 700;
-}
-.bk-meta-cell.is-price .bk-meta-cell-value {
-    color: #fde68a;
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 130px;
 }
 
-.bk-step-panel {
-    margin-top: 1rem;
-    background:
-        linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,.7));
-    border: 1px solid rgba(250,204,21,.22);
-    border-radius: 1.25rem;
-    padding: 1rem;
-}
-.bk-step-panel h3 {
-    display: flex;
-    align-items: center;
-    gap: .45rem;
-    font-size: 12px;
-    color: #fde68a;
-    font-weight: 800;
-    letter-spacing: .04em;
-}
-.bk-step-panel h3 .pip {
-    width: 18px;
-    height: 18px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-    font-size: 10px;
-    font-weight: 900;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.bk-step-panel-desc {
-    margin-top: .45rem;
-    color: var(--bk-text-2);
-    font-size: 12px;
-    line-height: 1.65;
-}
-
-.bk-pay {
-    width: 100%;
-    text-align: right;
-    background: rgba(255,255,255,.04);
-    border: 1px solid var(--bk-border);
-    border-radius: .9rem;
-    padding: .65rem .7rem;
-    margin-top: .55rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-    transition: background .25s, border-color .25s, transform .2s;
-    min-height: 56px;
-}
-.bk-pay:hover,
-.bk-pay:focus-visible {
-    background: rgba(255,255,255,.08);
-    border-color: rgba(250,204,21,.55);
-}
-.bk-pay:active { transform: scale(.985); }
-.bk-pay-label {
-    font-size: 10px;
-    letter-spacing: .14em;
-    color: var(--bk-text-3);
-    text-transform: uppercase;
-}
-.bk-pay-value {
-    margin-top: .1rem;
-    font-size: 14px;
-    font-weight: 800;
-    color: #fff;
-    letter-spacing: -.005em;
-}
-.bk-pay .copy-hint {
-    flex-shrink: 0;
-    font-size: 11px;
-    font-weight: 700;
-    color: #fde68a;
-    padding: .25rem .55rem;
-    border-radius: 9999px;
-    background: rgba(250,204,21,.10);
-    border: 1px solid rgba(250,204,21,.4);
-    transition: color .25s, background .25s;
-}
-
-/* ============================================================
-   FORM COLUMN — large card with a subtle inner glow. */
-.bk-form {
-    background:
-        linear-gradient(180deg, rgba(2,6,23,.65), rgba(2,6,23,.78));
-    border: 1px solid var(--bk-border);
-    border-radius: var(--bk-radius-lg);
-    padding: 1.25rem;
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.04),
-        0 30px 60px -28px rgba(0,0,0,.8);
-}
-@media (min-width: 640px) {
-    .bk-form { padding: 1.5rem; }
-}
-.bk-form-h {
-    display: flex;
-    align-items: center;
-    gap: .55rem;
-}
-.bk-form-h .pip {
-    width: 22px;
-    height: 22px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-    font-size: 11px;
-    font-weight: 900;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.bk-form-h h2 {
-    font-size: 13px;
-    font-weight: 800;
-    color: #fde68a;
-    letter-spacing: .04em;
-}
-
-.bk-error {
-    margin-top: 1rem;
-    padding: .9rem 1rem;
-    border-radius: 1rem;
-    background:
-        radial-gradient(120% 100% at 0% 0%, rgba(248,113,113,.18), transparent 50%),
-        rgba(127,29,29,.18);
-    border: 1px solid rgba(248,113,113,.45);
-    color: #fecaca;
-    font-size: 13px;
-    line-height: 1.65;
-}
-.bk-error ul { margin: 0; padding: 0; list-style: none; }
-.bk-error li { display: flex; gap: .35rem; }
-.bk-error li::before { content: "•"; color: #fca5a5; }
-
-/* Generic field card */
-.bk-field {
-    background: rgba(255,255,255,.04);
-    border: 1px solid var(--bk-border);
-    border-radius: 1.25rem;
-    padding: 1rem;
-    transition: border-color .3s, background .3s, box-shadow .3s;
-}
-.bk-field:focus-within {
-    border-color: rgba(250,204,21,.55);
-    background: rgba(250,204,21,.04);
-    box-shadow: 0 0 0 4px rgba(250,204,21,.06);
-}
-.bk-field-h {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .55rem;
-}
-.bk-field-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--bk-text);
-}
-
-/* Tickets counter visuals */
-.bk-counter {
-    display: flex;
-    align-items: center;
-    gap: .9rem;
-    margin-top: .85rem;
-}
-.bk-counter-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 1rem;
-    background: rgba(255,255,255,.06);
-    border: 1px solid var(--bk-border);
-    color: #fff;
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: background .2s, transform .15s;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-}
-.bk-counter-btn:hover { background: rgba(255,255,255,.12); }
-.bk-counter-btn:active { transform: scale(.94); }
-.bk-counter-num {
-    flex: 1;
-    text-align: center;
-    font-size: 36px;
-    font-weight: 900;
-    color: #fff;
-    font-variant-numeric: tabular-nums;
-    background: linear-gradient(180deg, #fff, #d1d5db);
-    -webkit-background-clip: text;
-            background-clip: text;
-    color: transparent;
-    line-height: 1.1;
-}
-.bk-counter-total {
-    margin-top: .65rem;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 800;
-    color: #fde68a;
-    letter-spacing: .01em;
-}
-
-/* Person cards (template strings in JS still produce
-   "space-y-2 bg-black/40 border border-white/10 rounded-2xl p-3"
-   wrappers — those Tailwind classes already exist in the
-   compiled CSS so we keep them as-is. We layer additional
-   visual treatment via the parent .bk-people-list when the
-   JS injects them.) */
-.bk-people-list > div {
-    position: relative;
-    padding-top: 2.4rem !important;
-}
-.bk-people-list > div::before {
-    counter-increment: bk-person;
-    content: counter(bk-person);
-    position: absolute;
-    top: .7rem;
-    right: .8rem;
-    width: 26px;
-    height: 26px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
-    color: #1b1208;
-    font-size: 11px;
-    font-weight: 900;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.bk-people-list > div > p:first-of-type { display: none; }
-.bk-people-list { counter-reset: bk-person; }
-
-/* Inputs (booking-input class on inputs rendered by JS) */
-.booking-input {
-    font-size: 16px !important; /* iOS auto-zoom prevention */
-    transition: border-color .25s, background .25s, box-shadow .25s;
-}
-.booking-input:focus {
-    outline: none;
-    border-color: rgba(250,204,21,.6) !important;
-    background: rgba(2,6,23,.85) !important;
-    box-shadow: 0 0 0 3px rgba(250,204,21,.12);
-}
-
-/* Screenshot dropzone polish */
-.bk-drop {
-    display: block;
-    cursor: pointer;
-    border: 2px dashed rgba(255,255,255,.22);
-    border-radius: 1rem;
-    background:
-        radial-gradient(circle at top, rgba(250,204,21,.06), transparent 60%),
-        rgba(2,6,23,.55);
-    padding: 1.2rem 1rem;
-    text-align: center;
-    transition: border-color .3s, background .3s, transform .3s;
-    -webkit-tap-highlight-color: transparent;
-}
-.bk-drop:hover,
-.bk-drop:focus-within {
-    border-color: rgba(250,204,21,.55);
-    background:
-        radial-gradient(circle at top, rgba(250,204,21,.10), transparent 60%),
-        rgba(2,6,23,.5);
-    transform: translateY(-1px);
-}
-.bk-drop-glyph {
-    font-size: 34px;
-    line-height: 1;
-    margin-bottom: .35rem;
-}
-.bk-drop-cta {
-    font-size: 13px;
-    font-weight: 800;
-    color: #fff;
-}
-.bk-drop-sub {
-    font-size: 11px;
-    color: var(--bk-text-3);
-    margin-top: .25rem;
-}
-#screenshotPreview {
-    max-height: 13rem;
+.boxoffice-container {
+    max-width: 780px;
     margin-inline: auto;
-    border-radius: .9rem;
-    border: 1px solid var(--bk-border);
-    object-fit: contain;
+    padding: 0 1rem 3.5rem;
+    color: var(--th-text-main);
+    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Submit area */
-.bk-submit-wrap { padding-top: .3rem; }
-.bk-submit-wrap [data-sticky-action] { display: block; }
+@media (min-width: 640px) {
+    .boxoffice-container {
+        padding: 0 1.5rem 4rem;
+    }
+}
 
-/* The submit button keeps the original class-set so
-   recomputeSubmitState()'s class swap still works without
-   any JS change. The CSS below only sharpens the visuals
-   in the *enabled* state. */
-#submitBtn {
-    width: 100%;
-    padding: 1rem 1.5rem;
-    border-radius: 1.25rem;
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: .01em;
-    transition: transform .25s var(--bk-ease),
-                box-shadow .35s ease,
-                background .35s ease,
-                color .35s ease;
+/* 1. FRAMELESS STICKY STEP NAVIGATION — NO BOXES, PURE ALEXANDRIA TYPOGRAPHY */
+.bo-sticky-nav-wrap {
+    position: sticky;
+    top: 50px;
+    z-index: 30;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0.65rem 0.5rem;
+    margin-bottom: 1.25rem;
+    transition: background 0.25s ease, backdrop-filter 0.25s ease;
+}
+
+.bo-sticky-nav-wrap.is-scrolled {
+    background: rgba(7, 9, 14, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.bo-steps-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: .55rem;
-    min-height: 52px;
-    -webkit-tap-highlight-color: transparent;
-}
-#submitBtn:not([disabled]):hover {
-    transform: translateY(-2px);
-    box-shadow:
-        0 18px 36px -10px rgba(250,204,21,.55),
-        0 0 22px rgba(251,191,36,.35) !important;
-}
-#submitBtn:disabled {
-    transform: none;
-    box-shadow: none;
-    background: rgba(255,255,255,.07) !important;
-    color: rgba(229,231,235,.55) !important;
-    border: 1px dashed rgba(255,255,255,.16);
-}
-.bk-submit-hint {
-    text-align: center;
-    font-size: 11px;
-    color: var(--bk-text-3);
-    margin-top: .55rem;
+    justify-content: space-between;
+    max-width: 440px;
+    margin-inline: auto;
+    padding-inline: 0.25rem;
+    font-family: 'Alexandria', 'Readex Pro', sans-serif;
 }
 
-/* Trust strip */
-.bk-trust {
-    margin-top: 1rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: .55rem;
-}
-.bk-trust-cell {
-    background: rgba(255,255,255,.03);
-    border: 1px solid var(--bk-border);
-    border-radius: .85rem;
-    padding: .55rem;
-    text-align: center;
-    font-size: 11px;
-    color: var(--bk-text-2);
+.bo-step-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: .2rem;
-    line-height: 1.3;
-}
-.bk-trust-cell .glyph {
-    font-size: 16px;
-    line-height: 1;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.22s ease;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.25rem 0.6rem;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .bk-pay,
-    .bk-counter-btn,
-    .bk-drop,
-    #submitBtn,
-    .bk-step,
-    .bk-field {
-        transition: none !important;
+.bo-step-num {
+    font-family: 'Alexandria', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    transition: all 0.22s ease;
+}
+
+.bo-step-name {
+    font-family: 'Alexandria', 'Readex Pro', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    transition: all 0.22s ease;
+}
+
+/* INACTIVE STEP: Dimmed / Muted */
+.bo-step-item.is-inactive {
+    opacity: 0.35;
+    color: #6b7280;
+}
+
+.bo-step-item.is-inactive .bo-step-num {
+    color: #6b7280;
+}
+
+.bo-step-item.is-inactive .bo-step-name {
+    color: #9ca3af;
+}
+
+.bo-step-item.is-inactive:hover {
+    opacity: 0.65;
+}
+
+/* COMPLETED STEP: Green */
+.bo-step-item.is-completed {
+    opacity: 0.9;
+    color: #10b981;
+}
+
+.bo-step-item.is-completed .bo-step-num {
+    color: #10b981;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.bo-step-item.is-completed .bo-step-name {
+    color: #34d399;
+    font-weight: 700;
+}
+
+/* CURRENT ACTIVE STEP: Yellow ("YOU ARE HERE") */
+.bo-step-item.is-active {
+    opacity: 1;
+    color: #fbbf24;
+}
+
+.bo-step-item.is-active .bo-step-num {
+    color: #fbbf24;
+    font-size: 1.6rem;
+    font-weight: 900;
+    text-shadow: 0 0 16px rgba(245, 158, 11, 0.7), 0 0 4px #fbbf24;
+    transform: translateY(-1px);
+}
+
+.bo-step-item.is-active .bo-step-name {
+    color: #fef08a;
+    font-weight: 800;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+/* 2. SECTION CARDS — MINIMAL HEADERS, NO NUMBER BOXES */
+.bo-section {
+    background: var(--th-card-bg);
+    border: 1px solid var(--th-card-border);
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 15px 35px -15px rgba(0, 0, 0, 0.6);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+@media (min-width: 640px) {
+    .bo-section {
+        padding: 1.5rem;
     }
 }
 
-/* A quieter booking surface: keep the theatre palette, remove the
-   layered glow treatment, and let the booking steps read at a glance. */
-[data-booking] {
-    --bk-radius: 1rem;
-    --bk-radius-lg: 1.25rem;
-    --bk-border: rgba(245, 230, 210, .14);
-    --bk-text: #f6eee5;
-    --bk-text-2: #d9cdc0;
-    --bk-text-3: #aa9d92;
-    --bk-amber: #e9c27e;
-    max-width: 68rem;
-    padding-block: .5rem 1.5rem;
+.bo-section.is-active-focus {
+    border-color: rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 25px -8px var(--th-amber-glow);
 }
-.bk-rail { max-width: 42rem; margin-inline: auto; gap: .45rem; }
-.bk-step { border-radius: .75rem; padding: .55rem .65rem; background: rgba(20, 13, 13, .54); }
-.bk-step.is-active { border-color: rgba(215, 176, 113, .55); background: rgba(108, 35, 45, .22); box-shadow: none; }
-.bk-step-no, .bk-step.is-active .bk-step-no { background: transparent; color: #e9c27e; border: 1px solid rgba(233,194,126,.42); }
-.bk-step-label { font-size: 12px; }
-.bk-aside, .bk-form {
-    background: rgba(14, 10, 10, .72);
-    border: 1px solid rgba(245, 230, 210, .13);
+
+.bo-section.is-section-done {
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.bo-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bo-section-title {
+    font-family: 'Alexandria', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+}
+
+.bo-status-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.bo-status-pill.status-pending {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--th-text-dim);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bo-status-pill.status-done {
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* 3. SHOWTIME SELECTOR — 100% STABLE POSITIONING */
+.bo-showtimes-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (min-width: 480px) {
+    .bo-showtimes-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.bo-showtime-card {
+    position: relative;
+    display: block;
+    text-align: right;
+    padding: 0.9rem 1rem;
     border-radius: 1rem;
-    box-shadow: 0 18px 36px rgba(0,0,0,.2);
+    border: 1.5px solid var(--th-card-border);
+    background: rgba(255, 255, 255, 0.03);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
 }
-.bk-aside { padding: 1rem; }
-.bk-aside::before { display: none; }
-.bk-aside-title { background: none; color: #f3e8dc; font-size: clamp(1.15rem, 3vw, 1.5rem); }
-.bk-aside-eyebrow { color: #d9b776; letter-spacing: .12em; }
-.bk-aside-meta { gap: .4rem; }
-.bk-meta-cell, .bk-step-panel, .bk-field {
-    background: rgba(255,255,255,.025);
-    border: 1px solid rgba(245,230,210,.10);
-    border-radius: .8rem;
+
+.bo-showtime-card.is-active {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.05));
+    border-color: rgba(245, 158, 11, 0.65);
+    box-shadow: 0 0 20px -5px var(--th-amber-glow);
 }
-.bk-meta-cell { padding: .6rem; }
-.bk-meta-cell-label { letter-spacing: 0; color: #b9aa9a; font-size: 11px; }
-.bk-meta-cell-value { color: #f6eee5; }
-.bk-step-panel { padding: .85rem; }
-.bk-pay { background: rgba(255,255,255,.025); border-color: rgba(245,230,210,.13); border-radius: .7rem; }
-.bk-pay .copy-hint { border: 0; background: transparent; color: #e9c27e; }
-.bk-form { padding: 1rem; }
-@media (min-width: 640px) { .bk-form { padding: 1.4rem; } }
-.bk-form-h h2 { color: #f1dfc2; letter-spacing: 0; font-size: 1rem; }
-.bk-form-h .pip { background: #e9c27e; }
-.bk-field { padding: .85rem; }
-.bk-field:focus-within { background: rgba(108,35,45,.12); border-color: rgba(215,176,113,.55); box-shadow: 0 0 0 3px rgba(215,176,113,.08); }
-.bk-counter-btn { border-radius: .7rem; background: #211818; }
-.bk-counter-num { background: none; color: #f6eee5; }
-.bk-counter-total { color: #e9c27e; }
-.bk-drop { background: rgba(255,255,255,.02); border-color: rgba(245,230,210,.24); border-radius: .75rem; }
-.bk-drop:hover, .bk-drop:focus-within { background: rgba(108,35,45,.12); transform: none; }
-#submitBtn { border-radius: .75rem; background: #e9c27e; color: #211713; box-shadow: none; min-height: 54px; }
-#submitBtn:not([disabled]):hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.2) !important; }
-.bk-trust { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 1rem; }
-.bk-trust-cell { border: 0; background: transparent; padding: .25rem; flex-direction: row; }
-.bk-trust-cell .glyph { color: #d9b776; }
-@media (max-width: 767px) {
-    .bk-rail { margin-bottom: .8rem; }
-    .bk-aside { position: static; }
-    .bk-aside-meta { grid-template-columns: 1fr 1fr; }
-    .bk-counter-btn { width: 52px; height: 52px; }
+
+.bo-showtime-card:not(.is-active) {
+    opacity: 0.65;
+}
+
+.bo-showtime-card:not(.is-active):hover {
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.bo-showtime-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--th-text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.bo-showtime-card.is-active .bo-showtime-label {
+    color: #fbbf24;
+}
+
+.bo-showtime-time {
+    font-family: 'Alexandria', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.bo-showtime-date {
+    font-size: 0.75rem;
+    color: var(--th-text-muted);
+    margin-top: 0.15rem;
+}
+
+/* 4. TACTILE TICKET COUNTER — STRICT PLUS ON RIGHT, MINUS ON LEFT */
+.bo-counter-box {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+    padding: 1.1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.bo-counter-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.35rem;
+    width: 100%;
+    direction: ltr; /* GUARANTEES: Minus (-) on physical LEFT, Plus (+) on physical RIGHT */
+}
+
+.bo-counter-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 1rem;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    font-size: 1.6rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.bo-counter-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bo-counter-btn:active {
+    transform: scale(0.92);
+}
+
+.bo-counter-display {
+    min-width: 80px;
+    text-align: center;
+    direction: rtl;
+}
+
+.bo-counter-number {
+    font-family: 'Alexandria', sans-serif;
+    font-size: 2.35rem;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.bo-counter-sub {
+    font-size: 0.75rem;
+    color: var(--th-text-muted);
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.bo-counter-ledger {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fde68a;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.bo-counter-price-val {
+    font-family: 'Alexandria', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #ffffff;
+}
+
+/* 5. PAYMENT SECTION */
+.bo-payment-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+@media (min-width: 540px) {
+    .bo-payment-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.bo-pay-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--th-card-border);
+    border-radius: 1rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.bo-pay-item:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.bo-pay-info {
+    min-width: 0;
+}
+
+.bo-pay-name {
+    font-size: 0.72rem;
+    color: var(--th-text-muted);
+    font-weight: 700;
+    display: block;
+}
+
+.bo-pay-num {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.02em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.bo-copy-btn {
+    flex-shrink: 0;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.bo-copy-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde68a;
+}
+
+.bo-copy-btn:active {
+    transform: scale(0.95);
+}
+
+.bo-pay-instructions {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px dashed rgba(245, 158, 11, 0.3);
+    border-radius: 0.9rem;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.85rem;
+    color: #fde68a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.bo-required-amount-val {
+    font-family: 'Alexandria', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #ffffff;
+}
+
+/* 6. RECEIPT DROPZONE & COMPLETED STATE */
+.bo-upload-wrap {
+    margin-top: 0.75rem;
+}
+
+.bo-dropzone {
+    display: block;
+    cursor: pointer;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1.1rem 1rem;
+    text-align: center;
+    transition: all 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bo-dropzone:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.bo-dropzone.has-file {
+    border-style: solid;
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.bo-drop-icon {
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+    display: block;
+}
+
+.bo-drop-title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.bo-drop-subtitle {
+    font-size: 0.72rem;
+    color: var(--th-text-muted);
+    margin-top: 0.2rem;
+}
+
+.bo-preview-box {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.25rem;
+    text-align: right;
+}
+
+.bo-preview-thumb {
+    width: 58px;
+    height: 58px;
+    border-radius: 0.65rem;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.bo-preview-meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.bo-preview-status {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #34d399;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.bo-preview-name {
+    font-size: 0.75rem;
+    color: var(--th-text-muted);
+    margin-top: 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bo-preview-change-btn {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fbbf24;
+    text-decoration: underline;
+    margin-top: 0.2rem;
+    display: inline-block;
+}
+
+/* 7. CUSTOMER FORM FIELDS */
+.bo-field-group {
+    margin-bottom: 0.85rem;
+}
+
+.bo-field-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--th-text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.bo-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.95rem;
+    color: #ffffff;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+}
+
+.bo-input:focus {
+    outline: none;
+    border-color: #f59e0b;
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.bo-input::placeholder {
+    color: var(--th-text-dim);
+}
+
+/* Attendee card */
+.bo-attendee-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+    padding: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.bo-attendee-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #fbbf24;
+}
+
+/* 8. NEXT BUTTON WITH VISUAL ACTIVATION */
+.bo-next-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    color: #6b7280;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    opacity: 0.7;
+    touch-action: manipulation;
+}
+
+.bo-next-btn.is-active-cta {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.08));
+    border: 1.5px solid rgba(245, 158, 11, 0.65);
+    color: #fbbf24;
+    font-weight: 800;
+    box-shadow: 0 4px 20px -3px rgba(245, 158, 11, 0.35);
+    opacity: 1;
+}
+
+.bo-next-btn.is-active-cta:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0.15));
+    border-color: #fbbf24;
+    color: #fde68a;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 25px -4px rgba(245, 158, 11, 0.45);
+}
+
+/* 9. FINAL SUBMISSION CTA — CLEAN WITHOUT DECORATIVE SPINNER */
+.bo-submit-area {
+    margin-top: 0.75rem;
+    text-align: center;
+}
+
+#submitBtn {
+    width: 100%;
+    padding: 1.05rem 1.5rem;
+    border-radius: 1.15rem;
+    font-size: 1.1rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+#submitBtn.is-muted {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--th-text-dim);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+}
+
+#submitBtn.is-ready {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+    color: #000000;
+    box-shadow: 0 10px 30px -5px rgba(245, 158, 11, 0.5), 0 0 15px rgba(251, 191, 36, 0.3);
+}
+
+#submitBtn.is-ready:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px -5px rgba(245, 158, 11, 0.6), 0 0 25px rgba(251, 191, 36, 0.4);
+}
+
+#submitBtn.is-ready:active {
+    transform: scale(0.98);
+}
+
+#submitBtn.is-submitting {
+    opacity: 0.85;
+    pointer-events: none;
+}
+
+.bo-submit-hint {
+    margin-top: 0.65rem;
+    font-size: 0.78rem;
+    color: var(--th-text-dim);
+    line-height: 1.4;
+}
+
+.bo-submit-hint.ready {
+    color: #34d399;
+}
+
+/* Real submit network spinner */
+.bo-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid rgba(0, 0, 0, 0.25);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: boSpin 0.7s linear infinite;
+    display: inline-block;
+}
+
+@keyframes boSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Guided Attention Shake */
+@keyframes boShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
+.bo-shake {
+    animation: boShake 0.45s cubic-bezier(.36,.07,.19,.97) both;
+    border-color: #ef4444 !important;
+}
+
+/* Global copy toast */
+.bo-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #10b981;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 9999px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s ease;
+    z-index: 999;
+    pointer-events: none;
+}
+
+.bo-toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
 }
 </style>
 
+<div class="boxoffice-container">
 
-<section data-booking class="max-w-5xl mx-auto px-4 sm:px-6">
+    {{-- 1. FRAMELESS STICKY STEP NAVIGATION (NO BOXES, NUMBERS ABOVE LABELS, 1-4) --}}
+    <div class="bo-sticky-nav-wrap" id="stickyNavWrap">
+        <nav class="bo-steps-bar" aria-label="مراحل الحجز">
+            <div class="bo-step-item is-active" id="stepNav-1" onclick="navigateToStep(1)">
+                <span class="bo-step-num">1</span>
+                <span class="bo-step-name">التذاكر</span>
+            </div>
+            <div class="bo-step-item is-inactive" id="stepNav-2" onclick="navigateToStep(2)">
+                <span class="bo-step-num">2</span>
+                <span class="bo-step-name">التحويل</span>
+            </div>
+            <div class="bo-step-item is-inactive" id="stepNav-3" onclick="navigateToStep(3)">
+                <span class="bo-step-num">3</span>
+                <span class="bo-step-name">البيانات</span>
+            </div>
+            <div class="bo-step-item is-inactive" id="stepNav-4" onclick="navigateToStep(4)">
+                <span class="bo-step-num">4</span>
+                <span class="bo-step-name">الإرسال</span>
+            </div>
+        </nav>
+    </div>
 
-    {{-- Progress rail --}}
-    <ol class="bk-rail" aria-label="مراحل الحجز">
-        <li class="bk-step">
-            <span class="bk-step-no">١</span>
-            <span class="bk-step-label">حوّل المبلغ</span>
-        </li>
-        <li class="bk-step is-active">
-            <span class="bk-step-no">٢</span>
-            <span class="bk-step-label">بياناتك</span>
-        </li>
-        <li class="bk-step">
-            <span class="bk-step-no">٣</span>
-            <span class="bk-step-label">تأكيد</span>
-        </li>
-    </ol>
+    {{-- Error messages if any --}}
+    @if ($errors->any())
+        <div role="alert" class="mb-5 p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-sm">
+            <p class="font-bold mb-1">يرجى مراجعة الملاحظات التالية:</p>
+            <ul class="list-disc list-inside space-y-1 text-xs">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+    <form action="{{ route('bookings.store', $showTime) }}"
+          method="POST"
+          enctype="multipart/form-data"
+          id="bookingForm"
+          novalidate>
+        @csrf
+
+        {{-- Idempotency token --}}
+        <input type="hidden" name="idempotency_token" id="idempotencyToken" value="">
+        <input type="hidden" name="tickets_count" id="tickets_count" value="{{ (int) old('tickets_count', 1) }}">
 
         {{-- ============================================================
-             ASIDE — DETAILS + TRANSFER (Step 1)
+             SECTION 1: الموعد وعدد التذاكر (Showtime & Tickets)
         ============================================================ --}}
-        <aside class="md:col-span-1 bk-aside md:sticky md:top-24 md:self-start">
-
-            <p class="bk-aside-eyebrow">عرض مسرحي · تفاصيل</p>
-            @if($showTime->show->poster_path)
-                <img src="{{ \App\Support\CloudinaryUrl::forDisplay($showTime->show->poster_path) }}"
-                     alt="ملصق {{ $showTime->show->title }}"
-                     class="mt-3 mb-4 w-full max-h-64 object-contain rounded-lg"
-                     loading="eager">
-            @endif
-            <h1 class="bk-aside-title">{{ $showTime->show->title }}</h1>
-
-            <div class="bk-aside-meta">
-                <div class="bk-meta-cell">
-                    <div class="bk-meta-cell-label">التاريخ</div>
-                    <div class="bk-meta-cell-value">
-                        {{ \Carbon\Carbon::parse($showTime->date)->format('d-m-Y') }}
-                    </div>
-                </div>
-                <div class="bk-meta-cell">
-                    <div class="bk-meta-cell-label">الساعة</div>
-                    <div class="bk-meta-cell-value">
-                        {{ \Carbon\Carbon::parse($showTime->time)->format('g:i A') }}
-                    </div>
-                </div>
-                <div class="bk-meta-cell is-price" style="grid-column: 1 / -1;">
-                    <div class="bk-meta-cell-label">سعر التذكرة</div>
-                    <div class="bk-meta-cell-value">
-                        {{ $showTime->ticket_price }} جنيه
-                    </div>
-                </div>
+        <section id="section-tickets" class="bo-section is-active-focus is-section-done">
+            <div class="bo-section-header">
+                <h2 class="bo-section-title">الموعد وعدد التذاكر</h2>
+                <span class="bo-status-pill status-done" id="status-badge-1">✓ تم التحديد</span>
             </div>
 
-            <div class="bk-step-panel">
-                <h3>
-                    <span class="pip">١</span>
-                    حوّل قيمة التذكرة
-                </h3>
-                <p class="bk-step-panel-desc">
-                    حوّل قيمة التذاكر على أحد الحسابات التالية، ثم أرفق صورة التحويل مع الطلب. اضغط على الحساب لنسخه.
-                </p>
+            {{-- Stable Showtime Switcher (Deterministic positions) --}}
+            @if ($allShowTimes->count() > 1)
+                <label class="bo-field-label">اختر موعد العرض المناسب:</label>
+                <div class="bo-showtimes-grid">
+                    @foreach ($allShowTimes as $index => $st)
+                        @php
+                            $isCurrent = ($st->id === $showTime->id);
+                            $stDate = Carbon::parse($st->date);
+                            $stTime = Carbon::parse($st->time);
+                            $stTimeStr = $stTime->format('g:i') . ($stTime->format('A') === 'PM' ? ' مساءً' : ' صباحاً');
+                            $slotName = ($index === 0) ? 'العرض الأول' : 'العرض الثاني';
+                        @endphp
 
-                {{-- Each payment number is tappable: tap to copy. The
-                     [data-copy] + .copy-hint contract is preserved
-                     so the page-script handles the copy flow. --}}
-                @if(filled($transferWallet))
-                    <button type="button"
-                            data-copy="{{ $transferWallet }}"
-                            aria-label="نسخ رقم محفظة الدفع"
-                            class="bk-pay">
-                        <div class="min-w-0 flex-1 text-right">
-                            <p class="bk-pay-label">محفظة إلكترونية</p>
-                            <p class="bk-pay-value truncate" dir="ltr">{{ $transferWallet }}</p>
-                        </div>
-                        <span class="copy-hint">نسخ</span>
-                    </button>
-                @endif
-
-                @if(filled($transferInsta))
-                    <button type="button"
-                            data-copy="{{ $transferInsta }}"
-                            aria-label="نسخ حساب InstaPay"
-                            class="bk-pay">
-                        <div class="min-w-0 flex-1 text-right">
-                            <p class="bk-pay-label">InstaPay</p>
-                            <p class="bk-pay-value truncate" dir="ltr">{{ $transferInsta }}</p>
-                        </div>
-                        <span class="copy-hint">نسخ</span>
-                    </button>
-                @endif
-
-                @if(blank($transferWallet) && blank($transferInsta))
-                    <p class="mt-3 text-sm leading-6 text-stone-300">بيانات التحويل غير متاحة حاليًا. يُرجى المحاولة لاحقًا.</p>
-                @endif
-            </div>
-        </aside>
-
-        {{-- ============================================================
-             FORM — Step 2
-        ============================================================ --}}
-        <div class="md:col-span-2 bk-form">
-
-            <div class="bk-form-h">
-                <span class="pip">٢</span>
-                <h2>ارفع لقطة الشاشة وكمّل بياناتك</h2>
-            </div>
-
-            @if ($errors->any())
-                <div role="alert" class="bk-error">
-                    <ul>
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
+                        @if ($isCurrent)
+                            <div class="bo-showtime-card is-active" aria-current="true">
+                                <div class="bo-showtime-label">
+                                    <span>{{ $slotName }}</span>
+                                    <span class="text-xs text-amber-300 font-bold">✓ الموعد المختار</span>
+                                </div>
+                                <span class="bo-showtime-time">{{ $stTimeStr }}</span>
+                                <span class="bo-showtime-date">{{ $stDate->format('d-m-Y') }}</span>
+                            </div>
+                        @else
+                            <a href="{{ route('bookings.create', $st) }}"
+                               class="bo-showtime-card"
+                               onclick="preserveTicketsCount(this)">
+                                <div class="bo-showtime-label">
+                                    <span>{{ $slotName }}</span>
+                                    <span class="text-xs text-gray-400">اضغط للاختيار</span>
+                                </div>
+                                <span class="bo-showtime-time">{{ $stTimeStr }}</span>
+                                <span class="bo-showtime-date">{{ $stDate->format('d-m-Y') }}</span>
+                            </a>
+                        @endif
+                    @endforeach
                 </div>
             @endif
 
-            <form action="{{ route('bookings.store', $showTime) }}"
-                  method="POST"
-                  enctype="multipart/form-data"
-                  id="bookingForm"
-                  novalidate
-                  class="space-y-4 mt-4">
-                @csrf
+            {{-- Tactile Ticket Counter — Strict Minus (-) on LEFT, Plus (+) on RIGHT --}}
+            <div class="bo-counter-box" id="ticketCounterBox">
+                <span class="text-xs text-gray-400">حدد عدد التذاكر المطلوبة:</span>
+                <div class="bo-counter-controls" dir="ltr">
+                    <button type="button"
+                            class="bo-counter-btn"
+                            onclick="changeTicketCount(-1)"
+                            aria-label="إنقاص عدد التذاكر">−</button>
 
-                {{-- Idempotency token (PR #9). Client-generated +
-                     stashed in sessionStorage so a refresh re-uses
-                     it and is rejected by the server cache. --}}
-                <input type="hidden" name="idempotency_token" id="idempotencyToken" value="">
-
-                {{-- 👥 عدد التذاكر --}}
-                <div class="bk-field">
-                    <div class="bk-field-h">
-                        <label class="bk-field-label">
-                            <span aria-hidden="true">👥</span>
-                            عدد التذاكر
-                        </label>
-                        <span id="maxHint" class="text-[11px] text-gray-400"></span>
+                    <div class="bo-counter-display">
+                        <span class="bo-counter-number" id="ticketCountDisplay">1</span>
+                        <span class="bo-counter-sub" id="ticketWordLabel">تذكرة واحدة</span>
                     </div>
 
-                    <div class="bk-counter">
-                        <button type="button"
-                                aria-label="إنقاص"
-                                onclick="changeCount(-1)"
-                                class="bk-counter-btn">−</button>
-
-                        <span id="ticketsCount" class="bk-counter-num">1</span>
-
-                        <button type="button"
-                                aria-label="زيادة"
-                                onclick="changeCount(1)"
-                                class="bk-counter-btn">+</button>
-                    </div>
-
-                    <p id="totalPriceHint" class="bk-counter-total"></p>
-
-                    <input type="hidden" name="tickets_count" id="tickets_count" value="1">
+                    <button type="button"
+                            class="bo-counter-btn"
+                            onclick="changeTicketCount(1)"
+                            aria-label="زيادة عدد التذاكر">+</button>
                 </div>
 
-                {{-- 👤 الأشخاص (rendered by JS into #namesContainer) --}}
-                <div id="namesContainer" class="bk-people-list space-y-3"></div>
-
-                {{-- Screenshot --}}
-                <div class="bk-field">
-                    <div class="bk-field-h">
-                        <label for="screenshot" class="bk-field-label">
-                            <span aria-hidden="true">📸</span>
-                            لقطة شاشة من التحويل
-                        </label>
-                        <span class="text-[10px] uppercase tracking-widest text-gray-500">PNG / JPG</span>
-                    </div>
-
-                    <label for="screenshot"
-                           id="screenshotDropzone"
-                           class="bk-drop mt-3">
-                        <div id="screenshotEmptyState">
-                            <p class="bk-drop-glyph" aria-hidden="true">📎</p>
-                            <p class="bk-drop-cta">اضغط لاختيار صورة من معرض الصور</p>
-                            <p class="bk-drop-sub">حجم أقل من 20MB · لقطات iPhone مدعومة</p>
-                        </div>
-                        <div id="screenshotPreviewWrap" class="hidden">
-                            <img id="screenshotPreview" alt="">
-                            <p id="screenshotFileName" class="text-[11px] text-gray-300 mt-2 truncate"></p>
-                            <p class="text-[11px] text-amber-300 mt-1">اضغط لاستبدال الصورة</p>
-                        </div>
-                    </label>
-
-                    <input type="file"
-                           name="payment_screenshot"
-                           id="screenshot"
-                           accept="image/*"
-                           class="hidden">
-
-                    <p id="screenshotError"
-                       class="hidden text-[12px] text-red-300 mt-2"></p>
+                {{-- Live Ledger with English digits --}}
+                <div class="bo-counter-ledger">
+                    <span>الإجمالي:</span>
+                    <span class="bo-counter-price-val" id="totalPriceDisplay">{{ (int)$showTime->ticket_price }}</span>
+                    <span>جنيه مصري</span>
                 </div>
+            </div>
 
-                {{-- Natural-position submit (also drives the sticky
-                     footer clone). The submit button itself is wrapped
-                     in data-sticky-action; the hint sits OUTSIDE so it
-                     never duplicates into the floating footer. The
-                     button's initial Tailwind classes are preserved
-                     verbatim so recomputeSubmitState() can still flip
-                     them. --}}
-                <div class="bk-submit-wrap">
-                    <div data-sticky-action>
-                        <button type="submit"
-                                id="submitBtn"
-                                disabled
-                                class="w-full px-6 py-3.5 rounded-2xl
-                                       bg-gray-600 text-black/80 text-sm font-bold
-                                       disabled:cursor-not-allowed transition
-                                       shadow-[0_8px_30px_rgba(250,204,21,0.0)]
-                                       flex items-center justify-center gap-2">
-                            <span id="submitLabel">
-                                <span aria-hidden="true">🎟️</span>
-                                إرسال طلب الحجز
-                            </span>
+            <button type="button"
+                    id="btnNextToPayment"
+                    class="bo-next-btn is-active-cta">
+                <span>التالي: التحويل والدفع</span>
+                <span>↓</span>
+            </button>
+        </section>
+
+        {{-- ============================================================
+             SECTION 2: التحويل وإرفاق الإيصال (Payment & Screenshot)
+        ============================================================ --}}
+        <section id="section-payment" class="bo-section">
+            <div class="bo-section-header">
+                <h2 class="bo-section-title">التحويل وإرفاق الإيصال</h2>
+                <span class="bo-status-pill status-pending" id="status-badge-2">بانتظار الإيصال</span>
+            </div>
+
+            {{-- Dynamic instructions with English digits --}}
+            <div class="bo-pay-instructions">
+                <span>المبلغ المطلوب تحويله: <strong class="bo-required-amount-val" id="requiredPayAmount">{{ (int)$showTime->ticket_price }}</strong> ج.م</span>
+                <span class="text-xs text-amber-200/90">حوّل المبلغ على أحد الأرقام التالية:</span>
+            </div>
+
+            {{-- Payment Accounts: only show configured real numbers, button says simply "نسخ" --}}
+            <div class="bo-payment-list">
+                @if ($transferWallet && !preg_match('/^0+$/', $transferWallet))
+                    <div class="bo-pay-item">
+                        <div class="bo-pay-info">
+                            <span class="bo-pay-name">📱 فودافون كاش / محفظة</span>
+                            <span class="bo-pay-num" dir="ltr">{{ $transferWallet }}</span>
+                        </div>
+                        <button type="button"
+                                class="bo-copy-btn"
+                                onclick="copyText('{{ $transferWallet }}', this)">
+                            نسخ
                         </button>
                     </div>
-                    <p id="submitHint" class="bk-submit-hint">
-                        أكمل البيانات وارفع لقطة الشاشة لتفعيل زر الإرسال
-                    </p>
-                </div>
-            </form>
+                @endif
 
-            {{-- Trust strip --}}
-            <div class="bk-trust" aria-hidden="true">
-                <div class="bk-trust-cell">
-                    <span class="glyph">🔒</span>
-                    <span>دفع آمن</span>
-                </div>
-                <div class="bk-trust-cell">
-                    <span class="glyph">⚡</span>
-                    <span>تأكيد سريع</span>
-                </div>
-                <div class="bk-trust-cell">
-                    <span class="glyph">📱</span>
-                    <span>تذكرة QR على واتساب</span>
-                </div>
+                @if ($transferInsta && !preg_match('/^0+$/', $transferInsta))
+                    <div class="bo-pay-item">
+                        <div class="bo-pay-info">
+                            <span class="bo-pay-name">⚡ حساب InstaPay</span>
+                            <span class="bo-pay-num" dir="ltr">{{ $transferInsta }}</span>
+                        </div>
+                        <button type="button"
+                                class="bo-copy-btn"
+                                onclick="copyText('{{ $transferInsta }}', this)">
+                            نسخ
+                        </button>
+                    </div>
+                @endif
             </div>
-        </div>
 
-    </div>
-</section>
+            {{-- Screenshot Upload Area --}}
+            <div class="bo-upload-wrap">
+                <label for="screenshot"
+                       id="dropzoneLabel"
+                       class="bo-dropzone">
+                    {{-- Empty State --}}
+                    <div id="dropzoneEmpty">
+                        <span class="bo-drop-icon" aria-hidden="true">📎</span>
+                        <p class="bo-drop-title">اضغط لرفع لقطة شاشة التحويل (إيصال الدفع)</p>
+                        <p class="bo-drop-subtitle">حجم أقل من 20MB • لقطات iPhone وجميع الأجهزة مدعومة</p>
+                    </div>
 
+                    {{-- Preview State --}}
+                    <div id="dropzonePreview" class="hidden">
+                        <div class="bo-preview-box">
+                            <img id="previewImg" class="bo-preview-thumb" alt="معاينة الإيصال">
+                            <div class="bo-preview-meta">
+                                <span class="bo-preview-status">✓ تم إرفاق الإيصال بنجاح</span>
+                                <p id="previewFileName" class="bo-preview-name"></p>
+                                <span class="bo-preview-change-btn">اضغط لاستبدال الصورة</span>
+                            </div>
+                        </div>
+                    </div>
+                </label>
 
-{{-- ======================
-| SCRIPT (preserved verbatim from PR #9)
-====================== --}}
+                <input type="file"
+                       name="payment_screenshot"
+                       id="screenshot"
+                       accept="image/*"
+                       class="sr-only"
+                       required>
+
+                <p id="screenshotError" class="hidden text-xs text-red-400 mt-2 font-semibold"></p>
+            </div>
+
+            <button type="button"
+                    id="btnNextToDetails"
+                    class="bo-next-btn">
+                <span>التالي: بيانات الحجز</span>
+                <span>↓</span>
+            </button>
+        </section>
+
+        {{-- ============================================================
+             SECTION 3: بيانات الحجز (Customer Information)
+             Strictly titled: بيانات الحجز (No Next / Confirm buttons inside)
+        ============================================================ --}}
+        <section id="section-details" class="bo-section">
+            <div class="bo-section-header">
+                <h2 class="bo-section-title">بيانات الحجز</h2>
+                <span class="bo-status-pill status-pending" id="status-badge-3">أدخل البيانات</span>
+            </div>
+
+            {{-- Attendee Fields Container --}}
+            <div id="attendeesContainer" class="space-y-3">
+                {{-- Injected dynamically by JS --}}
+            </div>
+        </section>
+
+        {{-- ============================================================
+             SECTION 4: تأكيد الحجز النهائي (Final Submission CTA)
+        ============================================================ --}}
+        <section id="section-submit" class="bo-section">
+            <div class="bo-section-header">
+                <h2 class="bo-section-title">تأكيد الحجز النهائي</h2>
+                <span class="bo-status-pill status-pending" id="status-badge-4">في انتظار الإكمال</span>
+            </div>
+
+            <div class="bo-submit-area">
+                <button type="button"
+                        id="submitBtn"
+                        class="is-muted">
+                    <span id="submitText">إرسال طلب الحجز 🎟️</span>
+                </button>
+
+                <p id="submitHint" class="bo-submit-hint">
+                    يرجى إكمال البيانات وإرفاق إيصال التحويل لتفعيل زر الحجز.
+                </p>
+            </div>
+        </section>
+
+    </form>
+
+</div>
+
+{{-- Global Copy Toast --}}
+<div id="copyToast" class="bo-toast">✓ تم نسخ الرقم بنجاح</div>
+
 <script>
-(function () {
-    // --- Tickets state ---------------------------------------------
-    var count = {{ (int) old('tickets_count', 1) }};
-    var maxTickets = {{ max(0, $showTime->total_tickets - $showTime->bookings()
-        ->whereIn('status', ['approved', 'pending'])
-        ->sum('tickets_count')) }};
+(function() {
+    'use strict';
+
+    // --- Core State ---
+    var maxTickets = {{ (int) $remaining }};
     var ticketPrice = {{ (int) $showTime->ticket_price }};
+    var count = {{ (int) old('tickets_count', 1) }};
+    if (count < 1) count = 1;
+    if (count > maxTickets && maxTickets > 0) count = maxTickets;
 
-    var namesContainer = document.getElementById('namesContainer');
-    var ticketsInput   = document.getElementById('tickets_count');
-    var countDisplay   = document.getElementById('ticketsCount');
-    var maxHint        = document.getElementById('maxHint');
-    var totalPriceHint = document.getElementById('totalPriceHint');
+    var currentStep = 1; // 1: Tickets, 2: Payment, 3: Details, 4: Submit
 
-    // Preserve old() values when the server bounced the form back
-    // with validation errors so the user doesn't have to retype.
+    // Elements
+    var countDisplay      = document.getElementById('ticketCountDisplay');
+    var wordLabel         = document.getElementById('ticketWordLabel');
+    var totalPriceDisplay = document.getElementById('totalPriceDisplay');
+    var requiredPayAmount = document.getElementById('requiredPayAmount');
+    var ticketsInput      = document.getElementById('tickets_count');
+    var ticketCounterBox  = document.getElementById('ticketCounterBox');
+    var attendeesContainer= document.getElementById('attendeesContainer');
+    var screenshotInput   = document.getElementById('screenshot');
+    var dropzoneLabel     = document.getElementById('dropzoneLabel');
+    var dropzoneEmpty     = document.getElementById('dropzoneEmpty');
+    var dropzonePreview   = document.getElementById('dropzonePreview');
+    var previewImg        = document.getElementById('previewImg');
+    var previewFileName   = document.getElementById('previewFileName');
+    var screenshotError   = document.getElementById('screenshotError');
+    var submitBtn         = document.getElementById('submitBtn');
+    var submitText        = document.getElementById('submitText');
+    var submitHint        = document.getElementById('submitHint');
+    var bookingForm       = document.getElementById('bookingForm');
+    var copyToast         = document.getElementById('copyToast');
+    var stickyNavWrap     = document.getElementById('stickyNavWrap');
+
+    // Next CTA Buttons
+    var btnNextToPayment  = document.getElementById('btnNextToPayment');
+    var btnNextToDetails  = document.getElementById('btnNextToDetails');
+
+    // Sticky Step Nav Items (Pure Typography, 1-4)
+    var stepNav1 = document.getElementById('stepNav-1');
+    var stepNav2 = document.getElementById('stepNav-2');
+    var stepNav3 = document.getElementById('stepNav-3');
+    var stepNav4 = document.getElementById('stepNav-4');
+
+    var badge1 = document.getElementById('status-badge-1');
+    var badge2 = document.getElementById('status-badge-2');
+    var badge3 = document.getElementById('status-badge-3');
+    var badge4 = document.getElementById('status-badge-4');
+
+    var section1 = document.getElementById('section-tickets');
+    var section2 = document.getElementById('section-payment');
+    var section3 = document.getElementById('section-details');
+    var section4 = document.getElementById('section-submit');
+
+    var sections = [
+        { num: 1, el: section1 },
+        { num: 2, el: section2 },
+        { num: 3, el: section3 },
+        { num: 4, el: section4 }
+    ];
+
     var oldNames  = @json(old('names', []));
     var oldPhones = @json(old('phones', []));
 
-    function renderNames() {
-        namesContainer.innerHTML = '';
+    // --- Idempotency Token ---
+    var tokenKey = 'elsar5a_booking_token_show_{{ $showTime->id }}';
+    var tokenEl  = document.getElementById('idempotencyToken');
+    var savedToken = null;
+    try { savedToken = sessionStorage.getItem(tokenKey); } catch (e) {}
+    if (!savedToken) {
+        if (window.crypto && crypto.randomUUID) {
+            savedToken = crypto.randomUUID();
+        } else {
+            savedToken = 'idem_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        }
+        try { sessionStorage.setItem(tokenKey, savedToken); } catch (e) {}
+    }
+    if (tokenEl) tokenEl.value = savedToken;
+
+    // --- Smooth Scrolling with Section Focus ---
+    var isScrollingProgrammatically = false;
+    window.scrollToSection = function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            isScrollingProgrammatically = true;
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            el.classList.add('is-active-focus');
+            setTimeout(function() {
+                el.classList.remove('is-active-focus');
+                isScrollingProgrammatically = false;
+            }, 800);
+        }
+    };
+
+    // --- Ticket Counter Handling ---
+    window.changeTicketCount = function(delta) {
+        var nextCount = count + delta;
+        if (nextCount < 1) return;
+        if (nextCount > maxTickets) {
+            flashMaxNotice();
+            return;
+        }
+
+        // Preserve current inputs before re-render
+        stashCurrentInputs();
+
+        count = nextCount;
+        updateTicketUI();
+        renderAttendeeFields();
+        recomputeAllStates();
+    };
+
+    function stashCurrentInputs() {
+        var nInputs = attendeesContainer.querySelectorAll('input[name="names[]"]');
+        var pInputs = attendeesContainer.querySelectorAll('input[name="phones[]"]');
+        oldNames = Array.prototype.map.call(nInputs, function(inp) { return inp.value; });
+        oldPhones = Array.prototype.map.call(pInputs, function(inp) { return inp.value; });
+    }
+
+    function updateTicketUI() {
+        countDisplay.textContent = count;
+        ticketsInput.value = count;
+
+        var total = count * ticketPrice;
+        // MUST use English digits for all monetary numbers
+        totalPriceDisplay.textContent = total.toLocaleString('en-US');
+        if (requiredPayAmount) requiredPayAmount.textContent = total.toLocaleString('en-US');
+
+        if (count === 1) {
+            wordLabel.textContent = 'تذكرة واحدة';
+        } else if (count === 2) {
+            wordLabel.textContent = 'تذكرتان';
+        } else if (count <= 10) {
+            wordLabel.textContent = count + ' تذاكر';
+        } else {
+            wordLabel.textContent = count + ' تذكرة';
+        }
+    }
+
+    function flashMaxNotice() {
+        if (ticketCounterBox) {
+            ticketCounterBox.classList.add('bo-shake');
+            setTimeout(function() { ticketCounterBox.classList.remove('bo-shake'); }, 600);
+        }
+        if (countDisplay.animate) {
+            countDisplay.animate([
+                { transform: 'scale(1)', color: '#fff' },
+                { transform: 'scale(1.25)', color: '#ef4444' },
+                { transform: 'scale(1)', color: '#fff' }
+            ], { duration: 300 });
+        }
+    }
+
+    // Preserve ticket count across showtime switch links
+    window.preserveTicketsCount = function(link) {
+        try {
+            sessionStorage.setItem('elsar5a_preferred_tickets', count);
+        } catch (e) {}
+    };
+
+    // Restore preferred tickets if set
+    try {
+        var savedTickets = sessionStorage.getItem('elsar5a_preferred_tickets');
+        if (savedTickets) {
+            var parsed = parseInt(savedTickets, 10);
+            if (!isNaN(parsed) && parsed >= 1 && parsed <= maxTickets) {
+                count = parsed;
+            }
+            sessionStorage.removeItem('elsar5a_preferred_tickets');
+        }
+    } catch (e) {}
+
+    // --- Render Attendee Fields (Label and Placeholder: strictly "الاسم") ---
+    function renderAttendeeFields() {
+        attendeesContainer.innerHTML = '';
+
         for (var i = 1; i <= count; i++) {
             var idx = i - 1;
-            var nameVal  = String(oldNames[idx]  || '').replace(/"/g, '&quot;');
-            var phoneVal = String(oldPhones[idx] || '').replace(/"/g, '&quot;');
+            var valName = String(oldNames[idx] || '').replace(/"/g, '&quot;');
+            var valPhone = String(oldPhones[idx] || '').replace(/"/g, '&quot;');
 
-            namesContainer.insertAdjacentHTML('beforeend',
-                '<div class="space-y-2 bg-black/40 border border-white/10 rounded-2xl p-3">' +
-                  '<p class="text-[11px] text-gray-400">شخص ' + i + '</p>' +
-                  '<input type="text" name="names[]" value="' + nameVal + '"' +
-                    ' placeholder="الاسم بالكامل"' +
-                    ' autocomplete="name"' +
-                    ' inputmode="text"' +
-                    ' class="booking-input w-full rounded-xl bg-black/60 border border-white/15 px-3 py-3 text-white"' +
-                    ' required>' +
-                  '<input type="tel" name="phones[]" value="' + phoneVal + '"' +
-                    ' placeholder="رقم واتساب (مثال 01012345678)"' +
-                    ' autocomplete="tel"' +
-                    ' inputmode="tel"' +
-                    ' pattern="[0-9+\\s\\-]{8,16}"' +
-                    ' class="booking-input w-full rounded-xl bg-black/60 border border-white/15 px-3 py-3 text-white"' +
-                    ' required>' +
-                '</div>'
-            );
+            var card = document.createElement('div');
+            card.className = 'bo-attendee-card';
+
+            if (i === 1) {
+                card.innerHTML =
+                    '<div class="bo-attendee-header">' +
+                        '<span>👤</span>' +
+                        '<span>التذكرة 1 — صاحب الحجز</span>' +
+                    '</div>' +
+                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
+                        '<div class="bo-field-group">' +
+                            '<label class="bo-field-label">الاسم *</label>' +
+                            '<input type="text" name="names[]" value="' + valName + '"' +
+                                   ' class="bo-input" placeholder="الاسم" required autocomplete="name">' +
+                        '</div>' +
+                        '<div class="bo-field-group">' +
+                            '<label class="bo-field-label">رقم الواتساب *</label>' +
+                            '<input type="tel" name="phones[]" value="' + valPhone + '"' +
+                                   ' class="bo-input" placeholder="01xxxxxxxxx" required autocomplete="tel" dir="ltr">' +
+                        '</div>' +
+                    '</div>';
+            } else {
+                card.innerHTML =
+                    '<div class="bo-attendee-header text-amber-300/90">' +
+                        '<span>🎟️</span>' +
+                        '<span>التذكرة ' + i + ' — بيانات المرافق</span>' +
+                    '</div>' +
+                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">' +
+                        '<div class="bo-field-group mb-0">' +
+                            '<label class="bo-field-label">اسم المرافق ' + i + ' *</label>' +
+                            '<input type="text" name="names[]" value="' + valName + '"' +
+                                   ' class="bo-input" placeholder="الاسم" required>' +
+                        '</div>' +
+                        '<div class="bo-field-group mb-0">' +
+                            '<label class="bo-field-label">رقم واتساب المرافق ' + i + ' *</label>' +
+                            '<input type="tel" name="phones[]" value="' + valPhone + '"' +
+                                   ' class="bo-input" placeholder="01xxxxxxxxx" required dir="ltr">' +
+                        '</div>' +
+                    '</div>';
+            }
+
+            attendeesContainer.appendChild(card);
         }
-        wireInputs();
-        recomputeSubmitState();
-    }
 
-    function changeCount(val) {
-        var prev = count;
-        count += val;
-        if (count < 1) count = 1;
-        if (count > maxTickets) {
-            count = Math.max(1, maxTickets);
-            flashMax();
-        }
-        if (count === prev) {
-            updatePriceHint();
-            return;
-        }
-
-        // Stash what the user typed so re-rendering doesn't blow away
-        // valid entries when they tap +/− mid-flow.
-        var existingNames  = namesContainer.querySelectorAll('input[name="names[]"]');
-        var existingPhones = namesContainer.querySelectorAll('input[name="phones[]"]');
-        oldNames  = Array.prototype.map.call(existingNames,  function (n) { return n.value; });
-        oldPhones = Array.prototype.map.call(existingPhones, function (n) { return n.value; });
-
-        countDisplay.innerText = count;
-        ticketsInput.value     = count;
-        updatePriceHint();
-        renderNames();
-    }
-    window.changeCount = changeCount;
-
-    function updatePriceHint() {
-        totalPriceHint.innerText =
-            'الإجمالي: ' + (count * ticketPrice).toLocaleString('ar-EG') + ' جنيه';
-        maxHint.innerText = maxTickets > 0
-            ? 'المتاح: ' + maxTickets + ' تذكرة'
-            : 'لا تذاكر متاحة حاليًا';
-    }
-
-    function flashMax() {
-        if (!countDisplay.animate) return;
-        countDisplay.animate(
-            [{ transform: 'scale(1)' }, { transform: 'scale(1.18)' }, { transform: 'scale(1)' }],
-            { duration: 260 }
-        );
-    }
-
-    // --- Submit gate -----------------------------------------------
-    var screenshotInput  = document.getElementById('screenshot');
-    var previewWrap      = document.getElementById('screenshotPreviewWrap');
-    var emptyState       = document.getElementById('screenshotEmptyState');
-    var previewImg       = document.getElementById('screenshotPreview');
-    var fileNameEl       = document.getElementById('screenshotFileName');
-    var screenshotError  = document.getElementById('screenshotError');
-    var submitBtn        = document.getElementById('submitBtn');
-    var submitLabel      = document.getElementById('submitLabel');
-    var submitHint       = document.getElementById('submitHint');
-    var bookingForm      = document.getElementById('bookingForm');
-
-    var isSubmitting = false;
-
-    function fieldsValid() {
-        var ok = true;
-        namesContainer.querySelectorAll('input').forEach(function (el) {
-            if (!el.value.trim()) ok = false;
-        });
-        return ok;
-    }
-
-    function screenshotReady() {
-        return screenshotInput.files && screenshotInput.files.length > 0;
-    }
-
-    function recomputeSubmitState() {
-        if (isSubmitting) return;
-        var ready = fieldsValid() && screenshotReady() && maxTickets > 0;
-        submitBtn.disabled = !ready;
-        if (ready) {
-            submitBtn.classList.remove('bg-gray-600', 'text-black/80');
-            submitBtn.classList.add('bg-amber-400', 'text-black',
-                'shadow-[0_10px_40px_rgba(250,204,21,0.35)]');
-            submitHint.classList.add('hidden');
-        } else {
-            submitBtn.classList.add('bg-gray-600', 'text-black/80');
-            submitBtn.classList.remove('bg-amber-400', 'text-black',
-                'shadow-[0_10px_40px_rgba(250,204,21,0.35)]');
-            submitHint.classList.remove('hidden');
-        }
-    }
-
-    function wireInputs() {
-        namesContainer.querySelectorAll('input').forEach(function (el) {
-            el.addEventListener('input', recomputeSubmitState);
-            el.addEventListener('blur',  recomputeSubmitState);
+        // Attach listeners
+        var inputs = attendeesContainer.querySelectorAll('input');
+        inputs.forEach(function(inp) {
+            inp.addEventListener('input', recomputeAllStates);
+            inp.addEventListener('blur', recomputeAllStates);
         });
     }
 
-    screenshotInput.addEventListener('change', function () {
+    // --- Screenshot Upload ---
+    screenshotInput.addEventListener('change', function() {
         screenshotError.classList.add('hidden');
-        var file = screenshotInput.files[0];
+        var file = screenshotInput.files && screenshotInput.files[0];
+
         if (!file) {
-            previewWrap.classList.add('hidden');
-            emptyState.classList.remove('hidden');
-            recomputeSubmitState();
+            dropzoneEmpty.classList.remove('hidden');
+            dropzonePreview.classList.add('hidden');
+            dropzoneLabel.classList.remove('has-file');
+            recomputeAllStates();
             return;
         }
+
+        // Check size: 20MB limit
         if (file.size > 20 * 1024 * 1024) {
-            screenshotError.innerText = 'حجم الصورة أكبر من 20MB — جرّب صورة أصغر.';
+            screenshotError.textContent = 'حجم الصورة أكبر من 20 ميجابايت — يرجى اختيار صورة أصغر.';
             screenshotError.classList.remove('hidden');
             screenshotInput.value = '';
-            previewWrap.classList.add('hidden');
-            emptyState.classList.remove('hidden');
-            recomputeSubmitState();
+            dropzoneEmpty.classList.remove('hidden');
+            dropzonePreview.classList.add('hidden');
+            dropzoneLabel.classList.remove('has-file');
+            recomputeAllStates();
             return;
         }
-        var url = URL.createObjectURL(file);
-        previewImg.src = url;
-        previewImg.onload = function () { URL.revokeObjectURL(url); };
-        fileNameEl.innerText = file.name;
-        emptyState.classList.add('hidden');
-        previewWrap.classList.remove('hidden');
-        recomputeSubmitState();
+
+        var objUrl = URL.createObjectURL(file);
+        previewImg.src = objUrl;
+        previewImg.onload = function() { URL.revokeObjectURL(objUrl); };
+
+        previewFileName.textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+        dropzoneEmpty.classList.add('hidden');
+        dropzonePreview.classList.remove('hidden');
+        dropzoneLabel.classList.add('has-file');
+
+        recomputeAllStates();
     });
 
-    // --- Idempotency token ----------------------------------------
-    // We stash a random token per page load in sessionStorage,
-    // scoped to this showtime. A refresh re-uses the same token,
-    // which the server uses as a Cache::add() key to reject the
-    // duplicate POST cleanly. Cleared on successful submit.
-    var tokenKey = 'booking_token_show_{{ $showTime->id }}';
-    var tokenEl  = document.getElementById('idempotencyToken');
+    // --- Clipboard Copy ---
+    window.copyText = function(text, btn) {
+        if (!text) return;
+        var copySuccess = function() {
+            showToast('✓ تم نسخ الرقم بنجاح');
+            if (btn) {
+                btn.textContent = 'تم النسخ ✓';
+                btn.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/50');
+                setTimeout(function() {
+                    btn.textContent = 'نسخ';
+                    btn.classList.remove('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/50');
+                }, 1500);
+            }
+        };
 
-    function makeToken() {
-        try {
-            var buf = new Uint8Array(16);
-            (window.crypto || window.msCrypto).getRandomValues(buf);
-            return Array.prototype.map.call(buf, function (b) {
-                return ('0' + b.toString(16)).slice(-2);
-            }).join('');
-        } catch (e) {
-            return Date.now() + '-' + Math.random().toString(36).slice(2);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(copySuccess, copySuccess);
+        } else {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(ta);
+            copySuccess();
+        }
+    };
+
+    function showToast(msg) {
+        copyToast.textContent = msg;
+        copyToast.classList.add('show');
+        setTimeout(function() {
+            copyToast.classList.remove('show');
+        }, 1800);
+    }
+
+    // --- State & Validation Computation ---
+    function validateStep1() {
+        return (count >= 1 && count <= maxTickets);
+    }
+
+    function validateStep2() {
+        return (screenshotInput.files && screenshotInput.files.length > 0);
+    }
+
+    function validateStep3() {
+        var names = attendeesContainer.querySelectorAll('input[name="names[]"]');
+        var phones = attendeesContainer.querySelectorAll('input[name="phones[]"]');
+        if (names.length === 0 || phones.length === 0) return false;
+
+        for (var i = 0; i < names.length; i++) {
+            if (!names[i].value.trim()) return false;
+        }
+        for (var j = 0; j < phones.length; j++) {
+            var p = phones[j].value.trim();
+            if (!p || p.length < 8) return false;
+        }
+        return true;
+    }
+
+    // --- Dynamic Step Navigation Color Management ---
+    // Rule:
+    // ACTIVE / CURRENT STEP  -> YELLOW (#fbbf24) "YOU ARE HERE"
+    // COMPLETED STEP         -> GREEN  (#10b981)
+    // INACTIVE / NOT REACHED -> DIMMED (#6b7280, 0.35 opacity)
+    function updateStepNavDisplay() {
+        var navItems = [
+            { el: stepNav1, isDone: validateStep1() },
+            { el: stepNav2, isDone: validateStep2() },
+            { el: stepNav3, isDone: validateStep3() },
+            { el: stepNav4, isDone: (validateStep1() && validateStep2() && validateStep3()) }
+        ];
+
+        for (var i = 0; i < navItems.length; i++) {
+            var stepNum = i + 1;
+            var item = navItems[i];
+
+            if (stepNum === currentStep) {
+                // Current section being viewed: MUST be YELLOW
+                item.el.className = 'bo-step-item is-active';
+            } else if (item.isDone) {
+                // Completed section: GREEN
+                item.el.className = 'bo-step-item is-completed';
+            } else {
+                // Inactive / unreached: DIM
+                item.el.className = 'bo-step-item is-inactive';
+            }
         }
     }
 
-    var token = null;
-    try { token = sessionStorage.getItem(tokenKey); } catch (e) {}
-    if (!token) {
-        token = makeToken();
-        try { sessionStorage.setItem(tokenKey, token); } catch (e) {}
-    }
-    tokenEl.value = token;
+    function recomputeAllStates() {
+        var step1Done = validateStep1();
+        var step2Done = validateStep2();
+        var step3Done = validateStep3();
+        var allReady  = step1Done && step2Done && step3Done && (maxTickets > 0);
 
-    // --- Submit handling ------------------------------------------
-    bookingForm.addEventListener('submit', function (e) {
-        if (isSubmitting) {
-            e.preventDefault();
-            return false;
+        // Section 1: Tickets
+        badge1.className = 'bo-status-pill status-done';
+        badge1.textContent = '✓ تم التحديد';
+        section1.classList.add('is-section-done');
+        btnNextToPayment.classList.add('is-active-cta');
+
+        // Section 2: Payment
+        if (step2Done) {
+            badge2.className = 'bo-status-pill status-done';
+            badge2.textContent = '✓ الإيصال مرفوع';
+            section2.classList.add('is-section-done');
+            btnNextToDetails.classList.add('is-active-cta');
+            screenshotError.classList.add('hidden');
+        } else {
+            badge2.className = 'bo-status-pill status-pending';
+            badge2.textContent = 'بانتظار الإيصال';
+            section2.classList.remove('is-section-done');
+            btnNextToDetails.classList.remove('is-active-cta');
         }
-        if (submitBtn.disabled) {
-            e.preventDefault();
-            return false;
+
+        // Section 3: Attendees
+        if (step3Done) {
+            badge3.className = 'bo-status-pill status-done';
+            badge3.textContent = '✓ مكتملة (' + count + ')';
+            section3.classList.add('is-section-done');
+        } else {
+            badge3.className = 'bo-status-pill status-pending';
+            badge3.textContent = 'أدخل البيانات';
+            section3.classList.remove('is-section-done');
         }
+
+        // Section 4: Final Submission
+        if (allReady) {
+            submitBtn.classList.remove('is-muted');
+            submitBtn.classList.add('is-ready');
+            submitHint.textContent = '✓ جميع البيانات جاهزة — اضغط لإرسال طلب الحجز فوراً.';
+            submitHint.classList.add('ready');
+
+            badge4.className = 'bo-status-pill status-done';
+            badge4.textContent = 'جاهز للإرسال';
+            section4.classList.add('is-section-done');
+        } else {
+            submitBtn.classList.remove('is-ready');
+            submitBtn.classList.add('is-muted');
+            submitHint.classList.remove('ready');
+
+            var missing = [];
+            if (!step2Done) missing.push('إرفاق إيصال التحويل');
+            if (!step3Done) missing.push('استكمال بيانات الأسماء وأرقام الواتساب');
+
+            submitHint.textContent = 'المتبقي لإرسال الحجز: ' + missing.join(' و ') + '.';
+
+            badge4.className = 'bo-status-pill status-pending';
+            badge4.textContent = 'في انتظار الإكمال';
+            section4.classList.remove('is-section-done');
+        }
+
+        updateStepNavDisplay();
+    }
+
+    // --- Step Navigation Click Handlers ---
+    window.navigateToStep = function(stepNum) {
+        if (stepNum === 1) {
+            currentStep = 1;
+            updateStepNavDisplay();
+            scrollToSection('section-tickets');
+        } else if (stepNum === 2) {
+            currentStep = 2;
+            updateStepNavDisplay();
+            scrollToSection('section-payment');
+        } else if (stepNum === 3) {
+            if (!validateStep2()) {
+                screenshotError.textContent = 'يرجى إرفاق إيصال التحويل أولاً للمتابعة.';
+                screenshotError.classList.remove('hidden');
+                dropzoneLabel.classList.add('bo-shake');
+                setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+                currentStep = 2;
+                updateStepNavDisplay();
+                scrollToSection('section-payment');
+                return;
+            }
+            currentStep = 3;
+            updateStepNavDisplay();
+            scrollToSection('section-details');
+        } else if (stepNum === 4) {
+            if (!validateStep2()) {
+                screenshotError.textContent = 'يرجى إرفاق إيصال التحويل أولاً للمتابعة.';
+                screenshotError.classList.remove('hidden');
+                dropzoneLabel.classList.add('bo-shake');
+                setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+                currentStep = 2;
+                updateStepNavDisplay();
+                scrollToSection('section-payment');
+                return;
+            }
+            if (!validateStep3()) {
+                currentStep = 3;
+                updateStepNavDisplay();
+                scrollToSection('section-details');
+                triggerMissingInputHighlight();
+                return;
+            }
+            currentStep = 4;
+            updateStepNavDisplay();
+            scrollToSection('section-submit');
+        }
+    };
+
+    // --- Next Button Handlers with User Guidance ---
+    btnNextToPayment.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!validateStep1()) {
+            flashMaxNotice();
+            currentStep = 1;
+            updateStepNavDisplay();
+            scrollToSection('section-tickets');
+            return;
+        }
+        currentStep = 2;
+        updateStepNavDisplay();
+        scrollToSection('section-payment');
+    });
+
+    btnNextToDetails.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!validateStep2()) {
+            screenshotError.textContent = 'يرجى إرفاق صورة إيصال التحويل أولاً للمتابعة.';
+            screenshotError.classList.remove('hidden');
+            dropzoneLabel.classList.add('bo-shake');
+            setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+            currentStep = 2;
+            updateStepNavDisplay();
+            scrollToSection('section-payment');
+            return;
+        }
+        currentStep = 3;
+        updateStepNavDisplay();
+        scrollToSection('section-details');
+        setTimeout(function() {
+            var firstInput = attendeesContainer.querySelector('input');
+            if (firstInput) firstInput.focus();
+        }, 400);
+    });
+
+    function triggerMissingInputHighlight() {
+        setTimeout(function() {
+            var inputs = attendeesContainer.querySelectorAll('input');
+            for (var i = 0; i < inputs.length; i++) {
+                var inp = inputs[i];
+                if (!inp.value.trim() || (inp.type === 'tel' && inp.value.trim().length < 8)) {
+                    inp.classList.add('bo-shake');
+                    inp.focus();
+                    setTimeout(function(target) { target.classList.remove('bo-shake'); }, 600, inp);
+                    break;
+                }
+            }
+        }, 300);
+    }
+
+    // --- Scroll Listener for Sticky State & Viewport Step Tracking ---
+    window.addEventListener('scroll', function() {
+        var scrollY = window.scrollY || window.pageYOffset;
+
+        // Sticky frameless blur activation
+        if (stickyNavWrap) {
+            if (scrollY > 30) {
+                stickyNavWrap.classList.add('is-scrolled');
+            } else {
+                stickyNavWrap.classList.remove('is-scrolled');
+            }
+        }
+
+        if (isScrollingProgrammatically) return;
+
+        // Viewport scroll-spy: determine which section user is currently viewing
+        var triggerPoint = scrollY + 160;
+        for (var i = sections.length - 1; i >= 0; i--) {
+            var sec = sections[i];
+            if (sec.el && sec.el.offsetTop <= triggerPoint) {
+                if (currentStep !== sec.num) {
+                    currentStep = sec.num;
+                    updateStepNavDisplay();
+                }
+                break;
+            }
+        }
+    }, { passive: true });
+
+    // --- Submission Button Click: Auto-jump to missing requirement if incomplete ---
+    var isSubmitting = false;
+
+    submitBtn.addEventListener('click', function(e) {
+        if (isSubmitting) return;
+
+        var step1Done = validateStep1();
+        var step2Done = validateStep2();
+        var step3Done = validateStep3();
+
+        if (!step1Done) {
+            flashMaxNotice();
+            currentStep = 1;
+            updateStepNavDisplay();
+            scrollToSection('section-tickets');
+            return;
+        }
+
+        if (!step2Done) {
+            screenshotError.textContent = 'يرجى إرفاق إيصال التحويل أولاً لإتمام الحجز.';
+            screenshotError.classList.remove('hidden');
+            dropzoneLabel.classList.add('bo-shake');
+            setTimeout(function() { dropzoneLabel.classList.remove('bo-shake'); }, 600);
+            currentStep = 2;
+            updateStepNavDisplay();
+            scrollToSection('section-payment');
+            return;
+        }
+
+        if (!step3Done) {
+            currentStep = 3;
+            updateStepNavDisplay();
+            scrollToSection('section-details');
+            triggerMissingInputHighlight();
+            return;
+        }
+
+        // All valid: Execute real submission with network spinner
         isSubmitting = true;
+        submitBtn.classList.remove('is-ready');
+        submitBtn.classList.add('is-submitting');
         submitBtn.disabled = true;
-        submitBtn.classList.add('is-loading');
-        submitLabel.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>جاري الإرسال…';
-        submitHint.innerText = 'لا تغلق الصفحة حتى يكتمل الرفع';
-        submitHint.classList.remove('hidden');
+        submitBtn.innerHTML = '<span class="bo-spinner" aria-hidden="true"></span> <span>جاري إرسال طلب الحجز...</span>';
+        submitHint.textContent = 'يرجى الانتظار ولا تغلق الصفحة حتى اكتمال معالجة الطلب.';
+        bookingForm.submit();
     });
 
-    // Reset state if the user navigates back via bfcache (iOS Safari).
-    window.addEventListener('pageshow', function (e) {
+    bookingForm.addEventListener('submit', function(e) {
+        if (!validateStep1() || !validateStep2() || !validateStep3()) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Reset state on bfcache navigation (iOS Safari back-button)
+    window.addEventListener('pageshow', function(e) {
         if (e.persisted) {
             isSubmitting = false;
-            submitBtn.classList.remove('is-loading');
-            submitLabel.innerText = 'إرسال طلب الحجز';
-            recomputeSubmitState();
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('is-submitting');
+            submitBtn.innerHTML = '<span id="submitText">إرسال طلب الحجز 🎟️</span>';
+            recomputeAllStates();
         }
     });
 
-    // --- Tap-to-copy on payment numbers ---------------------------
-    document.querySelectorAll('[data-copy]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var value = btn.getAttribute('data-copy') || '';
-            var hint  = btn.querySelector('.copy-hint');
-            var done = function () {
-                if (!hint) return;
-                var prev = hint.innerText;
-                hint.innerText = 'تم النسخ ✓';
-                hint.classList.add('text-emerald-300');
-                setTimeout(function () {
-                    hint.innerText = prev;
-                    hint.classList.remove('text-emerald-300');
-                }, 1200);
-            };
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(value).then(done, done);
-            } else {
-                // iOS Safari fallback
-                var ta = document.createElement('textarea');
-                ta.value = value;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                try { document.execCommand('copy'); } catch (err) {}
-                document.body.removeChild(ta);
-                done();
-            }
-        });
-    });
+    // --- Initialize ---
+    updateTicketUI();
+    renderAttendeeFields();
+    recomputeAllStates();
 
-    // --- Init ------------------------------------------------------
-    if (maxTickets === 0) {
-        count = 0;
-        countDisplay.innerText = '0';
-        ticketsInput.value = 0;
-    } else {
-        if (count > maxTickets) count = maxTickets;
-        countDisplay.innerText = count;
-        ticketsInput.value = count;
-    }
-    updatePriceHint();
-    renderNames();
 })();
 </script>
-
 @endsection

@@ -28,7 +28,7 @@ class Show extends Model
 
     public function isPublicPlaceholder(): bool
     {
-        return preg_match('/^(?:test[0-9]*|demo|sample|placeholder)(?:\b|[-_ ]|$)/i', trim((string) $this->title)) === 1;
+        return preg_match('/^(?:test|demo|sample|placeholder)(?:\b|[-_ ]|$)/i', trim((string) $this->title)) === 1;
     }
 
     public function getPosterAttribute(): ?string
