@@ -320,61 +320,52 @@ body.has-sticky-action main {
 
         {{-- Navbar --}}
         <header class="site-header border-b border-white/10 bg-black/40 backdrop-blur sticky top-0 z-40">
-    <div class="site-header-inner max-w-5xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
+            <div class="site-header-inner max-w-5xl mx-auto px-3 sm:px-4 flex items-center justify-between gap-2">
 
-        {{-- اللوجو + الاسم --}}
-        <a href="{{ url('/') }}"
-           class="site-brand flex items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded-xl pr-1"
-           aria-label="الصفحة الرئيسية">
-            <img src="{{ asset('images/sarkha-logo.png') }}"
-                 class="site-logo w-9 h-9 sm:w-10 sm:h-10 object-contain invert brightness-125
-                        drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]
-                        transition-transform duration-300 group-hover:scale-105"
-                 alt="فريق الصرخة المسرحي">
+                {{-- اللوجو + الاسم --}}
+                <a href="{{ url('/') }}"
+                   class="site-brand flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded-xl"
+                   aria-label="الصفحة الرئيسية">
+                    <img src="{{ asset('images/sarkha-logo.png') }}"
+                         class="site-logo object-contain invert brightness-125
+                                drop-shadow-[0_0_10px_rgba(255,255,255,0.45)]
+                                transition-transform duration-300 group-hover:scale-105"
+                         alt="فريق الصرخة المسرحي"
+                         width="40" height="40">
 
-            <div class="site-brand-text leading-tight">
-                <div class="site-brand-title text-[12px] sm:text-sm font-semibold whitespace-nowrap">
-                    فريق الصرخة المسرحي
-                </div>
-                <div class="site-brand-subtitle hidden sm:block text-[10px] text-gray-400">
-                    حجز تذاكر العروض أونلاين
-                </div>
+                    <div class="site-brand-text hidden sm:flex flex-col leading-tight">
+                        <div class="site-brand-title text-sm font-semibold whitespace-nowrap text-gray-100">
+                            فريق الصرخة المسرحي
+                        </div>
+                        <div class="site-brand-subtitle text-[10px] text-amber-200/80">
+                            حجز تذاكر العروض أونلاين
+                        </div>
+                    </div>
+                </a>
+
+                {{-- الناف بار --}}
+                <nav aria-label="التنقل" class="site-nav">
+                    {{-- Home --}}
+                    <a href="{{ url('/') }}"
+                       class="nav-link {{ request()->routeIs('home') || request()->is('/') ? 'is-active' : '' }}">
+                        الرئيسية
+                    </a>
+
+                    {{-- العروض السابقة --}}
+                    <a href="{{ route('archive') }}"
+                       class="nav-link {{ request()->routeIs('archive') ? 'is-active' : '' }}">
+                        العروض السابقة
+                    </a>
+
+                    {{-- About --}}
+                    <a href="{{ route('about') }}"
+                       class="nav-link {{ request()->routeIs('about') ? 'is-active' : '' }}">
+                        عن الفريق
+                    </a>
+                </nav>
+
             </div>
-        </a>
-
-        {{-- الناف بار --}}
-        <nav aria-label="التنقل"
-            class="site-nav flex items-center gap-0.5 sm:gap-1 text-[11px] sm:text-sm font-medium
-                   bg-black/50 backdrop-blur px-1.5 sm:px-2 py-1
-                   rounded-full border border-white/10 max-w-full overflow-x-auto scrollbar-hide">
-
-            {{-- Home (تروح لـ / مباشرة، مو لـ /shows) --}}
-            <a href="{{ url('/') }}"
-               class="nav-link px-2 sm:px-2.5 py-1 rounded-full transition whitespace-nowrap
-                      hover:bg-amber-400 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60
-                      {{ request()->routeIs('home') || request()->is('/') ? 'is-active bg-amber-400 text-black' : 'text-gray-300' }}">
-               الرئيسية
-            </a>
-
-            {{-- العروض السابقة --}}
-            <a href="{{ route('archive') }}"
-               class="nav-link px-2 sm:px-2.5 py-1 rounded-full transition whitespace-nowrap
-                      hover:bg-amber-400 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60
-                      {{ request()->routeIs('archive') ? 'is-active bg-amber-400 text-black' : 'text-gray-300' }}">
-                العروض السابقة
-            </a>
-
-            {{-- About --}}
-            <a href="{{ route('about') }}"
-               class="nav-link px-2 sm:px-2.5 py-1 rounded-full transition whitespace-nowrap
-                      hover:bg-amber-400 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60
-                      {{ request()->routeIs('about') ? 'is-active bg-amber-400 text-black' : 'text-gray-300' }}">
-                عن الفريق
-            </a>
-        </nav>
-
-    </div>
-</header>
+        </header>
 
 
     {{-- المحتوى الرئيسي --}}
