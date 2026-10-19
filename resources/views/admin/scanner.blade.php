@@ -102,17 +102,10 @@
         <header class="portal-transom-crown">
             <div class="transom-brand">
                 <div class="transom-logo-gem">
-                    <img src="{{ asset('images/sarkha-logo.png') }}" class="transom-logo" alt="" width="22" height="22" aria-hidden="true">
+                    <img src="{{ asset('images/sarkha-logo.png') }}" class="transom-logo" alt="فريق الصرخة المسرحي" width="22" height="22">
                 </div>
                 <div class="transom-title-wrap">
-                    <div class="transom-event-tag" data-event-title>{{ $showTitle }}</div>
-                    @if($formattedDate || $formattedTime)
-                        <div class="transom-event-time">
-                            @if($formattedDate)<span>{{ $formattedDate }}</span>@endif
-                            @if($formattedDate && $formattedTime)<span>·</span>@endif
-                            @if($formattedTime)<span>{{ $formattedTime }}</span>@endif
-                        </div>
-                    @endif
+                    <span class="transom-team-title">فريق الصرخة المسرحي</span>
                 </div>
             </div>
             <div class="transom-status-live" title="حالة الاتصال المباشر">
@@ -398,9 +391,16 @@ body.scanner-ops-screen #sticky-action-footer {
         width: 44px;
         height: 44px;
         border-radius: 12px;
-        background: linear-gradient(145deg, #1f0b17, #0b040e);
-        border: 1px solid var(--gate-border-highlight);
-        box-shadow: 0 4px 12px rgba(197, 160, 89, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12);
+    }
+
+    .marquee-logo-img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+        filter: invert(1) brightness(1.3) drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
     }
 
     .marquee-brand-text {
@@ -533,7 +533,7 @@ body.scanner-ops-screen #sticky-action-footer {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    max-width: min(340px, 92vw);
+    max-width: min(420px, 96vw);
     padding: 7px 12px;
     margin-bottom: 6px;
     border-radius: 16px;
@@ -560,44 +560,35 @@ body.scanner-ops-screen #sticky-action-footer {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: #140710;
-    border: 1px solid var(--gate-border-highlight);
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     flex-shrink: 0;
     overflow: hidden;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
 }
 
 .transom-logo {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
-    filter: brightness(1.2);
+    filter: invert(1) brightness(1.3) drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
 }
 
 .transom-title-wrap {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     min-width: 0;
 }
 
-.transom-event-tag {
+.transom-team-title {
     font-family: 'Alexandria', system-ui, sans-serif;
     font-weight: 800;
     font-size: 13px;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.transom-event-time {
-    font-size: 10px;
-    color: var(--gate-gold);
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    color: #ffffff;
+    letter-spacing: 0.01em;
     white-space: nowrap;
 }
 
@@ -636,9 +627,9 @@ body.scanner-ops-screen #sticky-action-footer {
 .portal-aperture-housing {
     position: relative;
     width: 100%;
-    max-width: min(340px, 92vw);
-    height: clamp(260px, 38dvh, 320px);
-    border-radius: 20px;
+    max-width: min(420px, 96vw);
+    height: clamp(320px, 46dvh, 420px);
+    border-radius: 22px;
     background: #02040a;
     border: 1.5px solid var(--gate-border-highlight);
     box-shadow:
@@ -652,15 +643,15 @@ body.scanner-ops-screen #sticky-action-footer {
 
 @media (min-height: 800px) {
     .portal-aperture-housing {
-        height: clamp(290px, 42dvh, 340px);
+        height: clamp(360px, 50dvh, 480px);
     }
 }
 
 @media (min-width: 1024px) {
     .portal-aperture-housing {
-        max-width: 460px;
-        height: clamp(400px, 56vh, 480px);
-        max-height: 60vh;
+        max-width: 480px;
+        height: clamp(420px, 58vh, 520px);
+        max-height: 62vh;
         border-radius: 24px;
     }
 }
@@ -686,45 +677,45 @@ body.scanner-ops-screen #sticky-action-footer {
 /* Architectural Proscenium Optical Reticle */
 .portal-optical-reticle {
     position: absolute;
-    inset: 16px;
-    bottom: 60px;
+    inset: 12px;
+    bottom: 54px;
     pointer-events: none;
     z-index: 2;
 }
 
 .arch-bracket {
     position: absolute;
-    width: 24px;
-    height: 24px;
+    width: 30px;
+    height: 30px;
     border-color: var(--gate-gold);
     border-style: solid;
-    filter: drop-shadow(0 0 6px rgba(197, 160, 89, 0.6));
+    filter: drop-shadow(0 0 8px rgba(197, 160, 89, 0.7));
     transition: border-color 0.2s ease, filter 0.2s ease;
 }
 
 .arch-bracket.top-left {
     top: 0;
     inset-inline-start: 0;
-    border-width: 3px 0 0 3px;
-    border-top-left-radius: 8px;
+    border-width: 3.5px 0 0 3.5px;
+    border-top-left-radius: 10px;
 }
 .arch-bracket.top-right {
     top: 0;
     inset-inline-end: 0;
-    border-width: 3px 3px 0 0;
-    border-top-right-radius: 8px;
+    border-width: 3.5px 3.5px 0 0;
+    border-top-right-radius: 10px;
 }
 .arch-bracket.bottom-left {
     bottom: 0;
     inset-inline-start: 0;
-    border-width: 0 0 3px 3px;
-    border-bottom-left-radius: 8px;
+    border-width: 0 0 3.5px 3.5px;
+    border-bottom-left-radius: 10px;
 }
 .arch-bracket.bottom-right {
     bottom: 0;
     inset-inline-end: 0;
-    border-width: 0 3px 3px 0;
-    border-bottom-right-radius: 8px;
+    border-width: 0 3.5px 3.5px 0;
+    border-bottom-right-radius: 10px;
 }
 
 /* Theatrical Optical Scan Beam */
@@ -913,7 +904,7 @@ body.scanner-ops-screen #sticky-action-footer {
     flex: 1;
     min-height: 0;
     width: 100%;
-    max-width: min(340px, 92vw);
+    max-width: min(420px, 96vw);
     margin: 0 auto;
     background: var(--gate-bg-card);
     border: 1px solid var(--gate-border-subtle);
@@ -2472,23 +2463,23 @@ body.scanner-ops-screen #sticky-action-footer {
                     const mean = meanLuminance(lum);
                     lastLuminance = mean;
 
-                    pass = (pass + 1) % 4;
-                    let result = null;
+                    // Fast path: attempt immediate standard decode on every frame
+                    let result = tryDecodeLuminance(lum, targetW, targetH);
 
-                    if (pass === 0) {
-                        result = tryDecodeLuminance(lum, targetW, targetH);
-                    } else if (pass === 1) {
-                        const bin = thresholdLuminance(lum, mean);
-                        result = tryDecodeLuminance(bin, targetW, targetH);
-                    } else if (pass === 2) {
-                        const inv = invertLuminance(lum);
-                        result = tryDecodeLuminance(inv, targetW, targetH);
-                    } else {
-                        const stretched = stretchContrastLuminance(lum);
-                        if (stretched) {
-                            result = tryDecodeLuminance(stretched, targetW, targetH);
+                    // Fallback path: if standard decode didn't catch it, rotate through specialized filters
+                    if (!result) {
+                        pass = (pass + 1) % 3;
+                        if (pass === 0) {
+                            const bin = thresholdLuminance(lum, mean);
+                            result = tryDecodeLuminance(bin, targetW, targetH);
+                        } else if (pass === 1) {
+                            const inv = invertLuminance(lum);
+                            result = tryDecodeLuminance(inv, targetW, targetH);
                         } else {
-                            result = tryDecodeLuminance(lum, targetW, targetH);
+                            const stretched = stretchContrastLuminance(lum);
+                            if (stretched) {
+                                result = tryDecodeLuminance(stretched, targetW, targetH);
+                            }
                         }
                     }
 
