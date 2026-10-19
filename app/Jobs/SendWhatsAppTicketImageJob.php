@@ -109,8 +109,10 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
 
             if ($response->successful() && ! $response->json('error')) {
                 $ticket->update([
-                    'whatsapp_sent' => true,
-                    'delivery_status' => 'sent',
+                    'whatsapp_sent'     => true,
+                    'delivery_status'   => 'sent',
+                    'last_delivered_at' => now(),
+                    'delivery_error'    => null,
                 ]);
 
                 Log::info(
@@ -132,6 +134,8 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
                 return;
             }
 
+            $errorMessage = $response->json('error.message') ?? $response->body();
+
             Log::error(
                 'WHATSAPP_SEND_FAILED',
                 LogContext::whatsappFailure(
@@ -152,7 +156,10 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             $errorCode = $response->json('error.code');
             $permanent = in_array($errorCode, [131026, 131047, 131053], true);
 
-            $ticket->update(['delivery_status' => 'failed']);
+            $ticket->update([
+                'delivery_status' => 'failed',
+                'delivery_error'  => $errorMessage,
+            ]);
 
             if ($permanent) {
                 $this->fail(new \RuntimeException(
@@ -169,7 +176,10 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             );
         } catch (\Throwable $e) {
             if ($response === null) {
-                $ticket->update(['delivery_status' => 'failed']);
+                $ticket->update([
+                    'delivery_status' => 'failed',
+                    'delivery_error'  => $e->getMessage(),
+                ]);
 
                 Log::error(
                     'WHATSAPP_SEND_FAILED',
@@ -197,7 +207,10 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
         // customer resend path can re-claim and try again.
         Ticket::where('id', $this->ticketId)
             ->where('whatsapp_sent', false)
-            ->update(['delivery_status' => 'failed']);
+            ->update([
+                'delivery_status' => 'failed',
+                'delivery_error'  => $e->getMessage(),
+            ]);
 
         Log::error(
             'WHATSAPP_SEND_FAILED',

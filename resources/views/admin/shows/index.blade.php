@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'إدارة العروض')
 
@@ -6,23 +6,20 @@
 
 <section class="space-y-5">
 
-
 {{-- Header --}}
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
     <h1 class="text-xl sm:text-2xl font-bold">إدارة العروض</h1>
 
-    <div class="flex gap-2">
+    <div class="flex items-center gap-2">
 
         <a href="{{ route('admin.shows.create') }}"
-           class="flex-1 sm:flex-none text-center px-4 py-2 rounded-full bg-amber-400 text-black text-sm font-medium hover:bg-amber-300 transition">
-            + إضافة عرض
+           class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition min-h-[44px] shadow-sm">
+            <span>+</span>
+            <span>إضافة عرض جديد</span>
         </a>
 
-        <a href="{{ route('admin.dashboard') }}"
-           class="flex-1 sm:flex-none text-center px-3 py-2 rounded-full bg-white/5 border border-white/10 text-xs hover:bg-white/10 transition">
-            ← رجوع
-        </a>
+        @include('admin.partials.back-button', ['url' => route('admin.dashboard'), 'label' => 'العودة للوحة التحكم'])
 
     </div>
 </div>

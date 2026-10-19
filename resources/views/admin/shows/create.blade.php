@@ -1,5 +1,4 @@
-{{-- resources/views/admin/shows/create.blade.php --}}
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'إضافة عرض جديد')
 
@@ -10,11 +9,7 @@
         <div class="flex items-center justify-between gap-3 mb-2">
             <h1 class="text-xl sm:text-2xl font-bold">إضافة عرض جديد</h1>
 
-            <a href="{{ route('admin.shows.index') }}"
-               class="text-[12px] px-3 py-2 rounded-full bg-white/5 border border-white/10
-                      hover:bg-white/10 active:bg-white/15 transition">
-                ← رجوع
-            </a>
+            @include('admin.partials.back-button', ['url' => route('admin.shows.index'), 'label' => 'العودة للعروض'])
         </div>
 
         @if ($errors->any())

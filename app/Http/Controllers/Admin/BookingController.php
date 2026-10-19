@@ -9,6 +9,8 @@ use App\Jobs\SendWhatsAppTicketTemplateJob;
 use App\Models\Booking;
 use App\Models\ShowTime;
 use App\Models\Ticket;
+use App\Services\TicketDeliveryService;
+use App\Services\TicketRenderer;
 use App\Support\CloudinaryUrl;
 use App\Support\LogContext;
 use Cloudinary\Configuration\Configuration;
@@ -65,8 +67,10 @@ class BookingController extends Controller
     }
 
     $booking->update([
-        'status'      => 'approved',
-        'approved_at' => now(),
+        'status'          => 'approved',
+        'approved_at'     => now(),
+        'template_status' => 'sending',
+        'template_error'  => null,
     ]);
 
     Log::info('BOOKING_APPROVED', LogContext::base(
@@ -100,7 +104,7 @@ class BookingController extends Controller
         ->values();
 
     foreach ($uniquePhones as $phone) {
-        SendWhatsAppTicketTemplateJob::dispatch($phone)->onQueue('high');
+        SendWhatsAppTicketTemplateJob::dispatch($phone, $booking->id)->onQueue('high');
     }
 
     return redirect()
@@ -331,24 +335,149 @@ public function receiveTicket(Request $request)
         return redirect()->back();
     }
     /* =======================
- | RESEND TICKET
- ======================= */
-public function resendTicket($id)
-{
-    $ticket = Ticket::findOrFail($id);
+     | RESEND TICKET (Scenario A, B, C state machine)
+     ======================= */
+    public function resendTicket($id, TicketDeliveryService $delivery, TicketRenderer $renderer)
+    {
+        $ticket = Ticket::with(['booking.showTime.show'])->findOrFail($id);
 
-    if (!$ticket->qr_image_path) {
-        return back()->with('status', '❌ التذكرة لم يتم إنشاؤها بعد');
+        if (!$ticket->qr_image_path) {
+            $url = $renderer->renderAndUpload($ticket);
+            if (!$url) {
+                return back()->with('error', '❌ تعذر تجهيز صورة التذكرة (تأكد من إعداد قالب التذاكر للعرض)');
+            }
+            $ticket->refresh();
+        }
+
+        $ticket->update(['resend_requested_at' => now()]);
+
+        // Scenario A / C: Attempt direct image delivery
+        $response = $delivery->sendImage($ticket);
+
+        if ($response->successful() && !$response->json('error')) {
+            $ticket->update([
+                'whatsapp_sent'     => true,
+                'delivery_status'   => 'sent',
+                'last_delivered_at' => now(),
+                'delivery_error'    => null,
+            ]);
+
+            return back()->with('status', '✅ تم إرسال صورة التذكرة بنجاح عبر واتساب مباشرة.');
+        }
+
+        // Scenario B: Meta 24-hour window is closed (Error 131047)
+        if ($delivery->isWindowClosed($response)) {
+            $tplResponse = $delivery->sendTemplate($ticket->phone);
+
+            if ($tplResponse->successful() && !$tplResponse->json('error')) {
+                $ticket->update([
+                    'delivery_status' => 'pending',
+                    'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال رسالة القالب لتجديد المحادثة.',
+                ]);
+
+                if ($ticket->booking) {
+                    $ticket->booking->update([
+                        'template_status'  => 'sent',
+                        'template_sent_at' => now(),
+                        'template_error'   => null,
+                    ]);
+                }
+
+                return back()->with('status', '⚠️ نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال قالب استلام التذكرة للعميل، وبمجرد نقره على "أستلام التذكرة" ستصله صورة التذكرة تلقائياً.');
+            }
+
+            $tplError = $delivery->getErrorMessage($tplResponse);
+            $ticket->update([
+                'delivery_status' => 'failed',
+                'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError,
+            ]);
+
+            return back()->with('error', '❌ نافذة الـ 24 ساعة مغلقة وفشل إرسال رسالة القالب: ' . $tplError);
+        }
+
+        // Other failure
+        $errorMsg = $delivery->getErrorMessage($response);
+        $ticket->update([
+            'delivery_status' => 'failed',
+            'delivery_error'  => $errorMsg,
+        ]);
+
+        return back()->with('error', '❌ فشل إرسال التذكرة عبر واتساب: ' . $errorMsg);
     }
 
-    // Admin force-resend: reopen the ticket for delivery, then enqueue. The
-    // job's atomic claim still guards against this colliding with a concurrent
-    // webhook tap, so the customer never gets a duplicate.
-    $ticket->update(['whatsapp_sent' => false, 'delivery_status' => 'pending']);
-    SendWhatsAppTicketImageJob::dispatch($ticket->id)->onQueue('high');
+    /* =======================
+     | RESEND ALL TICKETS IN BOOKING
+     ======================= */
+    public function resendBookingTickets(Booking $booking, TicketDeliveryService $delivery, TicketRenderer $renderer)
+    {
+        $booking->loadMissing(['tickets', 'showTime.show']);
 
-    return back()->with('status', '✅ تم إعادة إرسال التذكرة');
-}
+        if ($booking->tickets->isEmpty()) {
+            return back()->with('error', 'لا توجد تذاكر مرتبطة بهذا الحجز');
+        }
+
+        $sentCount = 0;
+        $windowClosed = false;
+        $failCount = 0;
+
+        foreach ($booking->tickets as $ticket) {
+            if (!$ticket->qr_image_path) {
+                $renderer->renderAndUpload($ticket);
+                $ticket->refresh();
+            }
+
+            $ticket->update(['resend_requested_at' => now()]);
+            $response = $delivery->sendImage($ticket);
+
+            if ($response->successful() && !$response->json('error')) {
+                $ticket->update([
+                    'whatsapp_sent'     => true,
+                    'delivery_status'   => 'sent',
+                    'last_delivered_at' => now(),
+                    'delivery_error'    => null,
+                ]);
+                $sentCount++;
+            } elseif ($delivery->isWindowClosed($response)) {
+                $windowClosed = true;
+                $ticket->update([
+                    'delivery_status' => 'pending',
+                    'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل.',
+                ]);
+            } else {
+                $failCount++;
+                $ticket->update([
+                    'delivery_status' => 'failed',
+                    'delivery_error'  => $delivery->getErrorMessage($response),
+                ]);
+            }
+        }
+
+        if ($windowClosed) {
+            $uniquePhones = $booking->tickets
+                ->pluck('phone')
+                ->map(fn ($p) => preg_replace('/[^0-9]/', '', (string) $p))
+                ->filter()
+                ->unique();
+
+            foreach ($uniquePhones as $phone) {
+                $delivery->sendTemplate($phone);
+            }
+
+            $booking->update([
+                'template_status'  => 'sent',
+                'template_sent_at' => now(),
+                'template_error'   => null,
+            ]);
+
+            return back()->with('status', '⚠️ نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال قالب استلام التذاكر عبر واتساب بنجاح، وستصل التذاكر فور نقره على الزر.');
+        }
+
+        if ($sentCount > 0) {
+            return back()->with('status', "✅ تم إرسال {$sentCount} تذكرة بنجاح عبر واتساب.");
+        }
+
+        return back()->with('error', '❌ فشل إرسال التذاكر عبر واتساب. يرجى مراجعة سجل الأخطاء.');
+    }
     public function delete($id)
 {
     DB::transaction(function () use ($id) {

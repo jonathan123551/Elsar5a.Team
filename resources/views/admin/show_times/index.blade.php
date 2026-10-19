@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'مواعيد العرض - ' . $show->title)
 
@@ -17,14 +17,11 @@
 
 <div class="flex items-center gap-2">
     <a href="{{ route('admin.shows.times.create', $show) }}"
-       class="inline-flex items-center px-4 py-2 rounded-full bg-amber-400 text-black text-sm font-medium hover:bg-amber-300 transition">
+       class="inline-flex items-center px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition min-h-[44px] shadow-sm">
         + إضافة موعد جديد
     </a>
 
-    <a href="{{ route('admin.shows.index') }}"
-       class="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition">
-        ← رجوع
-    </a>
+    @include('admin.partials.back-button', ['url' => route('admin.shows.index'), 'label' => 'العودة للعروض'])
 </div>
 
 

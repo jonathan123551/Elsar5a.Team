@@ -1,4 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.admin')
+
+@section('title', 'طلبات الانضمام لفريق الصرخة')
 
 @section('content')
 <style>
@@ -90,7 +92,10 @@ tbody tr:hover {
 <div class="page-wrapper">
 
     <div class="filter-card">
-        <h2>🎭 طلبات الانضمام لفريق الصرخة</h2>
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 class="text-xl sm:text-2xl font-bold !mb-0">🎭 طلبات الانضمام لفريق الصرخة</h2>
+            @include('admin.partials.back-button', ['url' => route('admin.dashboard'), 'label' => 'العودة للوحة التحكم'])
+        </div>
 
         <div class="filter-grid">
             <input type="text" id="searchInput" placeholder="بحث بالاسم أو التليفون أو الإيميل">

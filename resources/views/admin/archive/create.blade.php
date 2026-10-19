@@ -1,11 +1,14 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'إضافة عرض سابق')
 
 @section('content')
 <section class="max-w-xl mx-auto space-y-6">
 
-    <h1 class="text-2xl font-bold">➕ إضافة عرض سابق</h1>
+    <div class="flex items-center justify-between gap-3">
+        <h1 class="text-2xl font-bold">➕ إضافة عرض سابق</h1>
+        @include('admin.partials.back-button', ['url' => route('admin.archive.index'), 'label' => 'العودة للأرشيف'])
+    </div>
 
     <form method="POST"
           action="{{ route('admin.archive.store') }}"

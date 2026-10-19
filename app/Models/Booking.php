@@ -49,6 +49,11 @@ class Booking extends Model
         'whatsapp_sent',
         'whatsapp_sent_at',
 
+        // WhatsApp Template Delivery Tracking
+        'template_status',
+        'template_sent_at',
+        'template_error',
+
         'transfer_screenshot_public_id',
         'qr_code_public_id',
     ];
@@ -96,8 +101,34 @@ class Booking extends Model
         'paid_at'           => 'datetime',
         'approved_at'       => 'datetime',
         'whatsapp_sent_at'  => 'datetime',
+        'template_sent_at'  => 'datetime',
         'public_number'     => 'integer',
     ];
+
+    public function isTemplateSent(): bool
+    {
+        return $this->template_status === 'sent';
+    }
+
+    public function isTemplateFailed(): bool
+    {
+        return $this->template_status === 'failed';
+    }
+
+    public function isTemplateSending(): bool
+    {
+        return $this->template_status === 'sending';
+    }
+
+    public function ticketsDeliveredCount(): int
+    {
+        return $this->tickets->filter(fn($t) => $t->whatsapp_sent || $t->delivery_status === 'sent')->count();
+    }
+
+    public function ticketsTotalCount(): int
+    {
+        return $this->tickets->count() ?: ($this->tickets_count ?? 1);
+    }
 
     /**
      * Atomically allocate the next public booking number for a given

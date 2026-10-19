@@ -207,6 +207,7 @@ Route::middleware('admin')
         Route::post('/{booking}/approve', [AdminBookingController::class, 'approve'])->name('approve');
         Route::post('/{booking}/reject', [AdminBookingController::class, 'reject'])->name('reject');
         Route::get('/{booking}', [AdminBookingController::class, 'show'])->name('show');
+        Route::post('/{booking}/resend-all', [AdminBookingController::class, 'resendBookingTickets'])->name('resend-all');
     });
 
     Route::post('/resend-ticket/{id}', [AdminBookingController::class, 'resendTicket'])

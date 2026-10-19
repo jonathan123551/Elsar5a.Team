@@ -129,6 +129,12 @@ class WhatsAppWebhookController extends Controller
                     'count' => $ticketIds->count(),
                 ]);
 
+                // Record customer claimed timestamp and ready status
+                Ticket::whereIn('id', $ticketIds)->update([
+                    'claimed_at'      => now(),
+                    'delivery_status' => 'pending',
+                ]);
+
                 foreach ($ticketIds as $ticketId) {
                     SendWhatsAppTicketImageJob::dispatch($ticketId)->onQueue('high');
                 }

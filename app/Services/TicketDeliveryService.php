@@ -98,6 +98,24 @@ class TicketDeliveryService
         return $response;
     }
 
+    public function isWindowClosed(Response $response): bool
+    {
+        $code = (int) ($response->json('error.code') ?? $response->json('error.error_subcode') ?? 0);
+        if ($code === 131047) {
+            return true;
+        }
+
+        $message = (string) $response->json('error.message');
+        return str_contains($message, '131047') || str_contains($message, '24 hours');
+    }
+
+    public function getErrorMessage(Response $response): string
+    {
+        return $response->json('error.message')
+            ?? $response->json('error.error_data.details')
+            ?? ('HTTP ' . $response->status());
+    }
+
     /**
      * Builds the ticket caption sent next to the QR image. Only the customer
      * name and the show date/time are dynamic — the brand-voice flavour text

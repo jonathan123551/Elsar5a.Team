@@ -34,7 +34,7 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
         return [5, 15, 60];
     }
 
-    public function __construct(public string $phone) {}
+    public function __construct(public string $phone, public ?int $bookingId = null) {}
 
     public function handle(TicketDeliveryService $delivery): void
     {
@@ -44,7 +44,15 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
         try {
             $response = $delivery->sendTemplate($this->phone);
 
-            if ($response->successful()) {
+            if ($response->successful() && !$response->json('error')) {
+                if ($this->bookingId) {
+                    \App\Models\Booking::where('id', $this->bookingId)->update([
+                        'template_status'  => 'sent',
+                        'template_sent_at' => now(),
+                        'template_error'   => null,
+                    ]);
+                }
+
                 Log::info(
                     'WHATSAPP_TEMPLATE_SENT',
                     LogContext::base(
@@ -52,6 +60,7 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
                         'whatsapp.send_template',
                         [
                             'job_run_id' => $jobRunId,
+                            'booking_id' => $this->bookingId,
                             'phone_masked' => LogContext::maskPhone($this->phone),
                             'http_status' => $response->status(),
                             'external_service' => 'meta_whatsapp',
@@ -59,6 +68,14 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
                     )
                 );
                 return;
+            }
+
+            $errorMessage = $response->json('error.message') ?? $response->body();
+            if ($this->bookingId) {
+                \App\Models\Booking::where('id', $this->bookingId)->update([
+                    'template_status' => 'failed',
+                    'template_error'  => $errorMessage,
+                ]);
             }
 
             Log::error(
@@ -70,6 +87,7 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
                     null,
                     [
                         'job_run_id' => $jobRunId,
+                        'booking_id' => $this->bookingId,
                     ]
                 )
             );
@@ -89,6 +107,13 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
                 'WhatsApp template send failed (status '.$response->status().'): '.$response->body()
             );
         } catch (\Throwable $e) {
+            if ($this->bookingId) {
+                \App\Models\Booking::where('id', $this->bookingId)->update([
+                    'template_status' => 'failed',
+                    'template_error'  => $e->getMessage(),
+                ]);
+            }
+
             if ($response === null) {
                 Log::error(
                     'WHATSAPP_SEND_FAILED',
@@ -99,6 +124,7 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
                         $e,
                         [
                             'job_run_id' => $jobRunId,
+                            'booking_id' => $this->bookingId,
                         ]
                     )
                 );
@@ -110,13 +136,21 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
+        if ($this->bookingId) {
+            \App\Models\Booking::where('id', $this->bookingId)->update([
+                'template_status' => 'failed',
+                'template_error'  => $e->getMessage(),
+            ]);
+        }
+
         Log::error(
             'WHATSAPP_SEND_FAILED',
             LogContext::whatsappFailure(
                 'whatsapp.send_template.exhausted',
                 $this->phone,
                 null,
-                $e
+                $e,
+                ['booking_id' => $this->bookingId]
             )
         );
     }

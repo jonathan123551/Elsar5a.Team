@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'إدارة العروض السابقة')
 
@@ -11,15 +11,13 @@
         <div class="flex items-center gap-2">
             {{-- إضافة عرض --}}
             <a href="{{ route('admin.archive.create') }}"
-               class="text-xs px-4 py-2 rounded-full bg-emerald-500 text-black hover:bg-emerald-400 transition">
-                ➕ إضافة عرض سابق
+               class="text-xs font-semibold px-4 py-2 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 transition min-h-[44px] inline-flex items-center gap-1.5 shadow-sm">
+                <span>➕</span>
+                <span>إضافة عرض سابق</span>
             </a>
 
             {{-- رجوع --}}
-            <a href="{{ route('admin.dashboard') }}"
-               class="text-xs px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition">
-                ← رجوع للوحة التحكم
-            </a>
+            @include('admin.partials.back-button', ['url' => route('admin.dashboard'), 'label' => 'العودة للوحة التحكم'])
         </div>
     </div>
 

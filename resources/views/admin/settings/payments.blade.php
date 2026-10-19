@@ -1,15 +1,12 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'إعدادات التحويلات')
 
 @section('content')
 <section class="max-w-lg mx-auto space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between gap-3">
         <h1 class="text-2xl font-bold">إعدادات التحويلات 💳</h1>
-        <a href="{{ route('admin.dashboard') }}"
-           class="text-xs px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10">
-            ← رجوع للوحة التحكم
-        </a>
+        @include('admin.partials.back-button', ['url' => route('admin.dashboard'), 'label' => 'العودة للوحة التحكم'])
     </div>
 
     @if (session('status'))

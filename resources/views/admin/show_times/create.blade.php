@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'إضافة موعد جديد - ' . $show->title)
 
@@ -12,11 +12,7 @@
             <p class="text-[12px] text-gray-400 truncate">للعرض: {{ $show->title }}</p>
         </div>
 
-        <a href="{{ route('admin.shows.times.index', $show) }}"
-           class="text-[12px] px-3 py-2 rounded-full bg-white/5 border border-white/10
-                  hover:bg-white/10 active:bg-white/15 transition shrink-0">
-            ← رجوع
-        </a>
+        @include('admin.partials.back-button', ['url' => route('admin.shows.times.index', $show), 'label' => 'العودة للمواعيد'])
     </div>
 
     @if ($errors->any())
