@@ -85,7 +85,7 @@ class SiteController extends Controller
 
     public function about()
     {
-        $about = About::first();
+        $about = About::first() ?? new About();
         return view('about', compact('about'));
     }
 

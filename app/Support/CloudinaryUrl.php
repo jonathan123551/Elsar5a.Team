@@ -23,6 +23,30 @@ class CloudinaryUrl
      */
     public static function forDisplay(string $url): string
     {
+        return self::transform($url, 'c_limit,w_960,h_1440,q_auto:good,f_auto,fl_progressive');
+    }
+
+    /**
+     * Build a compact thumbnail variant (default 400px wide) for carousels and cards.
+     */
+    public static function forThumbnail(string $url, int $width = 400): string
+    {
+        return self::transform($url, "c_limit,w_{$width},q_auto:good,f_auto,fl_progressive");
+    }
+
+    /**
+     * Build a high-clarity gallery display variant (default 1080px) for modal viewing.
+     */
+    public static function forGallery(string $url, int $width = 1080): string
+    {
+        return self::transform($url, "c_limit,w_{$width},h_{$width},q_auto:good,f_auto,fl_progressive");
+    }
+
+    /**
+     * Internal helper to insert transformation segment into Cloudinary URL safely.
+     */
+    public static function transform(string $url, string $transform): string
+    {
         if ($url === '' || !str_contains($url, '/image/upload/')) {
             return $url;
         }
@@ -36,8 +60,6 @@ class CloudinaryUrl
         if ($firstSegment !== false && !preg_match('/^v\d+$/', $firstSegment) && $firstSegment !== '') {
             return $url;
         }
-
-        $transform = 'c_limit,w_960,h_1440,q_auto:good,f_auto,fl_progressive';
 
         return substr_replace($url, $needle . $transform . '/', $pos, strlen($needle));
     }

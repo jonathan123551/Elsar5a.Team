@@ -15,7 +15,7 @@
     {{-- Poster --}}
     @if(!empty($archive->poster_path))
         <img
-            src="{{ $archive->poster_path }}"
+            src="{{ \App\Support\CloudinaryUrl::forThumbnail($archive->poster_path, 400) }}"
             alt="{{ $archive->title }}"
             loading="lazy"
             decoding="async"

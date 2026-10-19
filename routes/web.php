@@ -83,6 +83,7 @@ Route::get('/join-team', [TeamApplicationController::class, 'create'])
 Route::get('/join', [TeamApplicationController::class, 'create'])
     ->name('join');
 Route::post('/join-team', [TeamApplicationController::class, 'store'])
+    ->middleware('throttle:5,1')
     ->name('team.apply.store');
 
 /*

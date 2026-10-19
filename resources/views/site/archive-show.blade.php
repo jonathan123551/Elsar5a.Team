@@ -902,13 +902,13 @@
     <header class="asd-hero asd-reveal" data-stagger="0">
         @if($archive->poster_path)
             <div class="asd-hero-bg"
-                 style="background-image: url('{{ $archive->poster_path }}');"
+                 style="background-image: url('{{ \App\Support\CloudinaryUrl::forThumbnail($archive->poster_path, 300) }}');"
                  aria-hidden="true"></div>
         @endif
 
         <div class="asd-hero-fg">
             @if($archive->poster_path)
-                <img src="{{ $archive->poster_path }}"
+                <img src="{{ \App\Support\CloudinaryUrl::forDisplay($archive->poster_path) }}"
                      alt="{{ $archive->title }}"
                      class="asd-hero-poster"
                      loading="eager"
@@ -1154,7 +1154,7 @@
                                     data-index="{{ $i }}"
                                     onclick="openViewer({{ $i }})"
                                     aria-label="عرض الصورة {{ $i + 1 }} من {{ $imgCount }}">
-                                <img src="{{ $img->image_path }}"
+                                <img src="{{ \App\Support\CloudinaryUrl::forThumbnail($img->image_path, 400) }}"
                                      alt="صورة من عرض {{ $archive->title }}"
                                      loading="lazy"
                                      decoding="async"
@@ -1262,8 +1262,7 @@
 
     <img id="viewer-img"
          alt=""
-         class="max-w-[95vw] max-h-[90dvh]
-                transition-all duration-300 ease-in-out will-change-transform">
+         class="max-w-[95vw] max-h-[90dvh] object-contain select-none will-change-transform pointer-events-auto">
 </div>
 
 <script>
@@ -1535,7 +1534,7 @@
     var startX   = 0;
     var startSL  = 0;
     var moved    = false;
-    var DRAG_THR = 6; // px before we count it as a drag
+    var DRAG_THR = 16; // px before we count it as a drag (raised from 6px to tolerate normal click jitter)
 
     reel.addEventListener('pointerdown', function (e) {
         // Native touch-scroll is better than anything we can fake.
@@ -1546,16 +1545,16 @@
         moved   = false;
         startX  = e.clientX;
         startSL = reel.scrollLeft;
-        reel.classList.add('is-dragging');
-        // Capture so we keep receiving move/up even if the
-        // pointer leaves the reel mid-drag.
-        try { reel.setPointerCapture(e.pointerId); } catch (_) {}
     });
 
     reel.addEventListener('pointermove', function (e) {
         if (!isDown) return;
         var dx = e.clientX - startX;
-        if (!moved && Math.abs(dx) > DRAG_THR) moved = true;
+        if (!moved && Math.abs(dx) > DRAG_THR) {
+            moved = true;
+            reel.classList.add('is-dragging');
+            try { reel.setPointerCapture(e.pointerId); } catch (_) {}
+        }
         if (moved) {
             reel.scrollLeft = startSL - dx;
             // Stops text-selection / image-drag from kicking in.
@@ -1591,161 +1590,278 @@
 </script>
 
 @if($archive->images && $archive->images->count())
+@php
+    $galleryList = $archive->images->map(function ($img) {
+        $raw = (string) $img->image_path;
+        return [
+            'display'  => \App\Support\CloudinaryUrl::forGallery($raw, 1080),
+            'thumb'    => \App\Support\CloudinaryUrl::forThumbnail($raw, 400),
+            'original' => $raw,
+        ];
+    })->values();
+@endphp
 <script>
 /* ============================================================
-   LIGHTBOX
-   ------------------------------------------------------------
-   Pinch-zoom + swipe-with-inertia + double-tap zoom + wheel
-   zoom + keyboard nav. This is the previous version's
-   implementation, kept verbatim because it already handles
-   iOS Safari edge cases that are easy to regress. Additions
-   over the old version are minimal and clearly marked. */
-const images   = @json($archive->images->pluck('image_path'));
+   LIGHTBOX — High-performance, 2D Pan, Clamped Zoom & Gesture Lifecycle
+   ============================================================ */
+const gallery  = @json($galleryList);
 const viewer   = document.getElementById('viewer');
 const img      = document.getElementById('viewer-img');
 const counter  = document.getElementById('asd-counter');
 
 let current = 0;
 let scale = 1;
-let startX = 0;
-let currentX = 0;
-let velocity = 0;
+let panX = 0;
+let panY = 0;
+let startTouchX = 0;
+let startTouchY = 0;
+let startPanX = 0;
+let startPanY = 0;
 let isDragging = false;
-let initialDistance = 0;
 let isPinching = false;
+let initialDistance = 0;
+let initialScale = 1;
+let lastActiveElement = null;
+const preloadedIndices = new Set();
 
-// 🔥 preload
-images.forEach(function (src) {
-    const i = new Image();
-    i.src = src;
-});
+function preloadAdjacent(idx) {
+    if (!gallery || gallery.length <= 1) return;
+    const nextIdx = (idx + 1) % gallery.length;
+    const prevIdx = (idx - 1 + gallery.length) % gallery.length;
+    [nextIdx, prevIdx].forEach(function (i) {
+        if (!preloadedIndices.has(i)) {
+            const im = new Image();
+            im.src = gallery[i].display;
+            preloadedIndices.add(i);
+        }
+    });
+}
 
-function setCounter () {
+function setCounter() {
     if (counter) {
-        counter.textContent = (current + 1) + ' / ' + images.length;
+        counter.textContent = (current + 1) + ' / ' + gallery.length;
     }
 }
 
-function openViewer (index) {
+function clampPan() {
+    if (scale <= 1) {
+        panX = 0;
+        panY = 0;
+        return;
+    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const curW = (img.offsetWidth || (vw * 0.9)) * scale;
+    const curH = (img.offsetHeight || (vh * 0.8)) * scale;
+    const maxPanX = Math.max(0, (curW - vw) / 2 + 40);
+    const maxPanY = Math.max(0, (curH - vh) / 2 + 40);
+    panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+    panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+}
+
+function applyTransform(animated, durationMs) {
+    if (animated) {
+        img.style.transition = 'transform ' + (durationMs || 250) + 'ms cubic-bezier(0.2, 0, 0.2, 1)';
+    } else {
+        img.style.transition = 'none';
+    }
+    img.style.transform = 'translate3d(' + panX + 'px, ' + panY + 'px, 0) scale(' + scale + ')';
+}
+
+function openViewer(index) {
     current = index;
     scale = 1;
-    currentX = 0;
+    panX = 0;
+    panY = 0;
+    lastActiveElement = document.activeElement;
 
-    img.src = images[current];
-    img.style.transform = 'translateX(0px) scale(1)';
+    img.src = gallery[current].display;
+    img.style.transition = 'none';
+    img.style.transform = 'translate3d(0px, 0px, 0) scale(1)';
     setCounter();
 
     viewer.classList.remove('hidden');
-    setTimeout(function () { viewer.classList.remove('opacity-0'); }, 10);
+    setTimeout(function () {
+        viewer.classList.remove('opacity-0');
+        const closeBtn = viewer.querySelector('.asd-viewer-btn[aria-label="إغلاق"]');
+        if (closeBtn) closeBtn.focus();
+    }, 10);
 
     document.body.style.overflow = 'hidden';
+    preloadAdjacent(current);
 }
 
-function closeViewer () {
+function closeViewer() {
     viewer.classList.add('opacity-0');
-    setTimeout(function () { viewer.classList.add('hidden'); }, 300);
+    setTimeout(function () {
+        viewer.classList.add('hidden');
+        scale = 1;
+        panX = 0;
+        panY = 0;
+        applyTransform(false);
+    }, 300);
+
     document.body.style.overflow = '';
+    if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
+        try { lastActiveElement.focus(); } catch (_) {}
+    }
 }
 
-function changeImage (newIndex) {
-    current = (newIndex + images.length) % images.length;
+function changeImage(newIndex) {
+    current = (newIndex + gallery.length) % gallery.length;
     scale = 1;
-    currentX = 0;
+    panX = 0;
+    panY = 0;
 
-    img.style.transition = 'none';
-    img.style.opacity = 0;
+    img.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    img.style.opacity = '0';
 
     setTimeout(function () {
-        img.src = images[current];
-        img.style.transition = 'all 0.3s ease';
-        img.style.opacity = 1;
-        img.style.transform = 'translateX(0px) scale(1)';
+        img.src = gallery[current].display;
+        img.style.transform = 'translate3d(0px, 0px, 0) scale(1)';
+        img.style.opacity = '1';
         setCounter();
+        preloadAdjacent(current);
     }, 80);
 }
 
-function nextImg () {
-    if (scale > 1) return;
+function nextImg() {
     changeImage(current + 1);
 }
-function prevImg () {
-    if (scale > 1) return;
+function prevImg() {
     changeImage(current - 1);
 }
 
 /* ---- pinch helpers ---- */
-function getDistance (touches) {
+function getDistance(touches) {
     var dx = touches[0].clientX - touches[1].clientX;
     var dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-/* ---- touch ---- */
+/* ---- touch gestures ---- */
 viewer.addEventListener('touchstart', function (e) {
     if (e.touches.length === 2) {
         isPinching = true;
+        isDragging = false;
         initialDistance = getDistance(e.touches);
+        initialScale = scale;
+        applyTransform(false);
         return;
     }
-    isDragging = true;
-    startX = e.touches[0].clientX;
-    velocity = 0;
-});
+    if (e.touches.length === 1) {
+        isDragging = true;
+        isPinching = false;
+        startTouchX = e.touches[0].clientX;
+        startTouchY = e.touches[0].clientY;
+        startPanX = panX;
+        startPanY = panY;
+        applyTransform(false);
+    }
+}, { passive: true });
 
 viewer.addEventListener('touchmove', function (e) {
     if (isPinching && e.touches.length === 2) {
         var newDistance = getDistance(e.touches);
-        var zoomFactor = newDistance / initialDistance;
-        scale = Math.min(Math.max(1, scale * zoomFactor), 4);
-        img.style.transform = 'translateX(' + currentX + 'px) scale(' + scale + ')';
-        initialDistance = newDistance;
+        var factor = newDistance / initialDistance;
+        scale = Math.min(Math.max(1, initialScale * factor), 4);
+        if (scale > 1) {
+            clampPan();
+        } else {
+            panX = 0;
+            panY = 0;
+        }
+        applyTransform(false);
+        return;
+    }
+
+    if (!isDragging || e.touches.length !== 1) return;
+
+    var dx = e.touches[0].clientX - startTouchX;
+    var dy = e.touches[0].clientY - startTouchY;
+
+    if (scale === 1) {
+        // Horizontal swipe only for next/prev
+        panX = dx;
+        panY = 0;
+        img.style.transition = 'none';
+        img.style.transform = 'translate3d(' + dx + 'px, 0px, 0) scale(0.98)';
+    } else {
+        // 2D Pan when zoomed
+        panX = startPanX + dx;
+        panY = startPanY + dy;
+        applyTransform(false);
+    }
+}, { passive: true });
+
+viewer.addEventListener('touchend', function (e) {
+    if (isPinching) {
+        if (e.touches.length < 2) {
+            isPinching = false;
+            if (scale <= 1) {
+                scale = 1;
+                panX = 0;
+                panY = 0;
+            } else {
+                clampPan();
+            }
+            applyTransform(true, 250);
+        }
         return;
     }
 
     if (!isDragging) return;
-
-    var dx = e.touches[0].clientX - startX;
-    velocity = dx - currentX;
-    currentX = dx;
-    img.style.transform = 'translateX(' + dx + 'px) scale(' + (scale > 1 ? scale : 0.98) + ')';
-});
-
-viewer.addEventListener('touchend', function () {
-    if (isPinching) { isPinching = false; return; }
-    if (!isDragging) return;
-
-    var momentum = velocity * 3;
-    currentX += momentum;
-    img.style.transition = 'transform 0.3s ease-out';
-
-    if (scale === 1 && Math.abs(currentX) > 100) {
-        currentX > 0 ? prevImg() : nextImg();
-    } else {
-        currentX = 0;
-        img.style.transform = 'translateX(0px) scale(' + scale + ')';
-    }
-
-    setTimeout(function () { img.style.transition = ''; }, 300);
     isDragging = false;
+
+    if (scale === 1) {
+        if (Math.abs(panX) > 80) {
+            panX > 0 ? prevImg() : nextImg();
+        } else {
+            panX = 0;
+            panY = 0;
+            applyTransform(true, 200);
+        }
+    } else {
+        // Zoomed in: Clamp boundaries and retain pan position (no snap-back to 0!)
+        clampPan();
+        applyTransform(true, 200);
+    }
 });
 
 /* ---- double-tap zoom ---- */
 let lastTap = 0;
-img.addEventListener('touchend', function () {
-    var now = new Date().getTime();
-    if (now - lastTap < 250) {
-        scale = scale === 1 ? 2.5 : 1;
-        img.style.transform = 'translateX(0px) scale(' + scale + ')';
+img.addEventListener('touchend', function (e) {
+    var now = Date.now();
+    if (now - lastTap < 300) {
+        if (scale === 1) {
+            scale = 2.5;
+            panX = 0;
+            panY = 0;
+            if (gallery[current] && gallery[current].original) {
+                img.src = gallery[current].original;
+            }
+        } else {
+            scale = 1;
+            panX = 0;
+            panY = 0;
+        }
+        applyTransform(true, 250);
     }
     lastTap = now;
 });
 
-/* ---- wheel ---- */
-img.addEventListener('wheel', function (e) {
+/* ---- wheel zoom ---- */
+viewer.addEventListener('wheel', function (e) {
     e.preventDefault();
-    scale += e.deltaY * -0.001;
+    scale += e.deltaY * -0.0015;
     scale = Math.min(Math.max(1, scale), 4);
-    img.style.transform = 'translateX(' + currentX + 'px) scale(' + scale + ')';
+    if (scale === 1) {
+        panX = 0;
+        panY = 0;
+    } else {
+        clampPan();
+    }
+    applyTransform(false);
 }, { passive: false });
 
 /* ---- keyboard ---- */
@@ -1756,11 +1872,7 @@ document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape')     closeViewer();
 });
 
-/* ---- backdrop-click dismiss (NEW)
-   The previous version required tapping the ✕ button explicitly.
-   On mobile a tap outside the image is a natural dismiss gesture
-   so we wire it up here without changing any of the touch
-   handlers above (those only fire when there's a touchstart). */
+/* ---- backdrop-click dismiss ---- */
 viewer.addEventListener('click', function (e) {
     if (e.target === viewer) closeViewer();
 });

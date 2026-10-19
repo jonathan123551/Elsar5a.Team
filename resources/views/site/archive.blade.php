@@ -149,7 +149,12 @@
        MOBILE poster reel — horizontal snap-scroller, one card
        visible with a small peek of the next. Touch users can swipe;
        the dot indicators below give them a sense of progress. */
-    .arch-reel {
+    /* ============================================================
+       RESPONSIVE ARCHIVE BROWSER
+       Mobile: horizontal snap-reel with dots indicator.
+       Desktop (>= 768px): staggered editorial magazine grid.
+       Single unified DOM container avoids duplicating markup. */
+    .arch-browser {
         display: flex;
         gap: 1rem;
         padding: 0.25rem 1.25rem 0.5rem;
@@ -159,14 +164,14 @@
         scrollbar-width: none;
         scroll-padding-inline: 1.25rem;
     }
-    .arch-reel::-webkit-scrollbar { display: none; }
-    .arch-reel > * {
+    .arch-browser::-webkit-scrollbar { display: none; }
+    .arch-browser > * {
         flex: 0 0 78%;
         scroll-snap-align: center;
         scroll-snap-stop: always;
     }
     @media (min-width: 480px) {
-        .arch-reel > * { flex-basis: 62%; }
+        .arch-browser > * { flex-basis: 62%; }
     }
 
     .arch-dots {
@@ -192,22 +197,29 @@
        editorial feel. Every other card pushes down a bit so the
        grid breathes instead of looking like a rigid template. */
     @media (min-width: 768px) {
-        .arch-mag {
+        .arch-browser {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 2rem 1.75rem;
             padding: 0 .25rem;
+            overflow-x: visible;
+            scroll-snap-type: none;
         }
-        .arch-mag > *:nth-child(3n+2) { transform: translateY(2.25rem); }
+        .arch-browser > * {
+            flex: initial;
+            scroll-snap-align: none;
+            scroll-snap-stop: normal;
+        }
+        .arch-browser > *:nth-child(3n+2) { transform: translateY(2.25rem); }
     }
     @media (min-width: 1024px) {
-        .arch-mag {
+        .arch-browser {
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 2.25rem 1.75rem;
         }
-        .arch-mag > *:nth-child(3n+2) { transform: none; }
-        .arch-mag > *:nth-child(4n+2) { transform: translateY(2.5rem); }
-        .arch-mag > *:nth-child(4n+4) { transform: translateY(-1.25rem); }
+        .arch-browser > *:nth-child(3n+2) { transform: none; }
+        .arch-browser > *:nth-child(4n+2) { transform: translateY(2.5rem); }
+        .arch-browser > *:nth-child(4n+4) { transform: translateY(-1.25rem); }
     }
 
     /* ============================================================
@@ -320,31 +332,25 @@
 
     @else
 
-        {{-- ============== MOBILE: poster reel ============== --}}
-        <div class="md:hidden">
-            <div id="archReel" class="arch-reel" role="region" aria-label="عروض سابقة - قابل للسحب">
+        {{-- ============== UNIFIED RESPONSIVE ARCHIVE BROWSER ============== --}}
+        <div>
+            <div id="archReel" class="arch-browser" role="region" aria-label="العروض السابقة">
                 @foreach($archives as $i => $archive)
                     @include('site._archive_card', ['archive' => $archive, 'index' => $i])
                 @endforeach
             </div>
 
-            <div class="arch-dots" id="archDots" aria-hidden="true">
-                @foreach($archives as $i => $_)
-                    <span class="arch-dot {{ $i === 0 ? 'is-active' : '' }}"></span>
-                @endforeach
-            </div>
+            {{-- Mobile-only swipe indicators --}}
+            <div class="md:hidden">
+                <div class="arch-dots" id="archDots" aria-hidden="true">
+                    @foreach($archives as $i => $_)
+                        <span class="arch-dot {{ $i === 0 ? 'is-active' : '' }}"></span>
+                    @endforeach
+                </div>
 
-            <p class="mt-3 text-center text-[11px] text-gray-500">
-                ← اسحب لاستعراض الأرشيف →
-            </p>
-        </div>
-
-        {{-- ============== DESKTOP: magazine grid ============== --}}
-        <div class="hidden md:block">
-            <div class="arch-mag">
-                @foreach($archives as $i => $archive)
-                    @include('site._archive_card', ['archive' => $archive, 'index' => $i])
-                @endforeach
+                <p class="mt-3 text-center text-[11px] text-gray-500">
+                    ← اسحب لاستعراض الأرشيف →
+                </p>
             </div>
         </div>
 
