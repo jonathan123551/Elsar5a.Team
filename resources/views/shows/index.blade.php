@@ -58,6 +58,483 @@
     }
 @endphp
 
+<style>
+/* ============================================================
+   SHOWTIME CARDS — SCREENSHOT 1 GLASSMORPHISM REDESIGN
+   ------------------------------------------------------------
+   Recreates the exact visual language of Screenshot 1:
+   - Deep midnight translucent glass surface with ambient blue/slate sheen
+   - Smooth generous rounded corners (26px desktop, 20px mobile)
+   - Delicate specular perimeter border (rgba(255,255,255,0.10)) + top edge highlight
+   - Warm, luminous golden-yellow gradient pill CTA button (rounded-full)
+   - Obsidian dark bold typography (#0b0f19) on CTA button
+   - Warm golden drop shadow & radiant ambient glow underneath CTA
+   - High-contrast hierarchy: gold day name, crisp white time,
+     sleek translucent pill availability chip with glowing indicator dot.
+   ============================================================ */
+
+.cinematic-showtimes {
+  order: 3;
+  width: min(100%, 580px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+  will-change: transform, opacity;
+}
+
+.cinematic-showtime-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 18px 16px !important;
+  min-height: 172px !important;
+  border-radius: 26px !important;
+  text-decoration: none;
+  text-align: right;
+  color: #f1f5fb;
+
+  /* Translucent deep midnight glass with ambient sheen */
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(30, 58, 138, 0.16) 0%, transparent 75%),
+    linear-gradient(155deg, rgba(15, 23, 42, 0.80) 0%, rgba(10, 16, 31, 0.88) 55%, rgba(3, 7, 18, 0.94) 100%) !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+
+  /* Thin elegant perimeter border with top specular edge light */
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    0 22px 48px -12px rgba(0, 0, 0, 0.78),
+    0 4px 16px -2px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.35) !important;
+
+  /* Compositor transitions */
+  transition:
+    transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.26s ease,
+    border-color 0.26s ease,
+    background 0.26s ease;
+
+  touch-action: manipulation;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Specular light wash on top edge */
+.cinematic-showtime-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 22%,
+    transparent 55%
+  ) !important;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Subtle inner ambient glow */
+.cinematic-showtime-card::after {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.cinematic-showtime-card:hover,
+.cinematic-showtime-card:focus-visible {
+  transform: translateY(-3px) !important;
+  border-color: rgba(251, 191, 36, 0.38) !important;
+  box-shadow:
+    0 28px 56px -12px rgba(0, 0, 0, 0.88),
+    0 0 28px rgba(245, 158, 11, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+.cinematic-showtime-card:hover::after {
+  opacity: 1;
+}
+
+.cinematic-showtime-card:active {
+  transform: scale(0.985) !important;
+  transition-duration: 0.1s;
+}
+
+/* 1. Date Row */
+.cinematic-showtime-card .st-date-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cinematic-showtime-card .st-day-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fde68a !important;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.cinematic-showtime-card .st-date-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.72) !important;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+}
+
+/* 2. Time Row */
+.cinematic-showtime-card .st-time-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.cinematic-showtime-card .st-time-num {
+  font-size: 27px !important;
+  font-weight: 800;
+  color: #ffffff !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  line-height: 1.1;
+}
+
+.cinematic-showtime-card .st-time-ampm {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #cbd5e1 !important;
+}
+
+/* Delicate Hairline Glass Seam */
+.cinematic-showtime-card .st-seam {
+  position: relative;
+  z-index: 2;
+  height: 1px;
+  width: 100%;
+  margin: 11px 0 10px !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.14) 25%,
+    rgba(250, 204, 21, 0.28) 50%,
+    rgba(255, 255, 255, 0.14) 75%,
+    transparent 100%
+  ) !important;
+}
+
+/* 3. Meta Row (Availability Chip & Price) */
+.cinematic-showtime-card .st-meta-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Pill Chip matching Screenshot 1's sd-pill */
+.cinematic-showtime-card .st-avail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5.5px;
+  padding: 3.5px 9px !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cinematic-showtime-card .st-dot {
+  width: 5.5px;
+  height: 5.5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cinematic-showtime-card .st-avail-chip.is-healthy {
+  color: #a7f3d0 !important;
+  border-color: rgba(52, 211, 153, 0.28) !important;
+  background: rgba(52, 211, 153, 0.08) !important;
+}
+.cinematic-showtime-card .st-avail-chip.is-healthy .st-dot {
+  background: #34d399 !important;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.75) !important;
+}
+
+.cinematic-showtime-card .st-avail-chip.is-low {
+  color: #fde68a !important;
+  border-color: rgba(251, 191, 36, 0.32) !important;
+  background: rgba(251, 191, 36, 0.08) !important;
+}
+.cinematic-showtime-card .st-avail-chip.is-low .st-dot {
+  background: #fbbf24 !important;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.75) !important;
+}
+
+.cinematic-showtime-card .st-avail-chip.is-critical {
+  color: #fca5a5 !important;
+  border-color: rgba(248, 113, 113, 0.32) !important;
+  background: rgba(248, 113, 113, 0.08) !important;
+}
+.cinematic-showtime-card .st-avail-chip.is-critical .st-dot {
+  background: #f87171 !important;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.75) !important;
+}
+
+.cinematic-showtime-card .st-price-block {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3.5px;
+  direction: ltr;
+}
+
+.cinematic-showtime-card .st-price-amount {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff !important;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.cinematic-showtime-card .st-price-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fde68a !important;
+}
+
+/* ============================================================
+   4. THE HERO CTA BUTTON — LUMINOUS GOLD PILL FROM SCREENSHOT 1
+   ============================================================ */
+.cinematic-showtime-card .st-cta-btn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 42px !important;
+  padding: 0 16px !important;
+  border-radius: 9999px !important;
+
+  /* Screenshot 1 warm radiant gold gradient */
+  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 60%, #d97706 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+
+  /* Typography: obsidian bold */
+  color: #0b0f19 !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: normal;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.3);
+
+  /* Radiant golden drop shadow + top specular light */
+  box-shadow:
+    0 8px 22px -4px rgba(245, 158, 11, 0.52),
+    0 3px 8px -2px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.70) !important;
+
+  transition:
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.28s ease,
+    background 0.24s ease,
+    filter 0.24s ease;
+}
+
+.cinematic-showtime-card:hover .st-cta-btn,
+.cinematic-showtime-card:focus-visible .st-cta-btn {
+  background: linear-gradient(180deg, #fef08a 0%, #fbbf24 55%, #d97706 100%) !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow:
+    0 14px 30px -4px rgba(245, 158, 11, 0.75),
+    0 0 22px rgba(251, 191, 36, 0.45),
+    0 4px 10px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.85) !important;
+}
+
+.cinematic-showtime-card:active .st-cta-btn {
+  transform: scale(0.975) !important;
+  box-shadow:
+    0 4px 14px -2px rgba(245, 158, 11, 0.45),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5) !important;
+  transition-duration: 0.08s;
+}
+
+.cinematic-showtime-card .st-cta-icon {
+  font-size: 14px;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cinematic-showtime-card:hover .st-cta-icon,
+.cinematic-showtime-card:focus-visible .st-cta-icon {
+  transform: scale(1.15) rotate(-6deg);
+}
+
+/* ============================================================
+   RESPONSIVE REFINEMENT ACROSS VIEWPORTS
+   ============================================================ */
+@media (max-width: 639.98px) {
+  .cinematic-showtimes {
+    width: 100%;
+    max-width: 100%;
+    gap: 9px !important;
+    margin-top: 12px;
+  }
+  .cinematic-showtime-card {
+    min-height: 148px !important;
+    padding: 13px 12px 11px !important;
+    border-radius: 20px !important;
+  }
+  .cinematic-showtime-card .st-day-name {
+    font-size: 12px;
+  }
+  .cinematic-showtime-card .st-date-val {
+    font-size: 10.5px;
+  }
+  .cinematic-showtime-card .st-time-row {
+    gap: 4px;
+    margin-top: 3px;
+  }
+  .cinematic-showtime-card .st-time-num {
+    font-size: 21px !important;
+  }
+  .cinematic-showtime-card .st-time-ampm {
+    font-size: 11px;
+  }
+  .cinematic-showtime-card .st-seam {
+    margin: 8px 0 7px !important;
+  }
+  .cinematic-showtime-card .st-meta-row {
+    margin-bottom: 9px !important;
+    gap: 4px;
+  }
+  .cinematic-showtime-card .st-avail-chip {
+    font-size: 9.5px;
+    padding: 2.5px 7px !important;
+    gap: 4px;
+  }
+  .cinematic-showtime-card .st-dot {
+    width: 4.5px;
+    height: 4.5px;
+  }
+  .cinematic-showtime-card .st-price-amount {
+    font-size: 13.5px !important;
+  }
+  .cinematic-showtime-card .st-price-label {
+    font-size: 9.5px;
+  }
+  .cinematic-showtime-card .st-cta-btn {
+    min-height: 36px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    gap: 5px;
+  }
+  .cinematic-showtime-card .st-cta-icon {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 375px) {
+  .cinematic-showtimes {
+    gap: 7px !important;
+  }
+  .cinematic-showtime-card {
+    min-height: 140px !important;
+    padding: 10px 9px 9px !important;
+    border-radius: 18px !important;
+  }
+  .cinematic-showtime-card .st-day-name {
+    font-size: 11.5px;
+  }
+  .cinematic-showtime-card .st-date-val {
+    font-size: 9.5px;
+  }
+  .cinematic-showtime-card .st-time-num {
+    font-size: 19px !important;
+  }
+  .cinematic-showtime-card .st-time-ampm {
+    font-size: 10px;
+  }
+  .cinematic-showtime-card .st-seam {
+    margin: 6px 0 5px !important;
+  }
+  .cinematic-showtime-card .st-meta-row {
+    margin-bottom: 7px !important;
+    gap: 3px;
+  }
+  .cinematic-showtime-card .st-avail-chip {
+    font-size: 8.5px;
+    padding: 2px 5px !important;
+    gap: 3px;
+  }
+  .cinematic-showtime-card .st-price-amount {
+    font-size: 12px !important;
+  }
+  .cinematic-showtime-card .st-price-label {
+    font-size: 9px;
+  }
+  .cinematic-showtime-card .st-cta-btn {
+    min-height: 33px !important;
+    font-size: 11px !important;
+    padding: 0 8px !important;
+  }
+}
+
+@media (max-width: 330px) {
+  .cinematic-showtimes {
+    gap: 5px !important;
+  }
+  .cinematic-showtime-card {
+    padding: 9px 7px 7px !important;
+    border-radius: 16px !important;
+  }
+  .cinematic-showtime-card .st-day-name {
+    font-size: 10.5px;
+  }
+  .cinematic-showtime-card .st-date-val {
+    font-size: 8.5px;
+  }
+  .cinematic-showtime-card .st-time-num {
+    font-size: 17px !important;
+  }
+  .cinematic-showtime-card .st-avail-chip {
+    font-size: 8px;
+    padding: 2px 4px !important;
+  }
+  .cinematic-showtime-card .st-cta-btn {
+    min-height: 30px !important;
+    font-size: 10px !important;
+  }
+}
+</style>
+
 @if(request()->routeIs('home'))
 <div class="cinema-home" dir="rtl">
     <div class="curtain-sequence" id="cinema-curtain" aria-hidden="true" data-state="closed">
@@ -195,7 +672,7 @@
                                     {{-- 5. Booking CTA inside Card --}}
                                     <div class="st-cta-btn" data-production-step="action">
                                         <span>احجز الآن</span>
-                                        <span class="st-cta-icon" aria-hidden="true">←</span>
+                                        <span class="st-cta-icon" aria-hidden="true">🎟️</span>
                                     </div>
                                 </a>
                             @endforeach
