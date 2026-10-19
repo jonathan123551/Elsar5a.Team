@@ -319,6 +319,7 @@ body.has-sticky-action main {
     <div id="elsar5a-stage-world" class="elsar5a-stage-world">
 
         {{-- Navbar --}}
+        @unless(request()->routeIs('admin.scanner'))
         <header class="site-header border-b border-white/10 bg-black/40 backdrop-blur sticky top-0 z-40">
             <div class="site-header-inner max-w-5xl mx-auto px-3 sm:px-4 flex items-center justify-between gap-2">
 
@@ -366,13 +367,15 @@ body.has-sticky-action main {
 
             </div>
         </header>
+        @endunless
 
 
     {{-- المحتوى الرئيسي --}}
-    <main class="@yield('main_class', 'max-w-5xl mx-auto px-4 py-6 md:py-10')">
+    <main class="@yield('main_class', request()->routeIs('admin.scanner') ? 'w-full p-0 m-0' : 'max-w-5xl mx-auto px-4 py-6 md:py-10')">
         @yield('content')
     </main>
 
+    @unless(request()->routeIs('admin.scanner'))
     {{-- ================= Footer =================
          Compact, elegant, centered closing footer.
          Presents a restrained closing message with subtle typographic hierarchy,
@@ -477,6 +480,7 @@ body.has-sticky-action main {
             </div>
         </div>
     </footer>
+    @endunless
     </div> {{-- /#elsar5a-stage-world --}}
 
     {{--

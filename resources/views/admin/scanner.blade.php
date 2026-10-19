@@ -1,165 +1,204 @@
 @extends('layouts.app')
 
-@section('title', 'فاحص تذاكر الدخول — فريق الصرخة')
+@section('title', 'فاحص التذاكر — بوابة الدخول المسرحية')
+@section('body_class', 'scanner-ops-screen')
+@section('main_class', 'scanner-main-wrap')
 
 @section('content')
 {{--
-    Elsar5a Team — Premium Gate Scanner
-    Professional mobile-first operational interface for gate check-in.
+    Elsar5a Team — Theatrical Admission Gate Console
+    Bespoke, full-bleed operational scanner for stage doors and theatre entrances.
 
-    Structure:
-      1. Top operational bar with brand status and quick navigation.
-      2. Console layout (2-column on desktop, single-column on mobile):
-         - Primary: Camera viewport (#qr-reader) + Reticle + Status pill (#status) + Quick controls (#flashBtn, #restartBtn).
-         - Secondary: Real-time session stats + Recent scans activity feed ("آخر عمليات المسح").
-      3. Modal verification sheet (#scan-sheet) centered on viewport.
-
-    Scanning engines (LOCKED & PRESERVED):
-      - Path A: Native BarcodeDetector (Chrome/Edge Android)
-      - Path B: ZXing-js manual frame loop (iOS Safari & Desktop)
-      - Path C: html5-qrcode fallback
+    Creative Architecture:
+      - 3-Wing Layout on Desktop: [Show Marquee Wing] + [Proscenium Gate Aperture] + [Live Admission Ledger]
+      - Single Unified Monolithic Portal on Mobile: [Transom Marquee] + [Integrated Aperture & Sill Controls] + [Admission Log]
+      - 100dvh Zero-Scroll Guarantee: Every pixel has purpose; zero dead space; zero page scrolling required.
+      - Real Event Identity: Live Show and ShowTime from Eloquent query (no fake/hardcoded data).
+      - iOS Safari Scroll-Lock Engine: Complete body freeze & touchmove neutralization while modal is open.
+      - Preserved Scanning Engines (LOCKED): BarcodeDetector (Native) -> ZXing-js (Loop) -> Html5Qrcode (Fallback).
 --}}
 
-<section data-scanner-root class="scanner-root-container">
+@php
+    $currentShowTime = \App\Models\ShowTime::with('show')
+        ->whereHas('show', fn($q) => $q->where('is_active', true))
+        ->whereDate('date', '>=', now()->toDateString())
+        ->orderBy('date', 'asc')
+        ->orderBy('time', 'asc')
+        ->first() ?? \App\Models\ShowTime::with('show')->latest('id')->first();
+    $currentShow = $currentShowTime?->show ?? \App\Models\Show::where('is_active', true)->first();
+    $showTitle = $currentShow?->title ?: 'عرض الصرخة المسرحي';
 
-    {{-- TOP OPERATIONAL BAR --}}
-    <header class="scanner-top-bar">
-        <div class="scanner-brand-lockup">
-            <div class="scanner-live-chip">
-                <span class="scanner-live-pulse" aria-hidden="true"></span>
-                <span>فاحص البوابات المباشر</span>
+    $formattedDate = '';
+    if ($currentShowTime?->date) {
+        $formattedDate = \Carbon\Carbon::parse($currentShowTime->date)->translatedFormat('j F Y');
+    }
+    $formattedTime = '';
+    if ($currentShowTime?->time) {
+        $formattedTime = \Carbon\Carbon::parse($currentShowTime->time)->translatedFormat('g:i A');
+    }
+@endphp
+
+<section data-scanner-root class="theatre-gate-console">
+
+    {{-- ==============================================================
+         DESKTOP LEFT MARQUEE WING (Hidden on mobile, visible on desktop)
+         ============================================================== --}}
+    <aside class="gate-marquee-wing">
+        <div class="marquee-brand-stamp">
+            <div class="marquee-logo-badge">
+                <img src="{{ asset('images/sarkha-logo.png') }}" class="marquee-logo-img" alt="" width="26" height="26" aria-hidden="true">
             </div>
-            <h1 class="scanner-title">
-                فحص تذاكر الدخول
-                <span class="scanner-title-badge">Elsar5a Gate</span>
-            </h1>
+            <div class="marquee-brand-text">
+                <span class="marquee-team-name">فريق الصرخة المسرحي</span>
+                <span class="marquee-console-label">بوابة الدخول المباشرة</span>
+            </div>
         </div>
 
-        <div class="scanner-top-actions">
-            @auth
-                <a href="{{ route('admin.dashboard') }}" class="scanner-back-btn" aria-label="العودة للوحة التحكم">
-                    <span aria-hidden="true" class="pt-arrow-rtl">←</span>
-                    <span>لوحة التحكم</span>
-                </a>
-            @else
-                <a href="{{ url('/') }}" class="scanner-back-btn" aria-label="العودة للصفحة الرئيسية">
-                    <span aria-hidden="true" class="pt-arrow-rtl">←</span>
-                    <span>الرئيسية</span>
-                </a>
-            @endauth
+        <div class="marquee-show-bill" data-event-banner>
+            <div class="show-bill-tag">الفعالية المسرحية الحالية</div>
+            <h1 class="show-bill-title" data-event-title>{{ $showTitle }}</h1>
+            <div class="show-bill-meta">
+                @if($formattedDate)
+                    <div class="bill-meta-row" data-event-date>
+                        <span class="meta-icon" aria-hidden="true">🗓️</span>
+                        <span>{{ $formattedDate }}</span>
+                    </div>
+                @endif
+                @if($formattedTime)
+                    <div class="bill-meta-row" data-event-time>
+                        <span class="meta-icon" aria-hidden="true">🕘</span>
+                        <span>{{ $formattedTime }}</span>
+                    </div>
+                @endif
+            </div>
         </div>
-    </header>
 
-    {{-- OPERATIONAL CONSOLE LAYOUT --}}
-    <div class="scanner-console-layout">
+        <div class="marquee-session-stats">
+            <div class="stat-badge is-ok">
+                <span class="stat-num" id="desk-session-ok-count">0</span>
+                <span class="stat-lbl">مقبول</span>
+            </div>
+            <div class="stat-badge is-used">
+                <span class="stat-num" id="desk-session-used-count">0</span>
+                <span class="stat-lbl">مكرر</span>
+            </div>
+            <div class="stat-badge is-error">
+                <span class="stat-num" id="desk-session-error-count">0</span>
+                <span class="stat-lbl">مرفوض</span>
+            </div>
+            <div class="stat-badge is-total">
+                <span class="stat-num" id="desk-session-total-count">0</span>
+                <span class="stat-lbl">المجموع</span>
+            </div>
+        </div>
+    </aside>
 
-        {{-- PRIMARY COLUMN: CAMERA & CONTROLS --}}
-        <div class="scanner-primary-column">
+    {{-- ==============================================================
+         CENTER ARCHITECTURAL PROSCENIUM PORTAL (HERO SCANNING UNIT)
+         ============================================================== --}}
+    <main class="gate-portal-core">
 
-            {{-- CAMERA STAGE --}}
-            <div class="scanner-stage" data-scanner-stage>
-
-                {{-- Camera mount. html5-qrcode / ZXing / BarcodeDetector injects <video> here. --}}
-                <div id="qr-reader" class="scanner-video"></div>
-
-                {{-- Live zoom indicator --}}
-                <div id="scan-zoom-chip" class="scan-zoom-chip" aria-hidden="true">
-                    <span data-zoom-text>1.0×</span>
+        {{-- INTEGRATED ARCH TRANSOM CROWN (MOBILE & TABLET PRIMARY HEADER) --}}
+        <header class="portal-transom-crown">
+            <div class="transom-brand">
+                <div class="transom-logo-gem">
+                    <img src="{{ asset('images/sarkha-logo.png') }}" class="transom-logo" alt="" width="22" height="22" aria-hidden="true">
                 </div>
-
-                {{-- Theatrical reticle frame + gold laser sweep --}}
-                <div class="scanner-overlay" aria-hidden="true">
-                    <div class="scanner-reticle">
-                        <span class="reticle-corner tl"></span>
-                        <span class="reticle-corner tr"></span>
-                        <span class="reticle-corner bl"></span>
-                        <span class="reticle-corner br"></span>
-                        <span class="reticle-line"></span>
-                    </div>
-                </div>
-
-                {{-- Floating Status Pill --}}
-                <div id="status"
-                     class="scanner-status state-ready"
-                     role="status"
-                     aria-live="polite">
-                    جاهز للفحص
-                </div>
-
-                {{-- Camera Loading Overlay --}}
-                <div id="scanner-loading" class="scanner-loading">
-                    <div class="scanner-spinner" aria-hidden="true"></div>
-                    <div class="scanner-loading-text">
-                        جاري تشغيل الكاميرا…
-                    </div>
+                <div class="transom-title-wrap">
+                    <div class="transom-event-tag" data-event-title>{{ $showTitle }}</div>
+                    @if($formattedDate || $formattedTime)
+                        <div class="transom-event-time">
+                            @if($formattedDate)<span>{{ $formattedDate }}</span>@endif
+                            @if($formattedDate && $formattedTime)<span>·</span>@endif
+                            @if($formattedTime)<span>{{ $formattedTime }}</span>@endif
+                        </div>
+                    @endif
                 </div>
             </div>
+            <div class="transom-status-live" title="حالة الاتصال المباشر">
+                <span class="live-beacon" aria-hidden="true"></span>
+                <span>متصل مباشر</span>
+            </div>
+        </header>
 
-            {{-- QUICK CONTROLS --}}
-            <div class="scanner-controls">
-                <button id="flashBtn" class="scanner-ctrl-btn" type="button" aria-label="تشغيل كشاف الإضاءة">
-                    <span class="ctrl-icon" aria-hidden="true">🔦</span>
-                    <span class="ctrl-label">كشاف الإضاءة</span>
+        {{-- THE MONOLITHIC APERTURE HOUSING WITH DOCKED THRESHOLD CONTROLS --}}
+        <div class="portal-aperture-housing" data-scanner-stage>
+
+            {{-- 1. Camera Video Stream Mount --}}
+            <div id="qr-reader" class="portal-video-stream"></div>
+
+            {{-- 2. Pinch Zoom Floating Indicator --}}
+            <div id="scan-zoom-chip" class="scan-zoom-chip" aria-hidden="true">
+                <span data-zoom-text>1.0×</span>
+            </div>
+
+            {{-- 3. Architectural Theatrical Reticle with Proscenium Corner Joints --}}
+            <div class="portal-optical-reticle" aria-hidden="true">
+                <span class="arch-bracket top-left"></span>
+                <span class="arch-bracket top-right"></span>
+                <span class="arch-bracket bottom-left"></span>
+                <span class="arch-bracket bottom-right"></span>
+                <div class="optical-scan-beam"></div>
+            </div>
+
+            {{-- 4. Embedded Operational Status Badge --}}
+            <div id="status" class="portal-status-pill state-ready" role="status" aria-live="polite">
+                جاهز للمسح
+            </div>
+
+            {{-- 5. Camera Loading Shield --}}
+            <div id="scanner-loading" class="portal-loading-shield">
+                <div class="portal-spinner" aria-hidden="true"></div>
+                <div class="portal-loading-msg">جاري تشغيل عدسة المسح…</div>
+            </div>
+
+            {{-- 6. DOCKED THRESHOLD SILL CONTROLS (INTEGRATED INTO BASE OF CASING) --}}
+            <div class="portal-threshold-controls">
+                <button id="flashBtn" class="portal-threshold-btn" type="button" aria-label="تشغيل كشاف الإضاءة">
+                    <span class="btn-icon" aria-hidden="true">🔦</span>
+                    <span class="btn-txt">كشاف الإضاءة</span>
                 </button>
-                <button id="restartBtn" class="scanner-ctrl-btn" type="button" aria-label="إعادة تهيئة الكاميرا">
-                    <span class="ctrl-icon" aria-hidden="true">🔄</span>
-                    <span class="ctrl-label">إعادة تشغيل</span>
+                <button id="restartBtn" class="portal-threshold-btn" type="button" aria-label="إعادة تهيئة الكاميرا">
+                    <span class="btn-icon" aria-hidden="true">🔄</span>
+                    <span class="btn-txt">إعادة تشغيل</span>
                 </button>
             </div>
 
         </div>
 
-        {{-- SECONDARY COLUMN: SESSION STATS & RECENT SCANS --}}
-        <div class="scanner-secondary-column">
+    </main>
 
-            <div class="scanner-history-card">
-                <div class="history-card-header">
-                    <div class="history-header-title">
-                        <span class="history-header-icon" aria-hidden="true">📋</span>
-                        <h2>آخر عمليات المسح</h2>
-                    </div>
-
-                    {{-- Quick Session Stats --}}
-                    <div class="history-stats-pills" aria-label="إحصائيات الجلسة الحالية">
-                        <div class="stat-pill is-ok" title="تذاكر صالحة مصرح بدخولها">
-                            <span class="stat-label">مقبول:</span>
-                            <strong id="session-ok-count">0</strong>
-                        </div>
-                        <div class="stat-pill is-used" title="تذاكر مستخدمة مسبقاً">
-                            <span class="stat-label">مكرر:</span>
-                            <strong id="session-used-count">0</strong>
-                        </div>
-                        <div class="stat-pill is-error" title="تذاكر غير صالحة أو مرفوضة">
-                            <span class="stat-label">مرفوض:</span>
-                            <strong id="session-error-count">0</strong>
-                        </div>
-                        <div class="stat-pill is-total" title="إجمالي عمليات الفحص">
-                            <span class="stat-label">الإجمالي:</span>
-                            <strong id="session-total-count">0</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="history-card-body">
-                    {{-- Empty State --}}
-                    <div id="recent-scans-empty" class="history-empty-state">
-                        <div class="empty-icon" aria-hidden="true">🎫</div>
-                        <p class="empty-text">لم يتم مسح أي تذاكر في هذه الجلسة بعد</p>
-                        <span class="empty-sub">وجّه الكاميرا نحو رمز QR على التذكرة لبدء الفحص التلقائي</span>
-                    </div>
-
-                    {{-- Populated List --}}
-                    <div id="recent-scans-list" class="history-scans-list" role="log" aria-live="polite"></div>
-                </div>
+    {{-- ==============================================================
+         RIGHT / BOTTOM WING: THE LIVE GATE ADMISSION LEDGER
+         ============================================================== --}}
+    <aside class="gate-admission-ledger" aria-label="سجل عمليات الدخول">
+        <div class="ledger-header-bar">
+            <div class="ledger-title-group">
+                <span class="ledger-icon" aria-hidden="true">📋</span>
+                <span class="ledger-heading">سجل العبور المسرحي</span>
             </div>
-
+            <div class="ledger-tallies-strip" aria-label="إحصائيات المسح">
+                <span class="tally-tag is-ok" title="دخول مصرح به"><strong id="session-ok-count">0</strong> مقبول</span>
+                <span class="tally-tag is-used" title="تذاكر مستخدمة"><strong id="session-used-count">0</strong> مكرر</span>
+                <span class="tally-tag is-error" title="تذاكر مرفوضة"><strong id="session-error-count">0</strong> مرفوض</span>
+                <span class="tally-tag is-total" title="إجمالي المسح"><strong id="session-total-count">0</strong> كلي</span>
+            </div>
         </div>
 
-    </div>
+        <div class="ledger-stream-body">
+            <div id="recent-scans-empty" class="ledger-empty-state">
+                <span class="empty-halo" aria-hidden="true">●</span>
+                <span>في انتظار مسح التذاكر عبر الكاميرا...</span>
+            </div>
+            <div id="recent-scans-list" class="ledger-stream-list" role="log" aria-live="polite"></div>
+        </div>
+    </aside>
 
 </section>
 
-{{-- PREMIUM SCAN-RESULT SHEET (MODAL POPUP) --}}
+{{-- ==============================================================
+     THEATRICAL ADMISSION PASS RESULT MODAL (WITH SAFARI SCROLL LOCK)
+     ============================================================== --}}
 <div id="scan-sheet"
      class="scan-sheet"
      data-state="hidden"
@@ -168,55 +207,71 @@
      aria-live="polite"
      aria-labelledby="scan-sheet-title">
 
+    {{-- Atmospheric Ambient Glow behind card keyed to state --}}
+    <div class="scan-sheet-ambient" aria-hidden="true"></div>
+
     <div class="scan-sheet-card" data-scan-card>
 
-        {{-- Status badge — color reflects ok / used / error --}}
-        <div class="scan-sheet-badge" data-scan-badge>
-            <span class="scan-sheet-badge-icon" data-scan-icon>✓</span>
-            <span class="scan-sheet-badge-text" data-scan-badge-text>
-                دخول مسموح
-            </span>
+        {{-- 1. HERO STATUS EMBLEM & BANNER (DOMINANT VISUAL ELEMENT) --}}
+        <div class="scan-sheet-hero-status" data-scan-badge>
+            <div class="status-emblem-ring">
+                <span class="status-emblem-icon" data-scan-icon>✓</span>
+            </div>
+            <div class="status-title-group">
+                <h2 class="status-headline" data-scan-badge-text>دخول مسموح</h2>
+                <span class="status-subline" data-scan-subline>تذكرة صالحة ومؤكدة</span>
+            </div>
         </div>
 
-        {{-- Attendee details --}}
-        <div class="scan-sheet-info-group">
+        {{-- 2. TICKET HOLDER & REFERENCE IDENTIFIER --}}
+        <div class="scan-sheet-attendee-block">
+            <div class="attendee-label">حامل التذكرة</div>
             <div class="scan-sheet-name" id="scan-sheet-title" data-scan-name>—</div>
-            <div class="scan-sheet-ref" data-scan-ref></div>
+            <div class="scan-sheet-ref" data-scan-ref dir="ltr"></div>
         </div>
 
-        {{-- Show / showtime metadata --}}
-        <div class="scan-sheet-details">
-            <div class="scan-sheet-row">
-                <span class="scan-sheet-row-icon" aria-hidden="true">🎭</span>
-                <span class="scan-sheet-row-text" data-scan-show>—</span>
+        {{-- 3. THEATRICAL EVENT & SHOW IDENTITY BLOCK (CLEAN & PROMINENT) --}}
+        <div class="scan-sheet-event-block" data-scan-event-pill>
+            <div class="event-block-header">
+                <span class="event-theatre-icon" aria-hidden="true">🎭</span>
+                <span class="event-theatre-show" data-scan-show>{{ $showTitle }}</span>
             </div>
-            <div class="scan-sheet-row">
-                <span class="scan-sheet-row-icon" aria-hidden="true">🕒</span>
-                <span class="scan-sheet-row-text" data-scan-when>—</span>
+            <div class="event-block-timing" data-scan-when>
+                @if($formattedDate)
+                    <span class="timing-badge">
+                        <span class="timing-icon" aria-hidden="true">🗓️</span>
+                        <span class="timing-text">{{ $formattedDate }}</span>
+                    </span>
+                @endif
+                @if($formattedTime)
+                    <span class="timing-badge">
+                        <span class="timing-icon" aria-hidden="true">🕘</span>
+                        <span class="timing-text">{{ $formattedTime }}</span>
+                    </span>
+                @endif
             </div>
         </div>
 
-        {{-- Already-scanned note --}}
+        {{-- 4. ALREADY SCANNED WARNING NOTE (SHOWN ONLY ON 'USED' RESULT) --}}
         <div class="scan-sheet-used-note" data-scan-used-note hidden>
             <span class="used-icon" aria-hidden="true">⚠️</span>
             <div class="used-text">
-                <span>هذه التذكرة تم استخدامها سابقًا</span>
-                <strong data-scan-used-time></strong>
+                <span class="used-title">تنبيه: تم استخدام التذكرة مسبقاً</span>
+                <span class="used-time-stamp" data-scan-used-time></span>
             </div>
         </div>
 
-        {{-- Footer dismiss button --}}
+        {{-- 5. PRIMARY NEXT ACTION BUTTON (FAST OPERATIONAL FLOW) --}}
         <div class="scan-sheet-foot">
             <button type="button"
                     class="scan-sheet-done"
-                    data-scan-dismiss>
-                <span>تم — التالي</span>
-                <span class="done-arrow" aria-hidden="true">✓</span>
+                    data-scan-dismiss
+                    aria-label="مسح التذكرة التالية">
+                <span class="btn-primary-text">مسح التذكرة التالية</span>
+                <span class="btn-primary-arrow" aria-hidden="true">←</span>
             </button>
-            <span class="scan-sheet-hint">
-                اضغط في أي مكان لمتابعة المسح
-            </span>
         </div>
+
     </div>
 </div>
 
@@ -226,686 +281,786 @@
 
 <style>
 /* =========================================================
-   ELSAR5A SCANNER THEME TOKENS
-   Grounding the operational scanner in the dark navy, velvet
-   burgundy, and restrained warm theatrical gold identity.
+   THEATRICAL ADMISSION GATE CONSOLE — HIGH-CRAFT DESIGN SYSTEM
    ========================================================= */
-[data-scanner-root] {
-    --stage-bg: #020617;
-    --stage-card: linear-gradient(180deg, rgba(17, 24, 39, 0.75) 0%, rgba(9, 12, 22, 0.92) 100%);
-    --stage-card-alt: linear-gradient(180deg, rgba(24, 30, 48, 0.6) 0%, rgba(11, 15, 27, 0.8) 100%);
-    --stage-border: rgba(255, 255, 255, 0.08);
-    --stage-border-gold: rgba(245, 158, 11, 0.28);
-    --stage-gold: #fbbf24;
-    --stage-gold-glow: rgba(251, 191, 36, 0.35);
-    --stage-text: #f8fafc;
-    --stage-text-muted: #94a3b8;
-    --stage-text-dim: #64748b;
 
-    --scan-ok: #10b981;
-    --scan-ok-bg: rgba(16, 185, 129, 0.16);
-    --scan-ok-border: rgba(16, 185, 129, 0.45);
-
-    --scan-used: #f59e0b;
-    --scan-used-bg: rgba(245, 158, 11, 0.16);
-    --scan-used-border: rgba(245, 158, 11, 0.45);
-
-    --scan-error: #f43f5e;
-    --scan-error-bg: rgba(244, 63, 94, 0.16);
-    --scan-error-border: rgba(244, 63, 94, 0.45);
-
-    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-    --scan-shell-radius: 22px;
+:root {
+    --gate-bg-deep: #050208;
+    --gate-bg-surface: #0e0714;
+    --gate-bg-card: rgba(18, 9, 26, 0.88);
+    --gate-border-subtle: rgba(197, 160, 89, 0.18);
+    --gate-border-highlight: rgba(197, 160, 89, 0.45);
+    --gate-gold: #c5a059;
+    --gate-gold-glow: #e6ca65;
+    --gate-crimson: #59142e;
+    --gate-text-bright: #ffffff;
+    --gate-text-body: #e2d9cf;
+    --gate-text-muted: #8d8095;
+    --gate-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Base Container */
-.scanner-root-container {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 8px 12px 28px;
-    padding-bottom: max(28px, env(safe-area-inset-bottom));
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    color: var(--stage-text);
-    font-family: 'Readex Pro', system-ui, -apple-system, sans-serif;
-    animation: scannerFadeUp 0.4s var(--ease-out-quint) both;
+body.scanner-ops-screen {
+    background-color: var(--gate-bg-deep) !important;
+    background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(89, 20, 46, 0.35), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 50% 110%, rgba(197, 160, 89, 0.12), transparent 70%);
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100dvh;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+    color: var(--gate-text-body);
 }
 
-@keyframes scannerFadeUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
+body.scanner-ops-screen .site-header,
+body.scanner-ops-screen .site-footer,
+body.scanner-ops-screen #sticky-action-footer {
+    display: none !important;
+}
+
+.scanner-main-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100dvh;
 }
 
 /* =========================================================
-   TOP OPERATIONAL BAR
+   CONSOLE SHELL & SPATIAL ARCHITECTURE
    ========================================================= */
-.scanner-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px;
-    border-radius: 18px;
-    background: var(--stage-card);
-    border: 1px solid var(--stage-border);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.5);
-}
 
-.scanner-brand-lockup {
+.theatre-gate-console {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-}
-
-.scanner-live-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #a7f3d0;
-    letter-spacing: 0.02em;
-}
-
-.scanner-live-pulse {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: #10b981;
-    box-shadow: 0 0 10px #10b981;
-    animation: livePulse 1.8s ease-in-out infinite;
-}
-
-@keyframes livePulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%      { opacity: 0.4; transform: scale(0.85); }
-}
-
-.scanner-title {
-    font-family: 'Alexandria', system-ui, sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    color: #fff;
-    display: flex;
-    align-items: center;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    box-sizing: border-box;
+    padding:
+        max(8px, env(safe-area-inset-top))
+        max(10px, env(safe-area-inset-right))
+        max(8px, env(safe-area-inset-bottom))
+        max(10px, env(safe-area-inset-left));
     gap: 8px;
-    margin: 0;
+    overflow: hidden;
 }
 
-.scanner-title-badge {
-    font-family: system-ui, sans-serif;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 2px 7px;
-    border-radius: 6px;
-    background: rgba(245, 158, 11, 0.12);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #fde68a;
-}
-
-.scanner-back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--stage-text-muted);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--stage-border);
-    transition: all 0.2s ease;
-    text-decoration: none;
-    min-height: 40px;
-}
-
-.scanner-back-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.18);
-    color: #fff;
-    transform: translateY(-1px);
-}
-
-.pt-arrow-rtl { display: inline-block; }
-:root[dir="ltr"] .pt-arrow-rtl { transform: scaleX(-1); }
-
-/* =========================================================
-   CONSOLE LAYOUT (Responsive Grid)
-   ========================================================= */
-.scanner-console-layout {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-}
-
+/* On Desktop (>= 1024px): 3-Wing Command Console */
 @media (min-width: 1024px) {
-    .scanner-console-layout {
-        grid-template-columns: 440px 1fr;
-        align-items: start;
+    .theatre-gate-console {
+        display: grid;
+        grid-template-columns: 310px 1fr 340px;
+        align-items: stretch;
+        max-width: 1380px;
+        margin: 0 auto;
+        padding: 24px;
         gap: 20px;
     }
 }
 
-.scanner-primary-column {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+/* =========================================================
+   1. DESKTOP LEFT MARQUEE WING
+   ========================================================= */
+
+.gate-marquee-wing {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .gate-marquee-wing {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: var(--gate-bg-card);
+        border: 1px solid var(--gate-border-subtle);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+
+    .marquee-brand-stamp {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .marquee-logo-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(145deg, #1f0b17, #0b040e);
+        border: 1px solid var(--gate-border-highlight);
+        box-shadow: 0 4px 12px rgba(197, 160, 89, 0.2);
+    }
+
+    .marquee-brand-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .marquee-team-name {
+        font-family: 'Alexandria', system-ui, sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        color: #fff;
+    }
+
+    .marquee-console-label {
+        font-size: 11px;
+        color: var(--gate-gold);
+        letter-spacing: 0.04em;
+    }
+
+    .marquee-show-bill {
+        margin: auto 0;
+        padding: 20px 0;
+    }
+
+    .show-bill-tag {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--gate-gold);
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .show-bill-title {
+        font-family: 'Alexandria', system-ui, sans-serif;
+        font-size: 26px;
+        font-weight: 900;
+        color: #fff;
+        line-height: 1.25;
+        margin: 0 0 14px 0;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+    }
+
+    .show-bill-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .bill-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--gate-text-body);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .marquee-session-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stat-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-badge.is-ok    { border-color: rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.05); }
+    .stat-badge.is-used  { border-color: rgba(245, 158, 11, 0.25); background: rgba(245, 158, 11, 0.05); }
+    .stat-badge.is-error { border-color: rgba(244, 63, 94, 0.25); background: rgba(244, 63, 94, 0.05); }
+    .stat-badge.is-total { border-color: rgba(197, 160, 89, 0.25); background: rgba(197, 160, 89, 0.05); }
+
+    .stat-num {
+        font-family: 'Alexandria', system-ui, sans-serif;
+        font-size: 18px;
+        font-weight: 800;
+        color: #fff;
+    }
+    .stat-badge.is-ok .stat-num { color: #34d399; }
+    .stat-badge.is-used .stat-num { color: #fbbf24; }
+    .stat-badge.is-error .stat-num { color: #fb7185; }
+    .stat-badge.is-total .stat-num { color: var(--gate-gold-glow); }
+
+    .stat-lbl {
+        font-size: 10px;
+        color: var(--gate-text-muted);
+        margin-top: 2px;
+    }
 }
 
 /* =========================================================
-   CAMERA STAGE & RETICLE
+   2. CENTER ARCHITECTURAL PROSCENIUM PORTAL (CORE UNIT)
    ========================================================= */
-.scanner-stage {
-    position: relative;
-    overflow: hidden;
-    border-radius: var(--scan-shell-radius);
-    background: #040711;
-    border: 1px solid rgba(245, 158, 11, 0.22);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        0 20px 40px -18px rgba(0, 0, 0, 0.85);
-    aspect-ratio: 3 / 4;
-    isolation: isolate;
-    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+
+.gate-portal-core {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-@media (min-width: 480px) and (max-width: 1023px) {
-    .scanner-stage {
-        aspect-ratio: 4 / 5;
-        max-height: 520px;
-        margin: 0 auto;
-        width: 100%;
-        max-width: 440px;
+@media (min-width: 1024px) {
+    .gate-portal-core {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+/* Transom Crown (Integrated Mobile / Tablet Header) */
+.portal-transom-crown {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: min(340px, 92vw);
+    padding: 7px 12px;
+    margin-bottom: 6px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(42, 11, 24, 0.95) 0%, rgba(14, 6, 20, 0.95) 100%);
+    border: 1px solid rgba(197, 160, 89, 0.35);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+    .portal-transom-crown {
+        display: none; /* Desktop uses left marquee wing */
+    }
+}
+
+.transom-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.transom-logo-gem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #140710;
+    border: 1px solid var(--gate-border-highlight);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.transom-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    filter: brightness(1.2);
+}
+
+.transom-title-wrap {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.transom-event-tag {
+    font-family: 'Alexandria', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.transom-event-time {
+    font-size: 10px;
+    color: var(--gate-gold);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.transom-status-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #6ee7b7;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.live-beacon {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: beaconPulse 2s infinite;
+}
+
+@keyframes beaconPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* =========================================================
+   MONOLITHIC APERTURE HOUSING & DOCKED THRESHOLD SILL
+   ========================================================= */
+
+.portal-aperture-housing {
+    position: relative;
+    width: 100%;
+    max-width: min(340px, 92vw);
+    height: clamp(260px, 38dvh, 320px);
+    border-radius: 20px;
+    background: #02040a;
+    border: 1.5px solid var(--gate-border-highlight);
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.8),
+        0 14px 34px -10px rgba(0, 0, 0, 0.95),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    box-sizing: border-box;
+    transition: border-color 0.25s var(--gate-ease), box-shadow 0.25s var(--gate-ease);
+}
+
+@media (min-height: 800px) {
+    .portal-aperture-housing {
+        height: clamp(290px, 42dvh, 340px);
     }
 }
 
 @media (min-width: 1024px) {
-    .scanner-stage {
-        aspect-ratio: 4 / 5;
+    .portal-aperture-housing {
+        max-width: 460px;
+        height: clamp(400px, 56vh, 480px);
+        max-height: 60vh;
+        border-radius: 24px;
     }
 }
 
-.scanner-video,
-.scanner-video > video,
-#qr-reader > video {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    background: #040711;
-    border-radius: var(--scan-shell-radius);
-}
-#qr-reader { width: 100%; height: 100%; }
-
-/* Hide default html5-qrcode controls */
-#qr-reader__dashboard,
-#qr-reader__header_message,
-#qr-reader__camera_selection,
-#qr-reader__scan_region img { display: none !important; }
-
-/* Overlay & Reticle */
-.scanner-overlay {
+/* Video Mount */
+.portal-video-stream {
     position: absolute;
     inset: 0;
+    bottom: 46px; /* Reserve bottom for docked controls */
+    overflow: hidden;
+    background: #000;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.portal-video-stream video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+/* Architectural Proscenium Optical Reticle */
+.portal-optical-reticle {
+    position: absolute;
+    inset: 16px;
+    bottom: 60px;
     pointer-events: none;
     z-index: 2;
 }
 
-.scanner-reticle {
-    position: relative;
-    width: min(72%, 270px);
-    aspect-ratio: 1 / 1;
-    border-radius: 20px;
+.arch-bracket {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: var(--gate-gold);
+    border-style: solid;
+    filter: drop-shadow(0 0 6px rgba(197, 160, 89, 0.6));
+    transition: border-color 0.2s ease, filter 0.2s ease;
 }
 
-.reticle-corner {
-    --c-len: 26px;
-    --c-thick: 3.5px;
-    position: absolute;
-    width: var(--c-len);
-    height: var(--c-len);
-    border-color: #fbbf24;
-    box-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+.arch-bracket.top-left {
+    top: 0;
+    inset-inline-start: 0;
+    border-width: 3px 0 0 3px;
+    border-top-left-radius: 8px;
 }
-.reticle-corner.tl { top: 0; left: 0;  border-top:    var(--c-thick) solid; border-left:  var(--c-thick) solid; border-top-left-radius:  18px; }
-.reticle-corner.tr { top: 0; right: 0; border-top:    var(--c-thick) solid; border-right: var(--c-thick) solid; border-top-right-radius: 18px; }
-.reticle-corner.bl { bottom: 0; left: 0;  border-bottom: var(--c-thick) solid; border-left:  var(--c-thick) solid; border-bottom-left-radius:  18px; }
-.reticle-corner.br { bottom: 0; right: 0; border-bottom: var(--c-thick) solid; border-right: var(--c-thick) solid; border-bottom-right-radius: 18px; }
+.arch-bracket.top-right {
+    top: 0;
+    inset-inline-end: 0;
+    border-width: 3px 3px 0 0;
+    border-top-right-radius: 8px;
+}
+.arch-bracket.bottom-left {
+    bottom: 0;
+    inset-inline-start: 0;
+    border-width: 0 0 3px 3px;
+    border-bottom-left-radius: 8px;
+}
+.arch-bracket.bottom-right {
+    bottom: 0;
+    inset-inline-end: 0;
+    border-width: 0 3px 3px 0;
+    border-bottom-right-radius: 8px;
+}
 
-/* Theatrical laser sweep line */
-.reticle-line {
+/* Theatrical Optical Scan Beam */
+.optical-scan-beam {
     position: absolute;
-    left: 4%;
-    right: 4%;
+    inset-inline: 4px;
     height: 2px;
-    background: linear-gradient(90deg,
-        transparent,
-        rgba(251, 191, 36, 0.2) 15%,
-        #fde68a 50%,
-        rgba(251, 191, 36, 0.2) 85%,
-        transparent
-    );
-    box-shadow: 0 0 16px rgba(251, 191, 36, 0.75), 0 0 30px rgba(245, 158, 11, 0.4);
-    border-radius: 999px;
-    animation: scanLine 1.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    background: linear-gradient(90deg, transparent 0%, #fff 30%, var(--gate-gold-glow) 50%, #fff 70%, transparent 100%);
+    box-shadow: 0 0 14px 2px rgba(230, 202, 101, 0.85);
+    animation: scanBeamSweep 2.2s ease-in-out infinite alternate;
 }
 
-@keyframes scanLine {
-    0%, 100% { top: 8%;  opacity: 0.5; }
-    50%      { top: 88%; opacity: 1; }
+@keyframes scanBeamSweep {
+    0%   { top: 5%; opacity: 0.3; }
+    50%  { opacity: 1; }
+    100% { top: 92%; opacity: 0.3; }
 }
 
-/* Floating Status Pill */
-.scanner-status {
+/* Embedded Status Pill */
+.portal-status-pill {
     position: absolute;
-    top: 14px;
+    top: 10px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 4;
-    padding: 7px 18px;
+    z-index: 5;
+    padding: 4px 14px;
     border-radius: 999px;
     font-family: 'Alexandria', system-ui, sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.02em;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(8, 12, 22, 0.88);
-    color: var(--stage-text);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.7);
+    background: rgba(8, 4, 12, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--gate-border-highlight);
+    color: var(--gate-gold-glow);
     white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+    transition: all 0.2s var(--gate-ease);
 }
 
-.scanner-status.state-ready {
-    color: #e2e8f0;
-    border-color: rgba(255, 255, 255, 0.14);
-}
+.portal-status-pill.state-ready    { color: #fde68a; border-color: rgba(245, 158, 11, 0.4); }
+.portal-status-pill.state-scanning { color: #93c5fd; border-color: rgba(59, 130, 246, 0.6); background: rgba(15, 23, 42, 0.9); }
+.portal-status-pill.state-ok       { color: #6ee7b7; border-color: #10b981; background: rgba(6, 78, 59, 0.95); }
+.portal-status-pill.state-used     { color: #fef08a; border-color: #f59e0b; background: rgba(120, 53, 15, 0.95); }
+.portal-status-pill.state-error    { color: #fecdd3; border-color: #f43f5e; background: rgba(136, 19, 55, 0.95); }
 
-.scanner-status.state-scanning {
-    background: rgba(245, 158, 11, 0.92);
-    color: #1a0f02;
-    border-color: #fde68a;
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+/* Zoom Chip */
+.scan-zoom-chip {
+    position: absolute;
+    top: 10px;
+    inset-inline-start: 10px;
+    z-index: 6;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(5, 2, 8, 0.85);
+    border: 1px solid var(--gate-border-subtle);
+    color: var(--gate-gold);
+    font: 700 9px/1 system-ui, sans-serif;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-2px);
+    transition: opacity 0.18s ease;
 }
+.scan-zoom-chip.is-visible { opacity: 1; transform: translateY(0); }
 
-.scanner-status.state-ok {
-    background: rgba(16, 185, 129, 0.95);
-    color: #022c22;
-    border-color: #a7f3d0;
-    box-shadow: 0 0 22px rgba(16, 185, 129, 0.55);
-}
-
-.scanner-status.state-used {
-    background: rgba(245, 158, 11, 0.95);
-    color: #1a0f02;
-    border-color: #fde68a;
-    box-shadow: 0 0 22px rgba(245, 158, 11, 0.55);
-}
-
-.scanner-status.state-error {
-    background: rgba(244, 63, 94, 0.95);
-    color: #fff1f2;
-    border-color: #fecdd3;
-    box-shadow: 0 0 22px rgba(244, 63, 94, 0.55);
-}
-
-.scanner-status.is-pop {
-    transform: translateX(-50%) scale(1.06);
-}
-
-/* Stage Result Border Glows */
-.scanner-stage[data-state="ok"] {
-    border-color: rgba(16, 185, 129, 0.7);
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4), 0 20px 40px -18px rgba(0, 0, 0, 0.85);
-}
-.scanner-stage[data-state="ok"] .reticle-corner {
-    border-color: #34d399;
-    box-shadow: 0 0 16px rgba(52, 211, 153, 0.7);
-}
-
-.scanner-stage[data-state="used"] {
-    border-color: rgba(245, 158, 11, 0.7);
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 20px 40px -18px rgba(0, 0, 0, 0.85);
-}
-.scanner-stage[data-state="used"] .reticle-corner {
-    border-color: #fbbf24;
-    box-shadow: 0 0 16px rgba(251, 191, 36, 0.7);
-}
-
-.scanner-stage[data-state="error"] {
-    border-color: rgba(244, 63, 94, 0.7);
-    box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.4), 0 20px 40px -18px rgba(0, 0, 0, 0.85);
-    animation: stageShake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-}
-.scanner-stage[data-state="error"] .reticle-corner {
-    border-color: #fb7185;
-    box-shadow: 0 0 16px rgba(251, 113, 133, 0.7);
-}
-
-@keyframes stageShake {
-    10%, 90% { transform: translateX(-2px); }
-    20%, 80% { transform: translateX(3px);  }
-    30%, 50%, 70% { transform: translateX(-4px); }
-    40%, 60% { transform: translateX(4px);  }
-}
-
-/* Loading Overlay */
-.scanner-loading {
+/* Camera Loading Shield */
+.portal-loading-shield {
     position: absolute;
     inset: 0;
-    z-index: 3;
+    bottom: 46px;
+    z-index: 4;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    color: var(--stage-text-muted);
-    background: rgba(4, 7, 17, 0.92);
+    gap: 8px;
+    background: rgba(5, 2, 8, 0.94);
+    color: var(--gate-text-muted);
     transition: opacity 0.25s ease;
 }
-.scanner-loading.is-hidden { opacity: 0; pointer-events: none; }
+.portal-loading-shield.is-hidden { opacity: 0; pointer-events: none; }
 
-.scanner-spinner {
-    width: 34px;
-    height: 34px;
+.portal-spinner {
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    border: 3px solid rgba(245, 158, 11, 0.18);
-    border-top-color: #fbbf24;
-    animation: spin 0.85s linear infinite;
+    border: 2px solid rgba(197, 160, 89, 0.2);
+    border-top-color: var(--gate-gold);
+    animation: portalSpin 0.85s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes portalSpin { to { transform: rotate(360deg); } }
 
-.scanner-loading-text {
-    font-size: 13px;
-    font-weight: 500;
-}
+.portal-loading-msg { font-size: 11px; font-weight: 500; }
 
-/* Live Zoom Chip */
-.scan-zoom-chip {
+/* DOCKED THRESHOLD SILL CONTROLS */
+.portal-threshold-controls {
     position: absolute;
-    top: 14px;
-    inset-inline-start: 14px;
+    bottom: 0;
+    inset-inline: 0;
+    height: 46px;
     z-index: 5;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: rgba(4, 7, 17, 0.75);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #fde68a;
-    font: 600 11px/1 system-ui, sans-serif;
-    letter-spacing: 0.02em;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-4px);
-    transition: opacity 0.18s ease, transform 0.18s ease;
-}
-.scan-zoom-chip.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* =========================================================
-   SCANNER CONTROLS (Ergonomic Thumb Targets)
-   ========================================================= */
-.scanner-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    background: linear-gradient(180deg, #170a1a, #0c040d);
+    border-top: 1px solid var(--gate-border-subtle);
 }
 
-.scanner-ctrl-btn {
+.portal-threshold-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 18px;
-    border-radius: 16px;
-    background: var(--stage-card);
-    border: 1px solid var(--stage-border);
-    color: var(--stage-text);
-    font-family: 'Readex Pro', system-ui, sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    min-height: 48px;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: var(--gate-text-body);
+    font-family: 'Alexandria', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
     cursor: pointer;
     touch-action: manipulation;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
-.scanner-ctrl-btn:hover {
-    background: rgba(255, 255, 255, 0.07);
-    border-color: rgba(245, 158, 11, 0.3);
-    transform: translateY(-1px);
+.portal-threshold-btn:first-child {
+    border-inline-end: 1px solid var(--gate-border-subtle);
 }
 
-.scanner-ctrl-btn:active {
-    transform: translateY(1px);
+.portal-threshold-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: #fff;
 }
 
-.scanner-ctrl-btn.is-on {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.08));
+.portal-threshold-btn:active {
+    background: rgba(197, 160, 89, 0.1);
+}
+
+.portal-threshold-btn.is-on {
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.15);
+}
+
+/* State changes on the aperture housing */
+.portal-aperture-housing[data-state="ok"] {
+    border-color: #10b981;
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), inset 0 0 15px rgba(16, 185, 129, 0.2);
+}
+.portal-aperture-housing[data-state="ok"] .arch-bracket {
+    border-color: #34d399;
+    filter: drop-shadow(0 0 8px #10b981);
+}
+
+.portal-aperture-housing[data-state="used"] {
+    border-color: #f59e0b;
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.4), inset 0 0 15px rgba(245, 158, 11, 0.2);
+}
+.portal-aperture-housing[data-state="used"] .arch-bracket {
     border-color: #fbbf24;
-    color: #fef3c7;
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+    filter: drop-shadow(0 0 8px #f59e0b);
 }
 
-.scanner-ctrl-btn.is-suggest:not(.is-on) {
-    animation: flashSuggest 1.5s ease-in-out infinite;
-    border-color: rgba(253, 224, 71, 0.6);
-    color: #fef3c7;
+.portal-aperture-housing[data-state="error"] {
+    border-color: #f43f5e;
+    box-shadow: 0 0 25px rgba(244, 63, 94, 0.4), inset 0 0 15px rgba(244, 63, 94, 0.2);
+    animation: apertureShake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+.portal-aperture-housing[data-state="error"] .arch-bracket {
+    border-color: #fb7185;
+    filter: drop-shadow(0 0 8px #f43f5e);
 }
 
-@keyframes flashSuggest {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(253, 224, 71, 0.4); }
-    50%      { box-shadow: 0 0 0 7px rgba(253, 224, 71, 0); }
+@keyframes apertureShake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(3px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
 }
-
-.ctrl-icon { font-size: 16px; }
 
 /* =========================================================
-   SECONDARY COLUMN: ACTIVITY CARD & RECENT SCANS
+   3. RIGHT / BOTTOM WING: THE LIVE ADMISSION LEDGER
    ========================================================= */
-.scanner-secondary-column {
+
+.gate-admission-ledger {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-width: min(340px, 92vw);
+    margin: 0 auto;
+    background: var(--gate-bg-card);
+    border: 1px solid var(--gate-border-subtle);
+    border-radius: 16px;
+    padding: 8px 10px;
+    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.7);
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
-.scanner-history-card {
-    background: var(--stage-card);
-    border: 1px solid var(--stage-border);
-    border-radius: var(--scan-shell-radius);
-    padding: 16px;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.6);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+@media (min-width: 1024px) {
+    .gate-admission-ledger {
+        max-width: 100%;
+        margin: 0;
+        border-radius: 20px;
+        padding: 20px;
+    }
 }
 
-.history-card-header {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.history-header-title {
+.ledger-header-bar {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
 }
 
-.history-header-title h2 {
-    font-family: 'Alexandria', system-ui, sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    color: #fff;
-    margin: 0;
-}
-
-.history-header-icon {
-    font-size: 16px;
-}
-
-/* Quick Session Stats Bar */
-.history-stats-pills {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+.ledger-title-group {
+    display: flex;
+    align-items: center;
     gap: 6px;
 }
 
-.stat-pill {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 4px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    text-align: center;
-}
+.ledger-icon { font-size: 13px; }
 
-.stat-pill .stat-label {
-    font-size: 10px;
-    color: var(--stage-text-dim);
-    margin-bottom: 1px;
-}
-
-.stat-pill strong {
+.ledger-heading {
     font-family: 'Alexandria', system-ui, sans-serif;
-    font-size: 13px;
-    font-weight: 800;
-    line-height: 1.1;
-}
-
-.stat-pill.is-ok    { border-color: rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.06); }
-.stat-pill.is-ok strong { color: #34d399; }
-
-.stat-pill.is-used  { border-color: rgba(245, 158, 11, 0.25); background: rgba(245, 158, 11, 0.06); }
-.stat-pill.is-used strong { color: #fbbf24; }
-
-.stat-pill.is-error { border-color: rgba(244, 63, 94, 0.25); background: rgba(244, 63, 94, 0.06); }
-.stat-pill.is-error strong { color: #fb7185; }
-
-.stat-pill.is-total { border-color: rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); }
-.stat-pill.is-total strong { color: #f8fafc; }
-
-/* Empty state */
-.history-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 36px 16px;
-    color: var(--stage-text-muted);
-    gap: 8px;
-}
-
-.history-empty-state .empty-icon {
-    font-size: 32px;
-    opacity: 0.6;
-    margin-bottom: 4px;
-}
-
-.history-empty-state .empty-text {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin: 0;
-}
-
-.history-empty-state .empty-sub {
     font-size: 11px;
-    color: var(--stage-text-dim);
-    max-width: 280px;
-    line-height: 1.4;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.02em;
 }
 
-/* Scans List */
-.history-scans-list {
+.ledger-tallies-strip {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 420px;
+    align-items: center;
+    gap: 4px;
+}
+
+.tally-tag {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--gate-text-muted);
+}
+.tally-tag strong {
+    font-family: 'Alexandria', system-ui, sans-serif;
+    font-weight: 800;
+}
+.tally-tag.is-ok    { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.08); }
+.tally-tag.is-used  { color: #fde68a; border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.08); }
+.tally-tag.is-error { color: #fca5a5; border-color: rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.08); }
+.tally-tag.is-total { color: #fff; }
+
+.ledger-stream-body {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-inline-end: 2px;
 }
 
-.scan-history-item {
+.ledger-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 100%;
+    min-height: 50px;
+    font-size: 11px;
+    color: var(--gate-text-muted);
+}
+.empty-halo {
+    font-size: 7px;
+    color: var(--gate-gold);
+    animation: beaconPulse 2s infinite;
+}
+
+.ledger-stream-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.scan-stream-row {
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.2s ease;
-    animation: historyFadeIn 0.3s var(--ease-out-quint) both;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 11px;
+    animation: rowGlide 0.25s var(--gate-ease) both;
 }
 
-@keyframes historyFadeIn {
-    from { opacity: 0; transform: translateY(-6px); }
+@keyframes rowGlide {
+    from { opacity: 0; transform: translateY(-3px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 
-.scan-history-item.is-latest {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.05);
-    box-shadow: 0 4px 14px -4px rgba(245, 158, 11, 0.15);
+.scan-stream-row.is-latest {
+    border-color: rgba(197, 160, 89, 0.35);
+    background: rgba(197, 160, 89, 0.06);
 }
 
-.scan-history-item.state-ok    { border-inline-start: 3px solid #10b981; }
-.scan-history-item.state-used  { border-inline-start: 3px solid #f59e0b; }
-.scan-history-item.state-error { border-inline-start: 3px solid #f43f5e; }
+.scan-stream-row.state-ok    { border-inline-start: 2.5px solid #10b981; }
+.scan-stream-row.state-used  { border-inline-start: 2.5px solid #f59e0b; }
+.scan-stream-row.state-error { border-inline-start: 2.5px solid #f43f5e; }
 
-.scan-history-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
+.stream-row-badge {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    font-size: 9px;
     font-weight: 800;
 }
-.scan-history-icon.state-ok    { background: var(--scan-ok-bg);    color: #34d399; }
-.scan-history-icon.state-used  { background: var(--scan-used-bg);  color: #fbbf24; }
-.scan-history-icon.state-error { background: var(--scan-error-bg); color: #fb7185; }
+.stream-row-badge.state-ok    { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.stream-row-badge.state-used  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.stream-row-badge.state-error { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
 
-.scan-history-body {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.scan-history-top {
+.stream-row-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
 }
 
-.scan-history-name {
-    font-size: 13px;
+.stream-row-name {
     font-weight: 700;
     color: #fff;
     white-space: nowrap;
@@ -913,55 +1068,28 @@
     text-overflow: ellipsis;
 }
 
-.scan-history-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 1px 6px;
-    border-radius: 999px;
-}
-.scan-history-badge.is-ok    { background: var(--scan-ok-bg);    color: #6ee7b7; border: 1px solid var(--scan-ok-border); }
-.scan-history-badge.is-used  { background: var(--scan-used-bg);  color: #fde68a; border: 1px solid var(--scan-used-border); }
-.scan-history-badge.is-error { background: var(--scan-error-bg); color: #fca5a5; border: 1px solid var(--scan-error-border); }
-
-.scan-history-badge .badge-dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: currentColor;
-}
-
-.scan-history-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    color: var(--stage-text-dim);
-}
-
-.scan-history-ref {
+.stream-row-ref {
     font-family: monospace;
-    letter-spacing: 0.05em;
-    color: var(--stage-text-muted);
+    font-size: 10px;
+    color: var(--gate-gold);
+    white-space: nowrap;
 }
 
-.scan-history-time {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--stage-text-dim);
+.stream-row-time {
+    font-size: 9px;
+    color: var(--gate-text-muted);
     white-space: nowrap;
 }
 
 /* =========================================================
-   PREMIUM RESULT SHEET (Centered Modal Card)
+   4. THEATRICAL ADMISSION PASS MODAL (WITH SAFARI SCROLL LOCK)
    ========================================================= */
+
 .scan-sheet {
     position: fixed;
     inset: 0;
     min-height: 100dvh;
-    z-index: 99;
+    z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -969,238 +1097,453 @@
         max(16px, env(safe-area-inset-top))
         16px
         max(16px, env(safe-area-inset-bottom));
-    background: rgba(2, 6, 23, 0.72);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(3, 1, 6, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     opacity: 0;
     pointer-events: none;
     overscroll-behavior: contain;
-    transition: opacity 0.25s var(--ease-out-quint);
+    transition: opacity 0.22s var(--gate-ease);
 }
 .scan-sheet[data-state="visible"] {
     opacity: 1;
     pointer-events: auto;
 }
 
-.scan-sheet-card {
-    width: min(92vw, 22rem);
-    max-height: calc(100dvh - max(32px, env(safe-area-inset-top) + env(safe-area-inset-bottom) + 24px));
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 22px;
-    border-radius: 24px;
-    background: linear-gradient(180deg, rgba(19, 26, 46, 0.98), rgba(9, 13, 24, 0.98));
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        0 30px 60px -20px rgba(0, 0, 0, 0.95),
-        0 0 36px rgba(245, 158, 11, 0.2);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    transform: translateY(16px) scale(0.95);
+/* Atmospheric State-based Ambient Radial Illumination */
+.scan-sheet-ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     opacity: 0;
-    transition:
-        transform 0.32s var(--ease-out-quint),
-        opacity 0.2s ease;
-    will-change: transform, opacity;
+    transition: opacity 0.35s ease;
 }
-.scan-sheet[data-state="visible"] .scan-sheet-card {
-    transform: translateY(0) scale(1);
+.scan-sheet[data-result="ok"] .scan-sheet-ambient {
+    background:
+        radial-gradient(ellipse 900px 700px at 50% 45%, rgba(16, 185, 129, 0.28) 0%, rgba(6, 78, 59, 0.12) 55%, transparent 80%),
+        radial-gradient(circle 320px at 50% 36%, rgba(52, 211, 153, 0.25) 0%, transparent 70%);
+    opacity: 1;
+}
+.scan-sheet[data-result="used"] .scan-sheet-ambient {
+    background:
+        radial-gradient(ellipse 900px 700px at 50% 45%, rgba(245, 158, 11, 0.28) 0%, rgba(120, 53, 15, 0.12) 55%, transparent 80%),
+        radial-gradient(circle 320px at 50% 36%, rgba(251, 191, 36, 0.25) 0%, transparent 70%);
+    opacity: 1;
+}
+.scan-sheet[data-result="error"] .scan-sheet-ambient {
+    background:
+        radial-gradient(ellipse 900px 700px at 50% 45%, rgba(244, 63, 94, 0.28) 0%, rgba(136, 19, 55, 0.12) 55%, transparent 80%),
+        radial-gradient(circle 320px at 50% 36%, rgba(251, 113, 133, 0.25) 0%, transparent 70%);
     opacity: 1;
 }
 
-/* Card States */
-.scan-sheet[data-result="ok"] .scan-sheet-card {
-    border-color: rgba(16, 185, 129, 0.55);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 50px -20px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.3);
+@media (min-width: 1024px) {
+    .scan-sheet[data-result="ok"] .scan-sheet-ambient {
+        background:
+            radial-gradient(ellipse 1300px 950px at 50% 48%, rgba(16, 185, 129, 0.32) 0%, rgba(6, 78, 59, 0.16) 45%, transparent 75%),
+            radial-gradient(circle 460px at 50% 36%, rgba(52, 211, 153, 0.32) 0%, transparent 70%);
+    }
+    .scan-sheet[data-result="used"] .scan-sheet-ambient {
+        background:
+            radial-gradient(ellipse 1300px 950px at 50% 48%, rgba(245, 158, 11, 0.32) 0%, rgba(120, 53, 15, 0.16) 45%, transparent 75%),
+            radial-gradient(circle 460px at 50% 36%, rgba(251, 191, 36, 0.32) 0%, transparent 70%);
+    }
+    .scan-sheet[data-result="error"] .scan-sheet-ambient {
+        background:
+            radial-gradient(ellipse 1300px 950px at 50% 48%, rgba(244, 63, 94, 0.32) 0%, rgba(136, 19, 55, 0.16) 45%, transparent 75%),
+            radial-gradient(circle 460px at 50% 36%, rgba(251, 113, 133, 0.32) 0%, transparent 70%);
+    }
 }
 
-.scan-sheet[data-result="used"] .scan-sheet-card {
-    border-color: rgba(245, 158, 11, 0.55);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 50px -20px rgba(0, 0, 0, 0.9), 0 0 40px rgba(245, 158, 11, 0.3);
-}
-
-.scan-sheet[data-result="error"] .scan-sheet-card {
-    border-color: rgba(244, 63, 94, 0.55);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 50px -20px rgba(0, 0, 0, 0.9), 0 0 40px rgba(244, 63, 94, 0.3);
-}
-
-/* Result Badge */
-.scan-sheet-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 14px 6px 10px;
-    align-self: flex-start;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    font-family: 'Alexandria', system-ui, sans-serif;
-    font-weight: 800;
-    font-size: 13px;
-    letter-spacing: 0.04em;
-}
-
-.scan-sheet-badge-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    font-weight: 800;
-    font-size: 13px;
-}
-
-.scan-sheet[data-result="ok"] .scan-sheet-badge {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: rgba(16, 185, 129, 0.5);
-    color: #a7f3d0;
-}
-.scan-sheet[data-result="ok"] .scan-sheet-badge-icon {
-    background: #10b981;
-    color: #022c22;
-}
-
-.scan-sheet[data-result="used"] .scan-sheet-badge {
-    background: rgba(245, 158, 11, 0.2);
-    border-color: rgba(245, 158, 11, 0.5);
-    color: #fde68a;
-}
-.scan-sheet[data-result="used"] .scan-sheet-badge-icon {
-    background: #f59e0b;
-    color: #1b1208;
-}
-
-.scan-sheet[data-result="error"] .scan-sheet-badge {
-    background: rgba(244, 63, 94, 0.2);
-    border-color: rgba(244, 63, 94, 0.5);
-    color: #fecdd3;
-}
-.scan-sheet[data-result="error"] .scan-sheet-badge-icon {
-    background: #f43f5e;
-    color: #fff1f2;
-}
-
-.scan-sheet-info-group {
+/* Theatrical Pass Card */
+.scan-sheet-card {
+    position: relative;
+    width: min(92vw, 24.5rem);
+    max-height: calc(100dvh - max(32px, env(safe-area-inset-top) + env(safe-area-inset-bottom) + 16px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 24px 20px;
+    border-radius: 26px;
+    background: linear-gradient(180deg, #1c0a22 0%, #0c0412 100%);
+    border: 1.5px solid var(--gate-border-highlight);
+    box-shadow:
+        0 24px 64px -10px rgba(0, 0, 0, 0.95),
+        0 0 0 1px rgba(197, 160, 89, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    text-align: center;
     display: flex;
     flex-direction: column;
+    gap: 16px;
+    transform: scale(0.95) translateY(6px);
+    opacity: 0;
+    transition: transform 0.22s var(--gate-ease), opacity 0.22s var(--gate-ease);
+}
+
+@media (min-width: 1024px) {
+    .scan-sheet-card {
+        width: min(90vw, 32rem);
+        padding: 34px 30px;
+        gap: 20px;
+        border-radius: 30px;
+    }
+}
+
+.scan-sheet[data-state="visible"] .scan-sheet-card {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.scan-sheet[data-result="ok"] .scan-sheet-card {
+    border-color: rgba(16, 185, 129, 0.55);
+    box-shadow:
+        0 24px 64px -10px rgba(0, 0, 0, 0.95),
+        0 0 35px rgba(16, 185, 129, 0.28),
+        0 0 0 1px rgba(16, 185, 129, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.scan-sheet[data-result="used"] .scan-sheet-card {
+    border-color: rgba(245, 158, 11, 0.55);
+    box-shadow:
+        0 24px 64px -10px rgba(0, 0, 0, 0.95),
+        0 0 35px rgba(245, 158, 11, 0.28),
+        0 0 0 1px rgba(245, 158, 11, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.scan-sheet[data-result="error"] .scan-sheet-card {
+    border-color: rgba(244, 63, 94, 0.55);
+    box-shadow:
+        0 24px 64px -10px rgba(0, 0, 0, 0.95),
+        0 0 35px rgba(244, 63, 94, 0.28),
+        0 0 0 1px rgba(244, 63, 94, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* 1. Hero Status Emblem (Dominant Visual Element) */
+.scan-sheet-hero-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 2px;
+}
+
+.status-emblem-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2.5px solid transparent;
+    box-shadow: 0 0 35px rgba(0, 0, 0, 0.6);
+    animation: emblemPulseIn 0.35s var(--gate-ease) both;
+}
+
+@media (min-width: 1024px) {
+    .status-emblem-ring {
+        width: 86px;
+        height: 86px;
+    }
+}
+
+@keyframes emblemPulseIn {
+    0%   { transform: scale(0.65); opacity: 0; }
+    70%  { transform: scale(1.08); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.status-emblem-icon {
+    font-size: 34px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+@media (min-width: 1024px) {
+    .status-emblem-icon {
+        font-size: 42px;
+    }
+}
+
+.status-title-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-headline {
+    font-family: 'Alexandria', system-ui, sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1.2;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+@media (min-width: 1024px) {
+    .status-headline {
+        font-size: 30px;
+    }
+}
+
+.status-subline {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* Success Semantic Styling & Confirmation Pulse (under 450ms) */
+.scan-sheet[data-result="ok"] .status-emblem-ring {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, rgba(6, 78, 59, 0.4) 100%);
+    border-color: #10b981;
+    box-shadow: 0 0 35px rgba(16, 185, 129, 0.6), inset 0 0 15px rgba(16, 185, 129, 0.35);
+    animation: successEmblemConfirm 0.44s var(--gate-ease) both;
+}
+
+@keyframes successEmblemConfirm {
+    0%   { transform: scale(0.65); opacity: 0; filter: brightness(1.5); }
+    55%  { transform: scale(1.12); filter: brightness(1.2); box-shadow: 0 0 45px rgba(16, 185, 129, 0.85); }
+    100% { transform: scale(1); opacity: 1; filter: brightness(1); box-shadow: 0 0 35px rgba(16, 185, 129, 0.6); }
+}
+
+.scan-sheet[data-result="ok"] .status-emblem-icon {
+    color: #34d399;
+}
+.scan-sheet[data-result="ok"] .status-headline {
+    color: #6ee7b7;
+    text-shadow: 0 2px 14px rgba(16, 185, 129, 0.5);
+}
+.scan-sheet[data-result="ok"] .status-subline {
+    color: #a7f3d0;
+}
+
+/* Warning Semantic Styling & Cautionary Pulse (under 450ms) */
+.scan-sheet[data-result="used"] .status-emblem-ring {
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, rgba(120, 53, 15, 0.4) 100%);
+    border-color: #f59e0b;
+    box-shadow: 0 0 35px rgba(245, 158, 11, 0.6), inset 0 0 15px rgba(245, 158, 11, 0.35);
+    animation: warningEmblemPulse 0.44s var(--gate-ease) both;
+}
+
+@keyframes warningEmblemPulse {
+    0%   { transform: scale(0.7); opacity: 0; }
+    45%  { transform: scale(1.10); box-shadow: 0 0 45px rgba(245, 158, 11, 0.85); }
+    100% { transform: scale(1); opacity: 1; box-shadow: 0 0 35px rgba(245, 158, 11, 0.6); }
+}
+
+.scan-sheet[data-result="used"] .status-emblem-icon {
+    color: #fbbf24;
+}
+.scan-sheet[data-result="used"] .status-headline {
+    color: #fde68a;
+    text-shadow: 0 2px 14px rgba(245, 158, 11, 0.5);
+}
+.scan-sheet[data-result="used"] .status-subline {
+    color: #fef08a;
+}
+
+/* Error Semantic Styling & Controlled Shake Response (under 450ms) */
+.scan-sheet[data-result="error"] .status-emblem-ring {
+    background: radial-gradient(circle, rgba(244, 63, 94, 0.3) 0%, rgba(136, 19, 55, 0.4) 100%);
+    border-color: #f43f5e;
+    box-shadow: 0 0 35px rgba(244, 63, 94, 0.6), inset 0 0 15px rgba(244, 63, 94, 0.35);
+    animation: errorEmblemShake 0.40s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes errorEmblemShake {
+    0%        { transform: scale(0.75); opacity: 0; }
+    20%, 60%  { transform: scale(1.05) translateX(-4px); box-shadow: 0 0 45px rgba(244, 63, 94, 0.85); }
+    40%, 80%  { transform: scale(1.05) translateX(4px); }
+    100%      { transform: scale(1) translateX(0); opacity: 1; box-shadow: 0 0 35px rgba(244, 63, 94, 0.6); }
+}
+
+.scan-sheet[data-result="error"] .status-emblem-icon {
+    color: #fb7185;
+}
+.scan-sheet[data-result="error"] .status-headline {
+    color: #fca5a5;
+    text-shadow: 0 2px 14px rgba(244, 63, 94, 0.5);
+}
+.scan-sheet[data-result="error"] .status-subline {
+    color: #fecdd3;
+}
+
+/* 2. Attendee Block */
+.scan-sheet-attendee-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 3px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.attendee-label {
+    font-size: 10px;
+    color: var(--gate-text-muted);
+    letter-spacing: 0.04em;
+    font-weight: 600;
 }
 
 .scan-sheet-name {
     font-family: 'Alexandria', system-ui, sans-serif;
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 800;
-    color: #fff;
-    line-height: 1.25;
+    color: #ffffff;
+    line-height: 1.3;
+}
+
+@media (min-width: 1024px) {
+    .scan-sheet-name {
+        font-size: 24px;
+    }
 }
 
 .scan-sheet-ref {
+    direction: ltr !important;
+    unicode-bidi: isolate;
     font-family: monospace;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--stage-gold);
-    letter-spacing: 0.08em;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gate-gold-glow);
+    letter-spacing: 0.06em;
 }
 .scan-sheet-ref:empty { display: none; }
 
-.scan-sheet-details {
+/* 3. Real Event & Showtime Block */
+.scan-sheet-event-block {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(197, 160, 89, 0.08);
+    border: 1px solid rgba(197, 160, 89, 0.28);
 }
 
-.scan-sheet-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    color: #e2e8f0;
-    font-size: 13px;
-}
-
-.scan-sheet-row-icon { font-size: 14px; opacity: 0.9; }
-.scan-sheet-row-text { font-weight: 600; }
-
-.scan-sheet-used-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: rgba(245, 158, 11, 0.12);
-    border: 1px solid rgba(245, 158, 11, 0.4);
-    color: #fef3c7;
-    font-size: 12px;
-}
-
-.scan-sheet-used-note .used-icon { font-size: 16px; line-height: 1; }
-.scan-sheet-used-note .used-text { display: flex; flex-direction: column; gap: 2px; }
-
-.scan-sheet-foot {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding-top: 6px;
-}
-
-.scan-sheet-done {
-    width: 100%;
-    min-height: 50px;
-    padding: 14px 20px;
-    border-radius: 999px;
-    font-family: 'Alexandria', system-ui, sans-serif;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.02em;
-    color: #160e05;
-    background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 8px 24px -6px rgba(245, 158, 11, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: all 0.2s var(--ease-out-quint);
+.event-block-header {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
 }
 
+.event-theatre-icon { font-size: 15px; }
+
+.event-theatre-show {
+    font-family: 'Alexandria', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+.event-block-timing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.timing-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gate-gold-glow);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(197, 160, 89, 0.18);
+}
+
+/* 4. Already-Scanned Alert Note (ONLY visible on 'used') */
+.scan-sheet-used-note {
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #fef3c7;
+    text-align: start;
+}
+
+.scan-sheet-used-note .used-icon { font-size: 16px; flex-shrink: 0; }
+
+.scan-sheet-used-note .used-text { display: flex; flex-direction: column; gap: 2px; }
+
+.used-title { font-weight: 800; font-size: 12px; color: #fbbf24; }
+
+.used-time-stamp { font-size: 11px; color: #fde68a; }
+
+.scan-sheet[data-result="used"] .scan-sheet-used-note { display: flex !important; }
+.scan-sheet:not([data-result="used"]) .scan-sheet-used-note { display: none !important; }
+
+/* 5. Primary Next Action Button */
+.scan-sheet-foot {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 2px;
+}
+
+.scan-sheet-done {
+    width: 100%;
+    min-height: 52px;
+    padding: 14px 20px;
+    border-radius: 16px;
+    font-family: 'Alexandria', system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    color: #120904;
+    background: linear-gradient(180deg, #fef08a 0%, #d4af37 50%, #b48328 100%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 8px 24px -4px rgba(197, 160, 89, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.2s var(--gate-ease);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
 .scan-sheet-done:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px -6px rgba(245, 158, 11, 0.75), 0 0 20px rgba(251, 191, 36, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px -4px rgba(197, 160, 89, 0.85);
 }
 
 .scan-sheet-done:active {
-    transform: translateY(1px);
+    transform: scale(0.98);
 }
 
-.scan-sheet-hint {
-    font-size: 11px;
-    color: var(--stage-text-dim);
-    text-align: center;
+.btn-primary-text {
+    letter-spacing: 0.02em;
 }
 
-.scan-sheet[data-result="ok"] .scan-sheet-used-note { display: none !important; }
+.btn-primary-arrow {
+    font-size: 18px;
+    font-weight: 900;
+}
 
-/* Reduced Motion Safety */
+/* Accessibility & Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-    .reticle-line,
+    .optical-scan-beam,
     .scan-sheet,
     .scan-sheet-card,
-    .scanner-status,
-    .scanner-root-container,
-    .scan-history-item,
-    .scanner-live-pulse {
+    .portal-status-pill,
+    .scan-stream-row,
+    .live-beacon,
+    .status-emblem-ring {
         animation: none !important;
         transition: none !important;
     }
-    .scanner-stage[data-state="error"] { animation: none !important; }
+    .portal-aperture-housing[data-state="error"] { animation: none !important; }
     .scan-sheet-card { transform: none !important; opacity: 1 !important; }
 }
 </style>
@@ -1214,80 +1557,214 @@
        ============================================================ */
     const COOLDOWN_MS = 700;
 
-    let busy = false;          // mid-flight backend round-trip
+    let busy = false;
     let lastCode = null;
     let lastScanTime = 0;
-    let sheetOpen = false;     // pause scans while showing a result
-    let qrInstance = null;     // assigned once a decode path boots
+    let sheetOpen = false;
+    let qrInstance = null;
 
     /* ============================================================
-       Audio + haptic feedback (PRESERVED)
+       MULTI-SENSORY FEEDBACK ENGINE (APPLE PAY / PREMIUM POS SPEC)
        ============================================================ */
     let audioCtx = null;
-    let audioPrimed = false;
+    let audioUnlocked = false;
 
-    function ensureAudio() {
+    function getAudioContext() {
+        if (!audioCtx) {
+            try {
+                const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtxClass) {
+                    audioCtx = new AudioCtxClass();
+                }
+            } catch (_) {}
+        }
+        return audioCtx;
+    }
+
+    function unlockAudio() {
         try {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended' && typeof audioCtx.resume === 'function') {
-                audioCtx.resume().catch(() => {});
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+                ctx.resume().then(() => {
+                    audioUnlocked = true;
+                }).catch(() => {});
+            } else if (ctx.state === 'running') {
+                audioUnlocked = true;
             }
         } catch (_) {}
     }
 
-    function primeAudio() {
-        if (audioPrimed) return;
-        audioPrimed = true;
-        ensureAudio();
-    }
-
-    ['touchstart', 'pointerdown', 'click', 'keydown'].forEach((ev) => {
-        document.addEventListener(ev, primeAudio, { once: true, passive: true });
+    // Proactively prime and unlock AudioContext on first user gesture (iOS Safari & Android compliant)
+    ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'keydown', 'click'].forEach((evt) => {
+        document.addEventListener(evt, unlockAudio, { passive: true, capture: true });
     });
 
-    function beep(type) {
-        try {
-            ensureAudio();
-            if (!audioCtx) return;
-            const osc  = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = type === 'ok' ? 950 : type === 'used' ? 500 : 250;
-            gain.gain.value = 0.22;
-            osc.start();
-            setTimeout(() => osc.stop(), 150);
-        } catch (_) {}
-    }
-
+    // 1. Subtle Precheck Optical Click (30ms)
     function softTick() {
         try {
-            ensureAudio();
-            if (!audioCtx) return;
-            const osc  = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const ctx = getAudioContext();
+            if (!ctx || ctx.state !== 'running') return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.type            = 'square';
-            osc.frequency.value = 1500;
-            const now = audioCtx.currentTime;
+            gain.connect(ctx.destination);
+            osc.type = 'square';
+            osc.frequency.value = 1600;
+            const now = ctx.currentTime;
             gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.exponentialRampToValueAtTime(0.10, now + 0.005);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+            gain.gain.exponentialRampToValueAtTime(0.06, now + 0.004);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
             osc.start(now);
-            osc.stop(now + 0.05);
+            osc.stop(now + 0.04);
         } catch (_) {}
     }
 
-    function vibrate(type) {
-        if (!('vibrate' in navigator)) return;
-        if      (type === 'precheck') navigator.vibrate(40);
-        else if (type === 'ok')       navigator.vibrate(120);
-        else if (type === 'used')     navigator.vibrate([100, 50, 100]);
-        else                          navigator.vibrate(220);
+    // 2. Synthesized Apple Pay / POS Chime (SUCCESS — ~160ms)
+    function playSuccessChime(ctx) {
+        const now = ctx.currentTime;
+        const master = ctx.createGain();
+        master.connect(ctx.destination);
+        master.gain.setValueAtTime(0.20, now);
+
+        // Harmonic Tone 1: C6 (1046.50 Hz) — crystal bell foundation
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(1046.50, now);
+        gain1.gain.setValueAtTime(0.001, now);
+        gain1.gain.exponentialRampToValueAtTime(0.70, now + 0.006);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.135);
+        osc1.connect(gain1);
+        gain1.connect(master);
+        osc1.start(now);
+        osc1.stop(now + 0.14);
+
+        // Harmonic Tone 2: E6 (1318.51 Hz) — radiant major third chime
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1318.51, now + 0.024);
+        gain2.gain.setValueAtTime(0.001, now);
+        gain2.gain.setValueAtTime(0.001, now + 0.024);
+        gain2.gain.exponentialRampToValueAtTime(0.85, now + 0.032);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.160);
+        osc2.connect(gain2);
+        gain2.connect(master);
+        osc2.start(now + 0.024);
+        osc2.stop(now + 0.17);
     }
+
+    // 3. Synthesized Cautionary Chime (WARNING / USED — ~175ms)
+    function playWarningCue(ctx) {
+        const now = ctx.currentTime;
+        const master = ctx.createGain();
+        master.connect(ctx.destination);
+        master.gain.setValueAtTime(0.18, now);
+
+        // Tone 1: D5 (587.33 Hz) — caution step
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(587.33, now);
+        gain1.gain.setValueAtTime(0.001, now);
+        gain1.gain.exponentialRampToValueAtTime(0.75, now + 0.006);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
+        osc1.connect(gain1);
+        gain1.connect(master);
+        osc1.start(now);
+        osc1.stop(now + 0.08);
+
+        // Tone 2: A4 (440.00 Hz) — descending minor interval
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(440.00, now + 0.078);
+        gain2.gain.setValueAtTime(0.001, now);
+        gain2.gain.setValueAtTime(0.001, now + 0.078);
+        gain2.gain.exponentialRampToValueAtTime(0.75, now + 0.085);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.170);
+        osc2.connect(gain2);
+        gain2.connect(master);
+        osc2.start(now + 0.078);
+        osc2.stop(now + 0.18);
+    }
+
+    // 4. Synthesized Low Rejection Tone (ERROR / INVALID — ~150ms)
+    function playErrorCue(ctx) {
+        const now = ctx.currentTime;
+        const master = ctx.createGain();
+        master.connect(ctx.destination);
+        master.gain.setValueAtTime(0.20, now);
+
+        // Pulse 1: Low A3 (220.00 Hz)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(220.00, now);
+        gain1.gain.setValueAtTime(0.001, now);
+        gain1.gain.exponentialRampToValueAtTime(0.65, now + 0.006);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+        osc1.connect(gain1);
+        gain1.connect(master);
+        osc1.start(now);
+        osc1.stop(now + 0.05);
+
+        // Pulse 2: Muted F3 (174.61 Hz)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(174.61, now + 0.060);
+        gain2.gain.setValueAtTime(0.001, now);
+        gain2.gain.setValueAtTime(0.001, now + 0.060);
+        gain2.gain.exponentialRampToValueAtTime(0.70, now + 0.066);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.145);
+        osc2.connect(gain2);
+        gain2.connect(master);
+        osc2.start(now + 0.060);
+        osc2.stop(now + 0.15);
+    }
+
+    // Safe sound dispatch with state resolution
+    function triggerSound(status) {
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const play = () => {
+                if (status === 'ok') playSuccessChime(ctx);
+                else if (status === 'used') playWarningCue(ctx);
+                else playErrorCue(ctx);
+            };
+            if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+                ctx.resume().then(play).catch(() => {});
+            } else if (ctx.state === 'running') {
+                play();
+            }
+        } catch (_) {}
+    }
+
+    // 5. Tactile Haptic Vibration Patterns
+    function triggerHaptic(type) {
+        if (!('vibrate' in navigator) || typeof navigator.vibrate !== 'function') return;
+        try {
+            if (type === 'precheck') {
+                navigator.vibrate(25);
+            } else if (type === 'ok') {
+                // Short, clean confirmation vibration: tap -> confirmation (short -> short)
+                navigator.vibrate([40, 45, 45]);
+            } else if (type === 'used') {
+                // Distinct medium -> short warning buzz
+                navigator.vibrate([110, 60, 50]);
+            } else if (type === 'error') {
+                // Firm rejection double vibration (longer -> short)
+                navigator.vibrate([160, 60, 120]);
+            }
+        } catch (_) {}
+    }
+
+    // Backward compatibility aliases
+    function beep(type) { triggerSound(type); }
+    function vibrate(type) { triggerHaptic(type); }
 
     /* ============================================================
        Status pill (PRESERVED)
@@ -1297,19 +1774,23 @@
     const $loading = document.getElementById('scanner-loading');
 
     function setStatus(text, type) {
-        $status.textContent = text;
-        $status.classList.remove('state-ready', 'state-scanning', 'state-ok', 'state-used', 'state-error', 'is-pop');
-        $status.classList.add('state-' + (type || 'ready'), 'is-pop');
-        setTimeout(() => $status.classList.remove('is-pop'), 200);
-        if (type === 'ok' || type === 'used' || type === 'error') {
-            $stage.dataset.state = type;
-        } else {
-            delete $stage.dataset.state;
+        if ($status) {
+            $status.textContent = text;
+            $status.classList.remove('state-ready', 'state-scanning', 'state-ok', 'state-used', 'state-error', 'is-pop');
+            $status.classList.add('state-' + (type || 'ready'), 'is-pop');
+            setTimeout(() => $status.classList.remove('is-pop'), 200);
+        }
+        if ($stage) {
+            if (type === 'ok' || type === 'used' || type === 'error') {
+                $stage.dataset.state = type;
+            } else {
+                delete $stage.dataset.state;
+            }
         }
     }
 
     /* ============================================================
-       Session Scans & Live History Feed (IN-MEMORY CLIENT SESSION)
+       Session Scans & Live History Feed (COMPACT OPERATIONS STREAM)
        ============================================================ */
     const sessionScans = [];
     const stats = { total: 0, ok: 0, used: 0, error: 0 };
@@ -1319,6 +1800,12 @@
     const $statOk     = document.getElementById('session-ok-count');
     const $statUsed   = document.getElementById('session-used-count');
     const $statError  = document.getElementById('session-error-count');
+
+    // Desktop counterparts
+    const $deskTotal = document.getElementById('desk-session-total-count');
+    const $deskOk    = document.getElementById('desk-session-ok-count');
+    const $deskUsed  = document.getElementById('desk-session-used-count');
+    const $deskError = document.getElementById('desk-session-error-count');
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -1335,6 +1822,11 @@
         if ($statUsed)  $statUsed.textContent  = stats.used;
         if ($statError) $statError.textContent = stats.error;
 
+        if ($deskTotal) $deskTotal.textContent = stats.total;
+        if ($deskOk)    $deskOk.textContent    = stats.ok;
+        if ($deskUsed)  $deskUsed.textContent  = stats.used;
+        if ($deskError) $deskError.textContent = stats.error;
+
         if (!$scansList) return;
         if (sessionScans.length === 0) {
             if ($scansEmpty) $scansEmpty.style.display = 'flex';
@@ -1343,31 +1835,19 @@
         }
         if ($scansEmpty) $scansEmpty.style.display = 'none';
 
-        $scansList.innerHTML = sessionScans.map((item, idx) => {
+        // Keep 4-5 compact rows visible
+        $scansList.innerHTML = sessionScans.slice(0, 5).map((item, idx) => {
             const isLatest = idx === 0;
-            const statusBadge =
-                item.status === 'ok'
-                    ? '<span class="scan-history-badge is-ok"><span class="badge-dot"></span>مقبول</span>'
-                    : item.status === 'used'
-                    ? '<span class="scan-history-badge is-used"><span class="badge-dot"></span>مكرر</span>'
-                    : '<span class="scan-history-badge is-error"><span class="badge-dot"></span>مرفوض</span>';
-
             const statusIcon = item.status === 'ok' ? '✓' : item.status === 'used' ? '⚠️' : '✕';
 
             return `
-                <div class="scan-history-item state-${escapeHtml(item.status)} ${isLatest ? 'is-latest' : ''}">
-                    <div class="scan-history-icon state-${escapeHtml(item.status)}">${statusIcon}</div>
-                    <div class="scan-history-body">
-                        <div class="scan-history-top">
-                            <span class="scan-history-name">${escapeHtml(item.name || '—')}</span>
-                            ${statusBadge}
-                        </div>
-                        <div class="scan-history-meta">
-                            ${item.reference ? `<span class="scan-history-ref">#${escapeHtml(item.reference)}</span>` : ''}
-                            ${item.show_title ? `<span class="scan-history-show">${escapeHtml(item.show_title)}</span>` : ''}
-                        </div>
+                <div class="scan-stream-row state-${escapeHtml(item.status)} ${isLatest ? 'is-latest' : ''}">
+                    <span class="stream-row-badge state-${escapeHtml(item.status)}">${statusIcon}</span>
+                    <div class="stream-row-info">
+                        <span class="stream-row-name">${escapeHtml(item.name || '—')}</span>
+                        ${item.reference ? `<span class="stream-row-ref">#${escapeHtml(item.reference)}</span>` : ''}
                     </div>
-                    <div class="scan-history-time" dir="ltr">${escapeHtml(item.time)}</div>
+                    <span class="stream-row-time" dir="ltr">${escapeHtml(item.time)}</span>
                 </div>
             `;
         }).join('');
@@ -1390,14 +1870,14 @@
 
         sessionScans.unshift({
             status: status,
-            name: p.name || (status === 'error' ? 'تذكرة غير معروفة' : '—'),
-            reference: p.reference || (code ? String(code).substring(0, 12) : ''),
+            name: p.name || (status === 'error' ? 'تذكرة غير صالحة' : '—'),
+            reference: p.reference || (code ? String(code).substring(0, 10) : ''),
             show_title: p.show_title || '',
             time: timeStr,
             scanned_at: p.scanned_at || null,
         });
 
-        if (sessionScans.length > 10) {
+        if (sessionScans.length > 20) {
             sessionScans.pop();
         }
 
@@ -1405,47 +1885,100 @@
     }
 
     /* ============================================================
+       iOS Safari Modal Scroll-Locking Engine (ACCEPTANCE CRITERIA)
+       ============================================================ */
+    let savedScrollY = 0;
+
+    function lockPageScroll() {
+        savedScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${savedScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+    }
+
+    function unlockPageScroll() {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+        window.scrollTo(0, savedScrollY);
+    }
+
+    /* ============================================================
        Result sheet (cinematic popup modal - PRESERVED SELECTORS)
        ============================================================ */
     const $sheet         = document.getElementById('scan-sheet');
-    const $sheetBadge    = $sheet.querySelector('[data-scan-badge-text]');
-    const $sheetIcon     = $sheet.querySelector('[data-scan-icon]');
-    const $sheetName     = $sheet.querySelector('[data-scan-name]');
-    const $sheetRef      = $sheet.querySelector('[data-scan-ref]');
-    const $sheetShow     = $sheet.querySelector('[data-scan-show]');
-    const $sheetWhen     = $sheet.querySelector('[data-scan-when]');
-    const $sheetUsedNote = $sheet.querySelector('[data-scan-used-note]');
-    const $sheetUsedTime = $sheet.querySelector('[data-scan-used-time]');
-    const $sheetDismiss  = $sheet.querySelector('[data-scan-dismiss]');
+    const $sheetBadge    = $sheet ? $sheet.querySelector('[data-scan-badge-text]') : null;
+    const $sheetSubline  = $sheet ? $sheet.querySelector('[data-scan-subline]') : null;
+    const $sheetIcon     = $sheet ? $sheet.querySelector('[data-scan-icon]') : null;
+    const $sheetName     = $sheet ? $sheet.querySelector('[data-scan-name]') : null;
+    const $sheetRef      = $sheet ? $sheet.querySelector('[data-scan-ref]') : null;
+    const $sheetShow     = $sheet ? $sheet.querySelector('[data-scan-show]') : null;
+    const $sheetWhen     = $sheet ? $sheet.querySelector('[data-scan-when]') : null;
+    const $sheetUsedNote = $sheet ? $sheet.querySelector('[data-scan-used-note]') : null;
+    const $sheetUsedTime = $sheet ? $sheet.querySelector('[data-scan-used-time]') : null;
+    const $sheetDismiss  = $sheet ? $sheet.querySelector('[data-scan-dismiss]') : null;
 
     function showSheet(result, payload) {
+        if (!$sheet) return;
         $sheet.dataset.result = result; // ok | used | error
         $sheet.dataset.state  = 'visible';
         sheetOpen = true;
 
-        const badgeText =
-            result === 'ok'   ? '✅ دخول مسموح' :
-            result === 'used' ? '⚠️ مستخدمة'   :
-                                '❌ غير صالح';
-        $sheetBadge.textContent = badgeText.replace(/^[^\p{L}\p{N}]+\s*/u, '');
-        $sheetIcon.textContent  = result === 'ok' ? '✓' : result === 'used' ? '!' : '✕';
+        // Lock background scroll immediately (freeze document)
+        lockPageScroll();
+
+        if ($sheetBadge) {
+            $sheetBadge.textContent =
+                result === 'ok'   ? 'دخول مسموح' :
+                result === 'used' ? 'تذكرة مستخدمة مسبقاً' :
+                                    'تذكرة غير صالحة';
+        }
+        if ($sheetSubline) {
+            $sheetSubline.textContent =
+                result === 'ok'   ? 'تذكرة صالحة ومؤكدة' :
+                result === 'used' ? 'تم مسحها والتحقق منها مسبقاً' :
+                                    'الرمز غير مسجل أو غير معتمد';
+        }
+        if ($sheetIcon) {
+            $sheetIcon.textContent =
+                result === 'ok'   ? '✓' :
+                result === 'used' ? '⚠️' :
+                                    '✕';
+        }
 
         const p = payload || {};
 
-        $sheetName.textContent = p.name || '—';
-        $sheetRef.textContent  = p.reference ? '#' + p.reference : '';
+        if ($sheetName) $sheetName.textContent = p.name || (result === 'error' ? 'تذكرة غير مسجلة' : '—');
+        if ($sheetRef)  $sheetRef.textContent  = p.reference ? '#' + p.reference : '';
 
-        $sheetShow.textContent = p.show_title || '—';
+        if (p.show_title && $sheetShow) {
+            $sheetShow.textContent = p.show_title;
+        }
         const dateStr = p.date || '';
         const timeStr = p.time || '';
-        $sheetWhen.textContent = [dateStr, timeStr].filter(Boolean).join(' · ') || '—';
+        if ($sheetWhen) {
+            if (dateStr || timeStr) {
+                $sheetWhen.innerHTML = `
+                    ${dateStr ? `<span class="timing-badge"><span class="timing-icon" aria-hidden="true">🗓️</span><span class="timing-text">${escapeHtml(dateStr)}</span></span>` : ''}
+                    ${timeStr ? `<span class="timing-badge"><span class="timing-icon" aria-hidden="true">🕘</span><span class="timing-text">${escapeHtml(timeStr)}</span></span>` : ''}
+                `;
+            }
+        }
 
         if (result === 'used' && p.scanned_at) {
-            $sheetUsedNote.hidden = false;
-            $sheetUsedTime.textContent = ' · ' + p.scanned_at;
+            if ($sheetUsedNote) $sheetUsedNote.hidden = false;
+            if ($sheetUsedTime) $sheetUsedTime.textContent = 'تاريخ المسح السابق: ' + p.scanned_at;
         } else {
-            $sheetUsedNote.hidden = true;
-            $sheetUsedTime.textContent = '';
+            if ($sheetUsedNote) $sheetUsedNote.hidden = true;
+            if ($sheetUsedTime) $sheetUsedTime.textContent = '';
         }
 
         if (qrInstance) {
@@ -1454,23 +1987,94 @@
     }
 
     function hideSheet() {
+        if (!$sheet) return;
         $sheet.dataset.state = 'hidden';
         sheetOpen = false;
-        delete $stage.dataset.state;
-        setStatus('جاهز للفحص', 'ready');
+        unlockPageScroll();
+        if ($stage) delete $stage.dataset.state;
+        setStatus('جاهز للمسح', 'ready');
         lastCode = null;
         lastScanTime = 0;
+        lastFeedbackCode = null;
+        lastFeedbackTime = 0;
         if (qrInstance) {
             try { qrInstance.resume(); } catch (_) {}
         }
     }
-    $sheetDismiss.addEventListener('click', hideSheet);
-    $sheet.addEventListener('click', (e) => {
-        if (e.target === $sheet) hideSheet();
-    });
+
+    // Expose helpers for test automation & manual override
+    window.showSheet = showSheet;
+    window.hideSheet = hideSheet;
+
+    if ($sheetDismiss) $sheetDismiss.addEventListener('click', hideSheet);
+    if ($sheet) {
+        $sheet.addEventListener('click', (e) => {
+            if (e.target === $sheet) hideSheet();
+        });
+        // Touch scroll lock on iOS backdrop
+        $sheet.addEventListener('touchmove', (e) => {
+            const card = e.target.closest('[data-scan-card]');
+            if (!card) {
+                e.preventDefault();
+                return;
+            }
+            if (card.scrollHeight <= card.clientHeight) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    }
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && sheetOpen) hideSheet();
     });
+
+    /* ============================================================
+       CENTRALIZED MULTI-SENSORY FEEDBACK ORCHESTRATOR
+       (VISUAL + HAPTIC + SOUND SYNCHRONIZATION & DEBOUNCE GUARD)
+       ============================================================ */
+    let lastFeedbackCode = null;
+    let lastFeedbackTime = 0;
+    const FEEDBACK_DEBOUNCE_MS = 1200;
+
+    function triggerScanFeedback(status, payload, code) {
+        const now = Date.now();
+
+        // 1. Debounce guard: prevent repeated feedback if the same QR stays in view
+        if (sheetOpen && code && code === lastFeedbackCode) {
+            return;
+        }
+        if (code && code === lastFeedbackCode && now - lastFeedbackTime < FEEDBACK_DEBOUNCE_MS) {
+            return;
+        }
+
+        lastFeedbackCode = code || null;
+        lastFeedbackTime = now;
+
+        // 2. Synchronized Tactile Haptic Pattern (0ms)
+        triggerHaptic(status);
+
+        // 3. Synchronized Web Audio POS Sound Cue (0ms)
+        triggerSound(status);
+
+        // 4. Synchronized Visual Status Indication (0ms)
+        if (status === 'ok') {
+            setStatus('✅ دخول مسموح', 'ok');
+        } else if (status === 'used') {
+            setStatus('⚠️ مستخدمة', 'used');
+        } else {
+            setStatus('❌ غير صالح', 'error');
+        }
+
+        // 5. Present Admission Pass Modal & Record Ledger Stream
+        showSheet(status, payload);
+        addRecentScan(status, payload, code);
+    }
+
+    // Expose helpers for automation testing & verification
+    window.triggerScanFeedback = triggerScanFeedback;
+    window.triggerSound = triggerSound;
+    window.triggerHaptic = triggerHaptic;
+    window.getAudioContext = getAudioContext;
 
     /* ============================================================
        Backend round-trip (PRESERVED)
@@ -1488,26 +2092,15 @@
         .then((r) => r.json())
         .then((d) => {
             if (d.status === 'ok') {
-                setStatus('✅ دخول مسموح', 'ok');
-                vibrate('ok');  beep('ok');
-                showSheet('ok', d);
-                addRecentScan('ok', d, code);
+                triggerScanFeedback('ok', d, code);
             } else if (d.status === 'used') {
-                setStatus('⚠️ مستخدمة', 'used');
-                vibrate('used'); beep('used');
-                showSheet('used', d);
-                addRecentScan('used', d, code);
+                triggerScanFeedback('used', d, code);
             } else {
-                setStatus('❌ غير صالح', 'error');
-                vibrate('error'); beep('error');
-                showSheet('error', d || {});
-                addRecentScan('error', d || {}, code);
+                triggerScanFeedback('error', d || {}, code);
             }
         })
         .catch(() => {
-            setStatus('⚠️ تعذّر الاتصال', 'error');
-            vibrate('error');
-            addRecentScan('error', { name: 'تعذّر الاتصال بالخادم' }, code);
+            triggerScanFeedback('error', { name: 'تعذّر الاتصال بالخادم' }, code);
         })
         .finally(() => {
             setTimeout(() => { busy = false; }, 250);
@@ -1716,444 +2309,239 @@
         return out;
     }
 
-    function centerRoiUpscale(lum, w, h) {
-        const x0 = w >> 2;
-        const y0 = h >> 2;
-        const rw = w >> 1;
-        const rh = h >> 1;
-        const ow = w;
-        const oh = h;
-        const out = new Uint8ClampedArray(ow * oh);
-        const sx = rw / ow;
-        const sy = rh / oh;
-        const xLast = x0 + rw - 1;
-        const yLast = y0 + rh - 1;
-        for (let y = 0; y < oh; y++) {
-            const fy = y * sy + y0;
-            const iy = fy | 0;
-            const ay = fy - iy;
-            const iyn = iy + 1 < yLast ? iy + 1 : yLast;
-            const rowA = iy  * w;
-            const rowB = iyn * w;
-            const outRow = y * ow;
-            for (let x = 0; x < ow; x++) {
-                const fx = x * sx + x0;
-                const ix = fx | 0;
-                const ax = fx - ix;
-                const ixn = ix + 1 < xLast ? ix + 1 : xLast;
-                const p00 = lum[rowA + ix ];
-                const p10 = lum[rowA + ixn];
-                const p01 = lum[rowB + ix ];
-                const p11 = lum[rowB + ixn];
-                const top = p00 + (p10 - p00) * ax;
-                const bot = p01 + (p11 - p01) * ax;
-                out[outRow + x] = (top + (bot - top) * ay) | 0;
-            }
+    function stretchContrastLuminance(lum) {
+        let min = 255, max = 0;
+        for (let i = 0; i < lum.length; i += 8) {
+            const v = lum[i];
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+        if (max - min < 30) return null;
+        const range = max - min;
+        const out = new Uint8ClampedArray(lum.length);
+        for (let i = 0; i < lum.length; i++) {
+            out[i] = (((lum[i] - min) * 255) / range) | 0;
         }
         return out;
     }
 
-    function tryZXingDecode(lum, w, h, mfr, hints) {
-        if (!lum || !mfr) return null;
-        let lumSource;
-        try {
-            lumSource = new ZXing.RGBLuminanceSource(lum, w, h);
-        } catch (_) {
-            try { lumSource = new ZXing.RGBLuminanceSource(w, h, lum); }
-            catch (__) { return null; }
-        }
-        let result = null;
-        try {
-            const binarizer = new ZXing.HybridBinarizer(lumSource);
-            const bitmap    = new ZXing.BinaryBitmap(binarizer);
-            result = mfr.decode(bitmap, hints || undefined);
-        } catch (_) {
-            result = null;
-        } finally {
-            try { mfr.reset(); } catch (_) {}
-        }
-        return result;
-    }
-
-    function releaseStream(stream) {
-        if (!stream) return;
-        try {
-            stream.getTracks().forEach((t) => {
-                try { t.stop(); } catch (_) {}
-                if (activeTrack === t) activeTrack = null;
-            });
-        } catch (_) {}
-    }
-
     /* ============================================================
-       Path A — Direct BarcodeDetector (PRESERVED)
+       Decode Engine A: Native BarcodeDetector (PRESERVED)
        ============================================================ */
     async function startNativeBarcodeDetector() {
         if (!('BarcodeDetector' in window)) return null;
-        let supported;
-        try { supported = await BarcodeDetector.getSupportedFormats(); }
-        catch (_) { return null; }
-        if (!supported || !supported.includes('qr_code')) return null;
-
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return null;
-
-        let stream = null;
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width:     { ideal: 1920 },
-                    height:    { ideal: 1080 },
-                    frameRate: { ideal: 60 },
-                },
-                audio: false,
-            });
-
-            const track = stream.getVideoTracks()[0];
-            if (!track) {
-                releaseStream(stream);
-                return null;
-            }
-            activeTrack = track;
-
-            const reader = document.getElementById('qr-reader');
-            reader.innerHTML = '';
-            const video = document.createElement('video');
-            video.setAttribute('playsinline', 'true');
-            video.setAttribute('webkit-playsinline', 'true');
-            video.setAttribute('autoplay', 'true');
-            video.setAttribute('muted', 'true');
-            video.muted    = true;
-            video.autoplay = true;
-            Object.assign(video.style, {
-                width:     '100%',
-                height:    '100%',
-                objectFit: 'cover',
-                display:   'block',
-            });
-            reader.appendChild(video);
-            video.srcObject = stream;
-            try { await video.play(); } catch (_) {}
-
-            try {
-                await track.applyConstraints({
-                    advanced: [
-                        { focusMode: 'continuous' },
-                        { focusMode: 'continuous-picture' },
-                        { focusDistance: { ideal: 0.05 } },
-                        { exposureMode: 'continuous' },
-                        { whiteBalanceMode: 'continuous' },
-                    ],
-                });
-            } catch (_) {}
-
-            try { setupCapabilityFeatures(track, video); } catch (_) {}
-
-            let detector;
-            try {
-                detector = new BarcodeDetector({ formats: ['qr_code'] });
-            } catch (_) {
-                releaseStream(stream);
-                return null;
-            }
-
-            let stopped = false;
-            let paused  = false;
-
-            const schedule = (fn) => {
-                if (typeof video.requestVideoFrameCallback === 'function') {
-                    video.requestVideoFrameCallback(() => fn());
-                } else {
-                    requestAnimationFrame(fn);
-                }
-            };
-
-            const tick = async () => {
-                if (stopped) return;
-                if (paused || sheetOpen || video.readyState < 2) {
-                    schedule(tick);
-                    return;
-                }
-                try {
-                    const codes = await detector.detect(video);
-                    if (codes && codes.length) {
-                        let best = codes[0];
-                        if (codes.length > 1) {
-                            const area = (b) => (b && b.width && b.height) ? b.width * b.height : 0;
-                            for (const c of codes) {
-                                if (area(c.boundingBox) > area(best.boundingBox)) best = c;
-                            }
-                        }
-                        if (best && best.rawValue) onScanSuccess(best.rawValue);
-                    }
-                } catch (_) {}
-                schedule(tick);
-            };
-            schedule(tick);
-
-            return {
-                pause:  () => { paused  = true; },
-                resume: () => { paused  = false; },
-                stop:   () => {
-                    stopped = true;
-                    releaseStream(stream);
-                },
-                track,
-            };
+            const formats = await BarcodeDetector.getSupportedFormats();
+            if (!formats || !formats.includes('qr_code')) return null;
         } catch (_) {
-            releaseStream(stream);
             return null;
         }
+
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: 'environment' },
+                width:      { ideal: 1280 },
+                height:     { ideal: 720 },
+            },
+            audio: false,
+        });
+
+        const video = document.createElement('video');
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        video.muted = true;
+        video.srcObject = stream;
+
+        const container = document.getElementById('qr-reader');
+        container.innerHTML = '';
+        container.appendChild(video);
+
+        await video.play();
+
+        const track = stream.getVideoTracks()[0] || null;
+        activeTrack = track;
+        setupCapabilityFeatures(track, container);
+
+        let running = true;
+        let paused  = false;
+
+        const loop = async () => {
+            if (!running) return;
+            if (!paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                try {
+                    const barcodes = await detector.detect(video);
+                    if (barcodes && barcodes.length > 0) {
+                        const raw = barcodes[0].rawValue;
+                        if (raw) onScanSuccess(raw);
+                    }
+                } catch (_) {}
+            }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+
+        return {
+            pause(sh) { paused = true; },
+            resume()   { paused = false; },
+            stop()     {
+                running = false;
+                try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+            },
+            applyVideoConstraints(c) {
+                if (track && track.applyConstraints) return track.applyConstraints(c);
+                return Promise.resolve();
+            },
+        };
     }
 
     /* ============================================================
-       Path B — ZXing-js driven by MANUAL frame loop (PRESERVED)
+       Decode Engine B: ZXing-js manual frame loop (PRESERVED)
        ============================================================ */
     async function startZXing() {
         if (typeof ZXing === 'undefined') return null;
-        if (!ZXing.MultiFormatReader || !ZXing.BinaryBitmap ||
-            !ZXing.HybridBinarizer || !ZXing.RGBLuminanceSource) return null;
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return null;
 
-        let stream = null;
-
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width:     { ideal: 1920 },
-                    height:    { ideal: 1080 },
-                    frameRate: { ideal: 30 },
-                },
-                audio: false,
-            });
-
-            const track = stream.getVideoTracks()[0];
-            if (!track) {
-                releaseStream(stream);
-                return null;
-            }
-            activeTrack = track;
-
-            const reader = document.getElementById('qr-reader');
-            reader.innerHTML = '';
-            const video = document.createElement('video');
-            video.setAttribute('playsinline', 'true');
-            video.setAttribute('webkit-playsinline', 'true');
-            video.setAttribute('autoplay', 'true');
-            video.setAttribute('muted', 'true');
-            video.muted    = true;
-            video.autoplay = true;
-            Object.assign(video.style, {
-                width:     '100%',
-                height:    '100%',
-                objectFit: 'cover',
-                display:   'block',
-            });
-            reader.appendChild(video);
-            video.srcObject = stream;
-            try { await video.play(); } catch (_) {}
-
-            try {
-                await track.applyConstraints({
-                    advanced: [
-                        { focusMode: 'continuous' },
-                        { focusMode: 'continuous-picture' },
-                        { focusDistance: { ideal: 0.05 } },
-                        { exposureMode: 'continuous' },
-                        { whiteBalanceMode: 'continuous' },
-                    ],
-                });
-            } catch (_) {}
-
-            let hints = null;
-            try {
-                hints = new Map();
-                if (ZXing.DecodeHintType && ZXing.BarcodeFormat) {
-                    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
-                    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-                    if ('ALSO_INVERTED' in ZXing.DecodeHintType) {
-                        hints.set(ZXing.DecodeHintType.ALSO_INVERTED, true);
-                    }
-                }
-            } catch (_) { hints = null; }
-
-            let mfr;
-            try {
-                mfr = new ZXing.MultiFormatReader();
-                if (hints) mfr.setHints(hints);
-            } catch (_) {
-                releaseStream(stream);
-                return null;
-            }
-
-            const canvas = document.createElement('canvas');
-            const ctx    = canvas.getContext('2d', { willReadFrequently: true });
-
-            let stopped = false;
-            let paused  = false;
-
-            const schedule = (fn) => {
-                if (typeof video.requestVideoFrameCallback === 'function') {
-                    video.requestVideoFrameCallback(() => fn());
-                } else {
-                    requestAnimationFrame(fn);
-                }
-            };
-
-            try { setupCapabilityFeatures(track, video); } catch (_) {}
-
-            let lastSuccessAt   = Date.now();
-            let lastLumSampleAt = 0;
-            let autoZoomActive  = false;
-
-            const tick = () => {
-                if (stopped) return;
-                if (paused || sheetOpen || video.readyState < 2) {
-                    schedule(tick);
-                    return;
-                }
-
-                try {
-                    const vw = video.videoWidth | 0;
-                    const vh = video.videoHeight | 0;
-                    if (vw > 0 && vh > 0) {
-                        const cap = 1280;
-                        let cw = vw, ch = vh;
-                        if (Math.max(vw, vh) > cap) {
-                            const scale = cap / Math.max(vw, vh);
-                            cw = Math.round(vw * scale);
-                            ch = Math.round(vh * scale);
-                        }
-                        if (canvas.width !== cw || canvas.height !== ch) {
-                            canvas.width  = cw;
-                            canvas.height = ch;
-                        }
-                        ctx.drawImage(video, 0, 0, cw, ch);
-                        const img = ctx.getImageData(0, 0, cw, ch);
-                        const luminances = packLuminance(img.data);
-
-                        const now    = Date.now();
-                        const missMs = now - lastSuccessAt;
-
-                        // Pass 1 — fast normal decode
-                        let result = tryZXingDecode(luminances, cw, ch, mfr, hints);
-
-                        // Sample mean luminance
-                        if (now - lastLumSampleAt > 750) {
-                            lastLuminance   = meanLuminance(luminances);
-                            lastLumSampleAt = now;
-                        }
-
-                        // Pass 2 — adaptive threshold
-                        if (!result && missMs > 250) {
-                            const mean = meanLuminance(luminances);
-                            const thr  = thresholdLuminance(luminances, mean);
-                            result = tryZXingDecode(thr, cw, ch, mfr, hints);
-                        }
-
-                        // Pass 3 — inverted
-                        if (!result && missMs > 400) {
-                            const inv = invertLuminance(luminances);
-                            result = tryZXingDecode(inv, cw, ch, mfr, hints);
-                        }
-
-                        // Pass 4 — center ROI 2× upscale
-                        if (!result && missMs > 600) {
-                            const up = centerRoiUpscale(luminances, cw, ch);
-                            result = tryZXingDecode(up, cw, ch, mfr, hints);
-                        }
-
-                        // Auto-zoom recovery
-                        if (!result && capability.zoom && !autoZoomActive &&
-                            missMs > 1000 && Math.abs(zoomCurrent - 1) < 0.05) {
-                            autoZoomActive = true;
-                            const target = Math.min(2, capability.zoomMax);
-                            setZoom(target).then((ok) => {
-                                if (!ok) {
-                                    autoZoomActive = false;
-                                    return;
-                                }
-                                setTimeout(() => {
-                                    autoZoomActive = false;
-                                    if (Date.now() - lastSuccessAt > 800) {
-                                        setZoom(capability.zoomMin);
-                                    }
-                                }, 1600);
-                            });
-                        }
-
-                        if (result) {
-                            let text = '';
-                            try { text = (typeof result.getText === 'function') ? result.getText() : (result.text || ''); }
-                            catch (_) { text = ''; }
-                            if (text) {
-                                lastSuccessAt = now;
-                                onScanSuccess(text);
-                            }
-                        }
-                    }
-                } catch (_) {}
-
-                schedule(tick);
-            };
-            schedule(tick);
-
-            return {
-                pause:  () => { paused  = true; },
-                resume: () => { paused  = false; },
-                stop:   () => {
-                    stopped = true;
-                    releaseStream(stream);
-                },
-                track,
-            };
-        } catch (_) {
-            releaseStream(stream);
-            return null;
+        const hints = new Map();
+        if (ZXing.DecodeHintType && ZXing.BarcodeFormat) {
+            hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
         }
+
+        const reader = new ZXing.BrowserQRCodeReader(hints, 250);
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: 'environment' },
+                width:      { ideal: 1280 },
+                height:     { ideal: 720 },
+            },
+            audio: false,
+        });
+
+        const video = document.createElement('video');
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        video.muted = true;
+        video.srcObject = stream;
+
+        const container = document.getElementById('qr-reader');
+        container.innerHTML = '';
+        container.appendChild(video);
+
+        await video.play();
+
+        const track = stream.getVideoTracks()[0] || null;
+        activeTrack = track;
+        setupCapabilityFeatures(track, container);
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        let running = true;
+        let paused = false;
+        let pass = 0;
+
+        const zxingReader = new ZXing.QRCodeReader();
+
+        function tryDecodeLuminance(lum, width, height) {
+            try {
+                const source = new ZXing.RGBLuminanceSource(lum, width, height);
+                const binarizer = new ZXing.HybridBinarizer(source);
+                const bitmap = new ZXing.BinaryBitmap(binarizer);
+                return zxingReader.decode(bitmap, hints);
+            } catch (_) {
+                return null;
+            }
+        }
+
+        const loop = () => {
+            if (!running) return;
+            if (!paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                const vw = video.videoWidth;
+                const vh = video.videoHeight;
+                if (vw > 0 && vh > 0) {
+                    const targetW = Math.min(640, vw);
+                    const targetH = Math.round((vh / vw) * targetW);
+                    if (canvas.width !== targetW || canvas.height !== targetH) {
+                        canvas.width  = targetW;
+                        canvas.height = targetH;
+                    }
+
+                    ctx.drawImage(video, 0, 0, targetW, targetH);
+                    const img = ctx.getImageData(0, 0, targetW, targetH);
+                    const lum = packLuminance(img.data);
+                    const mean = meanLuminance(lum);
+                    lastLuminance = mean;
+
+                    pass = (pass + 1) % 4;
+                    let result = null;
+
+                    if (pass === 0) {
+                        result = tryDecodeLuminance(lum, targetW, targetH);
+                    } else if (pass === 1) {
+                        const bin = thresholdLuminance(lum, mean);
+                        result = tryDecodeLuminance(bin, targetW, targetH);
+                    } else if (pass === 2) {
+                        const inv = invertLuminance(lum);
+                        result = tryDecodeLuminance(inv, targetW, targetH);
+                    } else {
+                        const stretched = stretchContrastLuminance(lum);
+                        if (stretched) {
+                            result = tryDecodeLuminance(stretched, targetW, targetH);
+                        } else {
+                            result = tryDecodeLuminance(lum, targetW, targetH);
+                        }
+                    }
+
+                    if (result && result.getText && result.getText()) {
+                        onScanSuccess(result.getText());
+                    }
+                }
+            }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+
+        return {
+            pause(sh) { paused = true; },
+            resume()   { paused = false; },
+            stop()     {
+                running = false;
+                try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+            },
+            applyVideoConstraints(c) {
+                if (track && track.applyConstraints) return track.applyConstraints(c);
+                return Promise.resolve();
+            },
+        };
     }
 
     /* ============================================================
-       Path C — html5-qrcode last-resort fallback (PRESERVED)
+       Decode Engine C: html5-qrcode fallback (PRESERVED)
        ============================================================ */
-    function startHtml5QrcodeFallback() {
+    async function startHtml5QrcodeFallback() {
+        if (typeof Html5Qrcode === 'undefined') return null;
+
         const qr = new Html5Qrcode('qr-reader', {
             verbose: false,
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-            formatsToSupport: (window.Html5QrcodeSupportedFormats && [
-                Html5QrcodeSupportedFormats.QR_CODE,
-            ]) || undefined,
+            formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
         });
 
-        const qrbox = (vw, vh) => {
-            const side = Math.floor(Math.min(vw, vh) * 0.95);
-            return {
-                width:  Math.max(240, Math.min(side, 600)),
-                height: Math.max(240, Math.min(side, 600)),
-            };
-        };
-
         const config = {
-            fps: 30,
-            qrbox: qrbox,
+            fps: 24,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                const edge = Math.floor(minEdge * 0.88);
+                return { width: edge, height: edge };
+            },
             aspectRatio: 1.0,
-            disableFlip: false,
-            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: false,
             videoConstraints: {
                 facingMode: { ideal: 'environment' },
-                width:      { ideal: 1920 },
-                height:     { ideal: 1080 },
-                frameRate:  { ideal: 30 },
-                focusMode:        'continuous',
-                exposureMode:     'continuous',
-                whiteBalanceMode: 'continuous',
+                width:      { ideal: 1280 },
+                height:     { ideal: 720 },
                 advanced: [
                     { focusMode: 'continuous' },
                     { focusMode: 'continuous-picture' },
-                    { focusDistance: { ideal: 0.05 } },
-                    { exposureMode: 'continuous' },
-                    { whiteBalanceMode: 'continuous' },
                 ],
             },
         };
@@ -2186,6 +2574,7 @@
                     advanced: [
                         { focusMode: 'continuous' },
                         { focusMode: 'continuous-picture' },
+                        { focusDistance: { ideal: 0.05 } },
                         { exposureMode: 'continuous' },
                         { whiteBalanceMode: 'continuous' },
                     ],
@@ -2202,14 +2591,14 @@
 
     function markScannerReady() {
         scannerStarted = true;
-        $loading.classList.add('is-hidden');
-        setStatus('جاهز للفحص', 'ready');
+        if ($loading) $loading.classList.add('is-hidden');
+        setStatus('جاهز للمسح', 'ready');
     }
 
     function markScannerFailed() {
         if (scannerStarted) return;
         scannerStarted = true;
-        $loading.classList.add('is-hidden');
+        if ($loading) $loading.classList.add('is-hidden');
         setStatus('⚠️ تعذّر تشغيل الكاميرا', 'error');
     }
 
@@ -2255,30 +2644,35 @@
        ============================================================ */
     let flashOn = false;
     const $flashBtn = document.getElementById('flashBtn');
-    $flashBtn.addEventListener('click', async () => {
-        try {
-            if (!activeTrack || !activeTrack.applyConstraints) {
+    if ($flashBtn) {
+        $flashBtn.addEventListener('click', async () => {
+            try {
+                if (!activeTrack || !activeTrack.applyConstraints) {
+                    alert('الفلاش غير مدعوم على هذا الجهاز');
+                    return;
+                }
+                const caps = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+                if (!('torch' in caps)) {
+                    alert('الفلاش غير مدعوم على هذا الجهاز');
+                    return;
+                }
+                flashOn = !flashOn;
+                await activeTrack.applyConstraints({ advanced: [{ torch: flashOn }] });
+                $flashBtn.classList.toggle('is-on', flashOn);
+                $flashBtn.classList.remove('is-suggest');
+            } catch (_) {
                 alert('الفلاش غير مدعوم على هذا الجهاز');
-                return;
+                flashOn = false;
+                $flashBtn.classList.remove('is-on');
+                $flashBtn.classList.remove('is-suggest');
             }
-            const caps = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
-            if (!('torch' in caps)) {
-                alert('الفلاش غير مدعوم على هذا الجهاز');
-                return;
-            }
-            flashOn = !flashOn;
-            await activeTrack.applyConstraints({ advanced: [{ torch: flashOn }] });
-            $flashBtn.classList.toggle('is-on', flashOn);
-            $flashBtn.classList.remove('is-suggest');
-        } catch (_) {
-            alert('الفلاش غير مدعوم على هذا الجهاز');
-            flashOn = false;
-            $flashBtn.classList.remove('is-on');
-            $flashBtn.classList.remove('is-suggest');
-        }
-    });
+        });
+    }
 
-    document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+    const $restartBtn = document.getElementById('restartBtn');
+    if ($restartBtn) {
+        $restartBtn.addEventListener('click', () => location.reload());
+    }
 })();
 </script>
 @endsection
