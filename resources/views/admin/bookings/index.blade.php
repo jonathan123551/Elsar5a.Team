@@ -281,8 +281,8 @@
                                 ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
                                 : '';
                             $totalTickets = $booking->tickets->count();
-                            $sentTickets  = $booking->tickets->where('whatsapp_sent', true)->count();
-                            $hasFailed    = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty();
+                            $sentTickets  = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
+                            $hasFailed    = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
                             $isClaimed    = $booking->tickets->filter(fn($t) => $t->claimed_at)->isNotEmpty();
                         @endphp
                         <tr class="booking-row hover:bg-white/[0.03] transition duration-150"
@@ -371,7 +371,7 @@
                                             {{ number_format((int) $booking->total_price) }} <span class="text-[11px] font-normal text-amber-200/80">ج.م</span>
                                         </p>
                                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-400 mt-1 inline-block">
-                                            {{ $booking->payment_method ?? 'محفظة / إنستاباي' }}
+                                            {{ ($booking->payment_method && $booking->payment_method !== 'manual_transfer') ? $booking->payment_method : 'محفظة / إنستاباي' }}
                                         </span>
                                     </div>
                                 </div>
@@ -473,8 +473,8 @@
                     ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
                     : '';
                 $totalTickets = $booking->tickets->count();
-                $sentTickets  = $booking->tickets->where('whatsapp_sent', true)->count();
-                $hasFailed    = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty();
+                $sentTickets  = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
+                $hasFailed    = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
                 $isClaimed    = $booking->tickets->filter(fn($t) => $t->claimed_at)->isNotEmpty();
             @endphp
 

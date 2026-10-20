@@ -363,13 +363,15 @@ public function receiveTicket(Request $request)
 
         // Scenario A / C: Attempt direct image delivery
         $response = $delivery->sendImage($ticket);
+        $wamid = $delivery->getMessageId($response);
 
         if ($response->successful() && !$response->json('error')) {
             $ticket->update([
-                'whatsapp_sent'     => true,
-                'delivery_status'   => 'sent',
-                'last_delivered_at' => now(),
-                'delivery_error'    => null,
+                'whatsapp_sent'        => true,
+                'delivery_status'      => 'sent',
+                'whatsapp_message_id'  => $wamid,
+                'last_delivered_at'    => now(),
+                'delivery_error'       => null,
             ]);
 
             return back()->with('status', '✅ تم إرسال صورة التذكرة بنجاح عبر واتساب مباشرة.');
@@ -378,18 +380,21 @@ public function receiveTicket(Request $request)
         // Scenario B: Meta 24-hour window is closed (Error 131047)
         if ($delivery->isWindowClosed($response)) {
             $tplResponse = $delivery->sendTemplate($ticket->phone);
+            $tplWamid = $delivery->getMessageId($tplResponse);
 
             if ($tplResponse->successful() && !$tplResponse->json('error')) {
                 $ticket->update([
+                    'whatsapp_sent'   => false,
                     'delivery_status' => 'pending',
                     'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال رسالة القالب لتجديد المحادثة.',
                 ]);
 
                 if ($ticket->booking) {
                     $ticket->booking->update([
-                        'template_status'  => 'sent',
-                        'template_sent_at' => now(),
-                        'template_error'   => null,
+                        'template_status'     => 'sent',
+                        'template_message_id' => $tplWamid,
+                        'template_sent_at'    => now(),
+                        'template_error'      => null,
                     ]);
                 }
 
@@ -398,9 +403,17 @@ public function receiveTicket(Request $request)
 
             $tplError = $delivery->getErrorMessage($tplResponse);
             $ticket->update([
+                'whatsapp_sent'   => false,
                 'delivery_status' => 'failed',
                 'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError,
             ]);
+
+            if ($ticket->booking) {
+                $ticket->booking->update([
+                    'template_status' => 'failed',
+                    'template_error'  => $tplError,
+                ]);
+            }
 
             return back()->with('error', '❌ نافذة الـ 24 ساعة مغلقة وفشل إرسال رسالة القالب: ' . $tplError);
         }
@@ -408,6 +421,7 @@ public function receiveTicket(Request $request)
         // Other failure
         $errorMsg = $delivery->getErrorMessage($response);
         $ticket->update([
+            'whatsapp_sent'   => false,
             'delivery_status' => 'failed',
             'delivery_error'  => $errorMsg,
         ]);
@@ -438,24 +452,28 @@ public function receiveTicket(Request $request)
 
             $ticket->update(['resend_requested_at' => now()]);
             $response = $delivery->sendImage($ticket);
+            $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
                 $ticket->update([
-                    'whatsapp_sent'     => true,
-                    'delivery_status'   => 'sent',
-                    'last_delivered_at' => now(),
-                    'delivery_error'    => null,
+                    'whatsapp_sent'        => true,
+                    'delivery_status'      => 'sent',
+                    'whatsapp_message_id'  => $wamid,
+                    'last_delivered_at'    => now(),
+                    'delivery_error'       => null,
                 ]);
                 $sentCount++;
             } elseif ($delivery->isWindowClosed($response)) {
                 $windowClosed = true;
                 $ticket->update([
+                    'whatsapp_sent'   => false,
                     'delivery_status' => 'pending',
                     'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل.',
                 ]);
             } else {
                 $failCount++;
                 $ticket->update([
+                    'whatsapp_sent'   => false,
                     'delivery_status' => 'failed',
                     'delivery_error'  => $delivery->getErrorMessage($response),
                 ]);
@@ -469,17 +487,37 @@ public function receiveTicket(Request $request)
                 ->filter()
                 ->unique();
 
+            $tplSent = false;
+            $tplErrorMsg = null;
+            $lastTplWamid = null;
+
             foreach ($uniquePhones as $phone) {
-                $delivery->sendTemplate($phone);
+                $tplRes = $delivery->sendTemplate($phone);
+                if ($tplRes->successful() && !$tplRes->json('error')) {
+                    $tplSent = true;
+                    $lastTplWamid = $delivery->getMessageId($tplRes);
+                } else {
+                    $tplErrorMsg = $delivery->getErrorMessage($tplRes);
+                }
+            }
+
+            if ($tplSent) {
+                $booking->update([
+                    'template_status'     => 'sent',
+                    'template_message_id' => $lastTplWamid,
+                    'template_sent_at'    => now(),
+                    'template_error'      => null,
+                ]);
+
+                return back()->with('status', '⚠️ نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال قالب استلام التذاكر عبر واتساب بنجاح، وستصل التذاكر فور نقره على الزر.');
             }
 
             $booking->update([
-                'template_status'  => 'sent',
-                'template_sent_at' => now(),
-                'template_error'   => null,
+                'template_status' => 'failed',
+                'template_error'  => $tplErrorMsg,
             ]);
 
-            return back()->with('status', '⚠️ نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال قالب استلام التذاكر عبر واتساب بنجاح، وستصل التذاكر فور نقره على الزر.');
+            return back()->with('error', '❌ نافذة الـ 24 ساعة مغلقة وفشل إرسال قالب استلام التذاكر: ' . $tplErrorMsg);
         }
 
         if ($sentCount > 0) {
@@ -516,26 +554,37 @@ public function receiveTicket(Request $request)
 
             $ticket->update(['resend_requested_at' => now()]);
             $response = $delivery->sendImage($ticket);
+            $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
                 $ticket->update([
-                    'whatsapp_sent'     => true,
-                    'delivery_status'   => 'sent',
-                    'last_delivered_at' => now(),
-                    'delivery_error'    => null,
+                    'whatsapp_sent'        => true,
+                    'delivery_status'      => 'sent',
+                    'whatsapp_message_id'  => $wamid,
+                    'last_delivered_at'    => now(),
+                    'delivery_error'       => null,
                 ]);
                 $sentCount++;
             } elseif ($delivery->isWindowClosed($response)) {
                 $tplResponse = $delivery->sendTemplate($ticket->phone);
+                $tplWamid = $delivery->getMessageId($tplResponse);
                 if ($tplResponse->successful() && !$tplResponse->json('error')) {
                     $templateCount++;
                     $ticket->update([
+                        'whatsapp_sent'   => false,
                         'delivery_status' => 'pending',
                         'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل (تم إرسال قالب استلام التذاكر للتجديد).',
+                    ]);
+                    $booking->update([
+                        'template_status'     => 'sent',
+                        'template_message_id' => $tplWamid,
+                        'template_sent_at'    => now(),
+                        'template_error'      => null,
                     ]);
                 } else {
                     $failCount++;
                     $ticket->update([
+                        'whatsapp_sent'   => false,
                         'delivery_status' => 'failed',
                         'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse),
                     ]);
@@ -543,6 +592,7 @@ public function receiveTicket(Request $request)
             } else {
                 $failCount++;
                 $ticket->update([
+                    'whatsapp_sent'   => false,
                     'delivery_status' => 'failed',
                     'delivery_error'  => $delivery->getErrorMessage($response),
                 ]);
@@ -616,29 +666,34 @@ public function receiveTicket(Request $request)
 
             $ticket->update(['resend_requested_at' => now()]);
             $response = $delivery->sendImage($ticket);
+            $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
                 $ticket->update([
-                    'whatsapp_sent'     => true,
-                    'delivery_status'   => 'sent',
-                    'last_delivered_at' => now(),
-                    'delivery_error'    => null,
+                    'whatsapp_sent'        => true,
+                    'delivery_status'      => 'sent',
+                    'whatsapp_message_id'  => $wamid,
+                    'last_delivered_at'    => now(),
+                    'delivery_error'       => null,
                 ]);
                 $sentCount++;
             } elseif ($delivery->isWindowClosed($response)) {
                 $tplResponse = $delivery->sendTemplate($ticket->phone);
+                $tplWamid = $delivery->getMessageId($tplResponse);
                 if ($tplResponse->successful() && !$tplResponse->json('error')) {
                     $templateCount++;
                     $ticket->update([
+                        'whatsapp_sent'   => false,
                         'delivery_status' => 'pending',
                         'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل (تم إرسال قالب استلام التذاكر للتجديد).',
                     ]);
                     if ($ticket->booking_id) {
-                        $affectedBookings[$ticket->booking_id] = true;
+                        $affectedBookings[$ticket->booking_id] = $tplWamid;
                     }
                 } else {
                     $failCount++;
                     $ticket->update([
+                        'whatsapp_sent'   => false,
                         'delivery_status' => 'failed',
                         'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse),
                     ]);
@@ -646,17 +701,19 @@ public function receiveTicket(Request $request)
             } else {
                 $failCount++;
                 $ticket->update([
+                    'whatsapp_sent'   => false,
                     'delivery_status' => 'failed',
                     'delivery_error'  => $delivery->getErrorMessage($response),
                 ]);
             }
         }
 
-        if (!empty($affectedBookings)) {
-            Booking::whereIn('id', array_keys($affectedBookings))->update([
-                'template_status'  => 'sent',
-                'template_sent_at' => now(),
-                'template_error'   => null,
+        foreach ($affectedBookings as $bId => $tplWamid) {
+            Booking::where('id', $bId)->update([
+                'template_status'     => 'sent',
+                'template_message_id' => $tplWamid,
+                'template_sent_at'    => now(),
+                'template_error'      => null,
             ]);
         }
 

@@ -109,11 +109,42 @@ class TicketDeliveryService
         return str_contains($message, '131047') || str_contains($message, '24 hours');
     }
 
+    public function getMessageId(Response $response): ?string
+    {
+        return $response->json('messages.0.id');
+    }
+
+    public static function formatMetaError(?int $code, ?string $rawMessage = null): string
+    {
+        $explanation = match ($code) {
+            131026 => 'رقم الهاتف غير مسجل على WhatsApp أو لا يمكن استلام الرسائل عليه',
+            131047 => 'نافذة الـ 24 ساعة مغلقة مع العميل (أكثر من 24 ساعة منذ آخر محادثة)',
+            131053 => 'تعذر تنزيل صورة التذكرة من الخادم عبر Meta',
+            130429 => 'تم تجاوز حد إرسال الرسائل المسموح به مؤقتاً (Rate Limit)',
+            132000, 132001 => 'قالب الرسالة غير معتمد أو غير متاح في حساب Meta',
+            133010 => 'رقم هاتف حساب واتساب للأعمال غير نشط',
+            default => null,
+        };
+
+        if ($explanation) {
+            return $explanation . ($code ? " (كود {$code})" : '');
+        }
+
+        if ($rawMessage) {
+            return $rawMessage . ($code ? " (كود {$code})" : '');
+        }
+
+        return $code ? "خطأ مزود الخدمة Meta (كود {$code})" : 'خطأ غير محدد في الإرسال';
+    }
+
     public function getErrorMessage(Response $response): string
     {
-        return $response->json('error.message')
+        $code = (int) ($response->json('error.code') ?? $response->json('error.error_subcode') ?? 0);
+        $rawMessage = $response->json('error.message')
             ?? $response->json('error.error_data.details')
             ?? ('HTTP ' . $response->status());
+
+        return self::formatMetaError($code ?: null, $rawMessage);
     }
 
     /**

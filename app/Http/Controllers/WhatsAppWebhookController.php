@@ -33,23 +33,19 @@ class WhatsAppWebhookController extends Controller
     public function handle(Request $request)
     {
         try {
+            // 1. Process asynchronous message status updates from Meta (sent, delivered, failed)
+            $statuses = $request->input('entry.0.changes.0.value.statuses');
+            if (is_array($statuses) && !empty($statuses)) {
+                foreach ($statuses as $status) {
+                    $this->handleStatusUpdate($status);
+                }
+                $this->forwardToChatwoot($request);
+                return response()->json(['ok' => true]);
+            }
+
             $message = $request->input('entry.0.changes.0.value.messages.0');
 
             if (!$message || !isset($message['from'])) {
-                $status = $request->input('entry.0.changes.0.value.statuses.0');
-                if ($status && in_array($status['status'] ?? '', ['failed', 'undelivered'], true)) {
-                    Log::warning('UNEXPECTED_WHATSAPP_STATUS', LogContext::base(
-                        'UNEXPECTED_WHATSAPP_STATUS',
-                        'webhook.whatsapp.status',
-                        [
-                            'status' => $status['status'] ?? null,
-                            'recipient_id' => LogContext::maskPhone($status['recipient_id'] ?? null),
-                            'meta_error_code' => data_get($status, 'errors.0.code'),
-                            'meta_error_msg' => data_get($status, 'errors.0.message'),
-                        ]
-                    ));
-                }
-
                 $this->forwardToChatwoot($request);
                 return response()->json(['ok' => true]);
             }
@@ -192,5 +188,131 @@ class WhatsAppWebhookController extends Controller
                 ]
             ));
         }
+    }
+
+    /* ========================================================
+       PROCESS ASYNCHRONOUS META STATUS UPDATE (sent/delivered/failed)
+       ======================================================== */
+    protected function handleStatusUpdate(array $status): void
+    {
+        $wamid = $status['id'] ?? null;
+        $statusName = $status['status'] ?? null; // 'sent', 'delivered', 'read', 'failed', 'undelivered'
+        $recipientId = (string) ($status['recipient_id'] ?? '');
+        $phoneNormalized = preg_replace('/[^0-9]/', '', $recipientId);
+        $errorCode = (int) data_get($status, 'errors.0.code');
+        $rawErrorMsg = data_get($status, 'errors.0.message') ?? data_get($status, 'errors.0.title');
+        $formattedError = \App\Services\TicketDeliveryService::formatMetaError($errorCode ?: null, $rawErrorMsg);
+
+        Log::info('WHATSAPP_STATUS_UPDATE', LogContext::base(
+            'WHATSAPP_STATUS_UPDATE',
+            'webhook.whatsapp.status',
+            [
+                'status'          => $statusName,
+                'message_id'      => $wamid,
+                'recipient_id'    => LogContext::maskPhone($recipientId),
+                'meta_error_code' => $errorCode ?: null,
+                'meta_error_msg'  => $formattedError,
+            ]
+        ));
+
+        // 1. Try to match a Ticket by message ID
+        $ticket = null;
+        if ($wamid) {
+            $ticket = Ticket::where('whatsapp_message_id', $wamid)->first();
+        }
+
+        // Fallback matching by phone for tickets in active delivery state
+        if (!$ticket && $phoneNormalized && in_array($statusName, ['failed', 'undelivered', 'delivered'], true)) {
+            $ticket = Ticket::where(function ($q) use ($phoneNormalized) {
+                $q->where('phone', $phoneNormalized)
+                  ->orWhere('phone', 'like', '%' . substr($phoneNormalized, -9));
+            })
+            ->whereIn('delivery_status', ['sending', 'sent'])
+            ->latest('resend_requested_at')
+            ->first();
+        }
+
+        if ($ticket) {
+            if (in_array($statusName, ['delivered', 'read'], true)) {
+                $ticket->update([
+                    'delivery_status'   => 'delivered',
+                    'whatsapp_sent'     => true,
+                    'last_delivered_at' => now(),
+                    'delivery_error'    => null,
+                ]);
+            } elseif ($statusName === 'sent') {
+                if ($ticket->delivery_status !== 'delivered') {
+                    $ticket->update([
+                        'delivery_status' => 'sent',
+                        'whatsapp_sent'   => true,
+                    ]);
+                }
+            } elseif (in_array($statusName, ['failed', 'undelivered'], true)) {
+                $ticket->update([
+                    'delivery_status' => 'failed',
+                    'whatsapp_sent'   => false,
+                    'delivery_error'  => $formattedError,
+                ]);
+            }
+            return;
+        }
+
+        // 2. Try to match a Booking template by message ID
+        $booking = null;
+        if ($wamid) {
+            $booking = \App\Models\Booking::where('template_message_id', $wamid)->first();
+        }
+
+        // Fallback matching by phone for booking template
+        if (!$booking && $phoneNormalized) {
+            $booking = \App\Models\Booking::where(function ($q) use ($phoneNormalized) {
+                $q->where('phone', $phoneNormalized)
+                  ->orWhere('phone', 'like', '%' . substr($phoneNormalized, -9));
+            })
+            ->whereIn('template_status', ['sending', 'sent'])
+            ->latest('updated_at')
+            ->first();
+        }
+
+        if ($booking) {
+            if (in_array($statusName, ['delivered', 'read'], true)) {
+                $booking->update([
+                    'template_status' => 'delivered',
+                    'template_error'  => null,
+                ]);
+            } elseif ($statusName === 'sent') {
+                if ($booking->template_status !== 'delivered') {
+                    $booking->update([
+                        'template_status' => 'sent',
+                    ]);
+                }
+            } elseif (in_array($statusName, ['failed', 'undelivered'], true)) {
+                $booking->update([
+                    'template_status' => 'failed',
+                    'template_error'  => $formattedError,
+                ]);
+
+                // Also update any pending tickets in this booking that were waiting on this template
+                $booking->tickets()
+                    ->where('whatsapp_sent', false)
+                    ->whereNotIn('delivery_status', ['delivered', 'sent'])
+                    ->update([
+                        'delivery_status' => 'failed',
+                        'delivery_error'  => 'فشل إرسال قالب الاستلام: ' . $formattedError,
+                    ]);
+            }
+            return;
+        }
+
+        // 3. Status not matched to ticket or booking
+        Log::info('WHATSAPP_UNMATCHED_STATUS', LogContext::base(
+            'WHATSAPP_UNMATCHED_STATUS',
+            'webhook.whatsapp.unmatched',
+            [
+                'status'       => $statusName,
+                'message_id'   => $wamid,
+                'recipient_id' => LogContext::maskPhone($recipientId),
+            ]
+        ));
     }
 }

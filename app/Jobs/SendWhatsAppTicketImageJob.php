@@ -106,13 +106,15 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
 
         try {
             $response = $delivery->sendImage($ticket);
+            $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && ! $response->json('error')) {
                 $ticket->update([
-                    'whatsapp_sent'     => true,
-                    'delivery_status'   => 'sent',
-                    'last_delivered_at' => now(),
-                    'delivery_error'    => null,
+                    'whatsapp_sent'        => true,
+                    'delivery_status'      => 'sent',
+                    'whatsapp_message_id'  => $wamid,
+                    'last_delivered_at'    => now(),
+                    'delivery_error'       => null,
                 ]);
 
                 Log::info(
@@ -157,6 +159,7 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             $permanent = in_array($errorCode, [131026, 131047, 131053], true);
 
             $ticket->update([
+                'whatsapp_sent'   => false,
                 'delivery_status' => 'failed',
                 'delivery_error'  => $errorMessage,
             ]);

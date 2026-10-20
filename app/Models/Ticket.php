@@ -28,6 +28,7 @@ class Ticket extends Model
         'last_delivered_at',
         'claimed_at',
         'delivery_error',
+        'whatsapp_message_id',
     ];
 
     protected $casts = [
@@ -46,7 +47,17 @@ class Ticket extends Model
 
     public function isDelivered(): bool
     {
-        return $this->delivery_status === 'sent' || $this->whatsapp_sent;
+        return $this->delivery_status === 'delivered' || ($this->delivery_status === 'sent' && $this->whatsapp_sent);
+    }
+
+    public function isConfirmedDelivered(): bool
+    {
+        return $this->delivery_status === 'delivered';
+    }
+
+    public function isSent(): bool
+    {
+        return in_array($this->delivery_status, ['sent', 'delivered'], true) || $this->whatsapp_sent;
     }
 
     public function isFailed(): bool

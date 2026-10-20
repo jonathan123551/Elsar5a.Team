@@ -43,13 +43,15 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
 
         try {
             $response = $delivery->sendTemplate($this->phone);
+            $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
                 if ($this->bookingId) {
                     \App\Models\Booking::where('id', $this->bookingId)->update([
-                        'template_status'  => 'sent',
-                        'template_sent_at' => now(),
-                        'template_error'   => null,
+                        'template_status'     => 'sent',
+                        'template_message_id' => $wamid,
+                        'template_sent_at'    => now(),
+                        'template_error'      => null,
                     ]);
                 }
 

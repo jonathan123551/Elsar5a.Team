@@ -192,8 +192,8 @@ class AdminBookingsAndResendTest extends TestCase
         $response->assertSee('تعذر الوصول لرقم الواتساب');
         $response->assertSee('إعادة إرسال التذكرة');
 
-        // Floating action dock with resend
-        $response->assertSee('إعادة إرسال التذاكر');
+        // Floating action dock contains only delete for approved bookings
+        $response->assertSee('حذف الحجز');
     }
 
     /**
@@ -732,5 +732,340 @@ class AdminBookingsAndResendTest extends TestCase
         // So b2 is still 1 unreceived until customer taps template.
         $indexResponse = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
         $indexResponse->assertSee('إرسال التذاكر غير المستلمة (1)');
+    }
+
+    /**
+     * Requirement 19: Phone not on WhatsApp (Meta error 131026).
+     * Template fails -> UI must show Template FAILED, Customer NOT RECEIVED, Ticket NOT SENT.
+     * MUST NOT show "تم استلام التذكرة".
+     */
+    public function test_scenario_19_phone_not_registered_on_whatsapp_meta_fails()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'طارق غير مسجل',
+            'phone' => '01099999999',
+            'reference_code' => 'REF-TEST-19',
+            'public_number' => 119,
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'not_sent',
+            'template_sent_at' => null,
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'طارق غير مسجل',
+            'phone' => '01099999999',
+            'ticket_code' => 'TICK-UNREG-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/unreg.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        // Mock Meta API: direct send fails with window closed, template fails with 131026 (not on WhatsApp)
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $data = $request->data();
+
+            if (($data['type'] ?? '') === 'image') {
+                return Http::response([
+                    'error' => [
+                        'message' => 'Message failed to send because more than 24 hours have passed.',
+                        'type' => 'OAuthException',
+                        'code' => 131047,
+                    ],
+                ], 400);
+            }
+
+            if (($data['type'] ?? '') === 'template') {
+                return Http::response([
+                    'error' => [
+                        'message' => 'Message undeliverable. The phone number is not registered on WhatsApp.',
+                        'type' => 'OAuthException',
+                        'code' => 131026,
+                    ],
+                ], 400);
+            }
+
+            return Http::response(['error' => 'unknown'], 500);
+        });
+
+        // Admin clicks Resend for the ticket
+        $resendResponse = $this->actingAs($this->admin)->post(route('admin.resend.ticket', $ticket->id));
+        $resendResponse->assertRedirect();
+
+        // Refresh booking & ticket from DB
+        $booking->refresh();
+        $ticket->refresh();
+
+        $this->assertEquals('failed', $booking->template_status);
+        $this->assertStringContainsString('رقم الهاتف غير مسجل على WhatsApp', (string) $booking->template_error);
+        $this->assertFalse((bool) $ticket->whatsapp_sent);
+        $this->assertNull($ticket->claimed_at);
+
+        // View booking details in UI
+        $uiResponse = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking));
+        $uiResponse->assertStatus(200);
+
+        // Stage 1: Template shows failure and exact error hint
+        $uiResponse->assertSee('فشل إرسال قالب استلام التذاكر');
+        $uiResponse->assertSee('لم يصل قالب الاستلام');
+        $uiResponse->assertSee('رقم الهاتف غير مسجل على WhatsApp');
+
+        // Stage 2: Customer action shows not received / failed
+        $uiResponse->assertSee('تعذر (فشل القالب)');
+
+        // Stage 3: Ticket shows failed to send / not delivered
+        $uiResponse->assertSee('فشل الإرسال');
+        $uiResponse->assertSee('التذكرة لم تصل للعميل');
+
+        // MUST NOT show false success
+        $uiResponse->assertDontSee('تم تسليم جميع التذاكر بالكامل');
+    }
+
+    /**
+     * Requirement 20: Template delivered -> Customer clicks Receive -> Ticket send fails.
+     * UI must clearly distinguish: Template delivered, Customer clicked, Ticket delivery failed.
+     * MUST NOT show "تم استلام التذكرة".
+     */
+    public function test_scenario_20_customer_clicks_receive_but_ticket_send_fails()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'ياسمين فشل التذكرة',
+            'phone' => '01055555555',
+            'reference_code' => 'REF-TEST-20',
+            'public_number' => 120,
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'delivered',
+            'template_sent_at' => now()->subMinutes(10),
+            'template_message_id' => 'wamid.HBgLMjAx_tpl_yasmin',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'ياسمين فشل التذكرة',
+            'phone' => '01055555555',
+            'ticket_code' => 'TICK-YAS-001',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/yas.jpg',
+            'whatsapp_sent' => false,
+            'claimed_at' => now()->subMinutes(5),
+            'delivery_status' => 'failed',
+            'delivery_error' => 'تعذر إرسال صورة التذكرة: Meta error 131053',
+        ]);
+
+        $uiResponse = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking));
+        $uiResponse->assertStatus(200);
+
+        // Stage 1: Template delivered
+        $uiResponse->assertSee('تم التسليم');
+
+        // Stage 2: Customer clicked receive
+        $uiResponse->assertSee('نقر العميل');
+
+        // Stage 3: Ticket delivery failed with specific reason
+        $uiResponse->assertSee('فشل الإرسال');
+        $uiResponse->assertSee('تعذر تسليم 1 تذكرة');
+        $uiResponse->assertSee('التذكرة لم تصل للعميل');
+        $uiResponse->assertSee('تعذر إرسال صورة التذكرة: Meta error 131053');
+
+        // MUST NOT show full success
+        $uiResponse->assertDontSee('تم تسليم جميع التذاكر بالكامل');
+    }
+
+    /**
+     * Requirement 21: Full success scenario:
+     * Template delivered -> Customer clicks Receive -> Ticket sent -> Webhook confirms delivered.
+     * Only then does the UI show the final successful state.
+     */
+    public function test_scenario_21_end_to_end_delivery_success()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'محمود نجاح كامل',
+            'phone' => '01066666666',
+            'reference_code' => 'REF-TEST-21',
+            'public_number' => 121,
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'delivered',
+            'template_sent_at' => now()->subMinutes(15),
+            'template_message_id' => 'wamid.HBgLMjAx_tpl_success',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'محمود نجاح كامل',
+            'phone' => '01066666666',
+            'ticket_code' => 'TICK-SUC-001',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/suc.jpg',
+            'whatsapp_sent' => true,
+            'whatsapp_message_id' => 'wamid.HBgLMjAx_ticket_success',
+            'claimed_at' => now()->subMinutes(10),
+            'last_delivered_at' => now()->subMinutes(9),
+            'delivery_status' => 'delivered',
+            'delivery_error' => null,
+        ]);
+
+        $uiResponse = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking));
+        $uiResponse->assertStatus(200);
+
+        // Final successful state
+        $uiResponse->assertSee('تم تسليم جميع التذاكر بالكامل (1/1)');
+        $uiResponse->assertSee('وصلت جميع التذاكر على هاتف العميل بالكامل');
+        $uiResponse->assertDontSee('تعذر تسليم');
+        $uiResponse->assertDontSee('فشل الإرسال');
+    }
+
+    /**
+     * Requirement 9: Webhook asynchronous status 'failed' (e.g. 131026)
+     * must transition state to failed, set whatsapp_sent=false, record error hint,
+     * and NOT log UNEXPECTED_WHATSAPP_STATUS or silently turn into success.
+     */
+    public function test_webhook_asynchronous_status_failed_updates_db_and_shows_error_hint()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'نادر اختبار الويب هوك',
+            'phone' => '01044444444',
+            'reference_code' => 'REF-WH-01',
+            'public_number' => 125,
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'sent',
+            'template_sent_at' => now()->subMinutes(2),
+            'template_message_id' => 'wamid.HBgLMjAx_tpl_webhook_fail',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'نادر اختبار الويب هوك',
+            'phone' => '01044444444',
+            'ticket_code' => 'TICK-WH-001',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/wh.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        // Meta status webhook: failed with error 131026
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'messaging_product' => 'whatsapp',
+                                'statuses' => [
+                                    [
+                                        'id' => 'wamid.HBgLMjAx_tpl_webhook_fail',
+                                        'status' => 'failed',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'recipient_id' => '201044444444',
+                                        'errors' => [
+                                            [
+                                                'code' => 131026,
+                                                'title' => 'Message undeliverable',
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->postJson('/webhook/whatsapp', $payload);
+        $response->assertStatus(200);
+
+        $booking->refresh();
+        $ticket->refresh();
+
+        $this->assertEquals('failed', $booking->template_status);
+        $this->assertStringContainsString('رقم الهاتف غير مسجل على WhatsApp', (string) $booking->template_error);
+        $this->assertEquals('failed', $ticket->delivery_status);
+        $this->assertFalse((bool) $ticket->whatsapp_sent);
+
+        // Verify in Admin UI
+        $uiResponse = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking));
+        $uiResponse->assertStatus(200);
+        $uiResponse->assertSee('فشل إرسال قالب استلام التذاكر');
+        $uiResponse->assertSee('رقم الهاتف غير مسجل على WhatsApp');
+        $uiResponse->assertDontSee('تم تسليم جميع التذاكر بالكامل');
+    }
+
+    /**
+     * Requirement 9: Webhook asynchronous status 'delivered'
+     * marks ticket confirmed delivered.
+     */
+    public function test_webhook_asynchronous_status_delivered_marks_ticket_delivered()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'سارة تسليم مؤكد',
+            'phone' => '01077777777',
+            'reference_code' => 'REF-WH-02',
+            'public_number' => 126,
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'delivered',
+            'template_sent_at' => now()->subMinutes(10),
+            'template_message_id' => 'wamid.HBgLMjAx_tpl_ok',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'سارة تسليم مؤكد',
+            'phone' => '01077777777',
+            'ticket_code' => 'TICK-WH-002',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/wh2.jpg',
+            'whatsapp_sent' => true,
+            'whatsapp_message_id' => 'wamid.HBgLMjAx_ticket_delivered_test',
+            'claimed_at' => now()->subMinutes(5),
+            'delivery_status' => 'sent',
+        ]);
+
+        // Meta status webhook: delivered
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'messaging_product' => 'whatsapp',
+                                'statuses' => [
+                                    [
+                                        'id' => 'wamid.HBgLMjAx_ticket_delivered_test',
+                                        'status' => 'delivered',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'recipient_id' => '201077777777',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->postJson('/webhook/whatsapp', $payload);
+        $response->assertStatus(200);
+
+        $ticket->refresh();
+        $this->assertEquals('delivered', $ticket->delivery_status);
+        $this->assertTrue((bool) $ticket->whatsapp_sent);
+        $this->assertNotNull($ticket->last_delivered_at);
+
+        // Verify in Admin UI
+        $uiResponse = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking));
+        $uiResponse->assertStatus(200);
+        $uiResponse->assertSee('تم تسليم جميع التذاكر بالكامل (1/1)');
     }
 }

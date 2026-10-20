@@ -53,6 +53,7 @@ class Booking extends Model
         'template_status',
         'template_sent_at',
         'template_error',
+        'template_message_id',
 
         'transfer_screenshot_public_id',
         'qr_code_public_id',
@@ -107,7 +108,12 @@ class Booking extends Model
 
     public function isTemplateSent(): bool
     {
-        return $this->template_status === 'sent';
+        return in_array($this->template_status, ['sent', 'delivered'], true);
+    }
+
+    public function isTemplateDelivered(): bool
+    {
+        return $this->template_status === 'delivered';
     }
 
     public function isTemplateFailed(): bool
@@ -122,7 +128,12 @@ class Booking extends Model
 
     public function ticketsDeliveredCount(): int
     {
-        return $this->tickets->filter(fn($t) => $t->whatsapp_sent || $t->delivery_status === 'sent')->count();
+        return $this->tickets->filter(fn($t) => $t->delivery_status === 'delivered' || ($t->delivery_status === 'sent' && $t->whatsapp_sent))->count();
+    }
+
+    public function ticketsFailedCount(): int
+    {
+        return $this->tickets->filter(fn($t) => $t->delivery_status === 'failed')->count();
     }
 
     public function ticketsTotalCount(): int
