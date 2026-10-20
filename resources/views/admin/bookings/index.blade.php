@@ -150,16 +150,18 @@
          STATUS COUNT SUMMARY
          ------------------------------------------------------ --}}
     @php
+        $whatsappIssuesCount = $bookings->filter(fn($b) => $b->template_status === 'failed' || $b->tickets->where('delivery_status', 'failed')->isNotEmpty())->count();
         $counts = [
             'all'      => $bookings->count(),
             'pending'  => $bookings->where('status', 'pending')->count(),
             'approved' => $bookings->where('status', 'approved')->count(),
             'rejected' => $bookings->where('status', 'rejected')->count(),
+            'issues'   => $whatsappIssuesCount,
         ];
     @endphp
 
     @if($bookings->isNotEmpty())
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" role="tablist" aria-label="أقسام حالات الحجز">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5" role="tablist" aria-label="أقسام حالات الحجز">
             <button type="button" class="adm-chip is-active" data-status-jump="" data-tone="">
                 <span class="opacity-80">الكل</span>
                 <span class="font-bold tabular-nums">({{ $counts['all'] }})</span>
@@ -175,6 +177,10 @@
             <button type="button" class="adm-chip" data-status-jump="rejected" data-tone="rejected">
                 <span class="opacity-80">مرفوض</span>
                 <span class="font-bold tabular-nums">({{ $counts['rejected'] }})</span>
+            </button>
+            <button type="button" class="adm-chip" data-status-jump="issues" data-tone="rejected">
+                <span class="opacity-80">مشاكل واتساب</span>
+                <span class="font-bold tabular-nums">({{ $counts['issues'] }})</span>
             </button>
         </div>
     @endif
@@ -237,6 +243,7 @@
             <option value="pending">قيد المراجعة</option>
             <option value="approved">مقبول</option>
             <option value="rejected">مرفوض</option>
+            <option value="issues">مشاكل واتساب</option>
         </select>
     </div>
 
@@ -280,15 +287,18 @@
                             $dt = $booking->showTime
                                 ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
                                 : '';
-                            $totalTickets = $booking->tickets->count();
-                            $sentTickets  = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
-                            $hasFailed    = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
-                            $isClaimed    = $booking->tickets->filter(fn($t) => $t->claimed_at)->isNotEmpty();
+                            $totalTickets     = $booking->tickets->count();
+                            $deliveredTickets = $booking->tickets->where('delivery_status', 'delivered')->count();
+                            $inTransitTickets = $booking->tickets->whereIn('delivery_status', ['sending', 'sent'])->count();
+                            $sentTickets      = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
+                            $hasFailed        = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
+                            $isClaimed        = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count() > 0;
                         @endphp
                         <tr class="booking-row hover:bg-white/[0.03] transition duration-150"
                             data-search="{{ strtolower($booking->full_name.' '.$booking->phone.' '.$booking->reference_code) }}"
                             data-pn="{{ $booking->public_number ?? '' }}"
                             data-status="{{ $booking->status }}"
+                            data-has-issues="{{ $hasFailed ? '1' : '0' }}"
                             data-datetime="{{ $dt }}">
 
                             {{-- Booking Number --}}
@@ -400,34 +410,34 @@
                             {{-- WhatsApp Multi-Stage Delivery Indicator --}}
                             <td class="px-4 py-3 text-center align-middle">
                                 @if($booking->status === 'approved')
-                                    @if($sentTickets === $totalTickets && $totalTickets > 0)
-                                        <span class="adm-delivery-pill bg-emerald-500/15 text-emerald-300 border border-emerald-500/40" title="تم تسليم جميع التذاكر للعميل عبر واتساب">
-                                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                            <span>تم الاستلام ({{ $sentTickets }}/{{ $totalTickets }})</span>
+                                    @if($deliveredTickets === $totalTickets && $totalTickets > 0)
+                                        <span class="adm-delivery-pill bg-emerald-500/15 text-emerald-300 border border-emerald-500/40" title="تم تسليم جميع التذاكر للعميل ومؤكد من واتساب">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                            <span>تم الاستلام ({{ $deliveredTickets }}/{{ $totalTickets }})</span>
                                         </span>
                                     @elseif($hasFailed)
-                                        <span class="adm-delivery-pill bg-rose-500/15 text-rose-300 border border-rose-500/40" title="تعذر إرسال بعض التذاكر عبر واتساب">
-                                            <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-                                            <span>فشل التسليم ({{ $sentTickets }}/{{ $totalTickets }})</span>
+                                        <span class="adm-delivery-pill bg-rose-500/15 text-rose-300 border border-rose-500/40" title="{{ $booking->template_error ?? 'تعذر إرسال بعض التذاكر عبر واتساب' }}">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                            <span>فشل التسليم</span>
                                         </span>
                                     @elseif($isClaimed)
                                         <span class="adm-delivery-pill bg-amber-500/15 text-amber-300 border border-amber-500/40" title="نقر العميل وجاري الإرسال">
-                                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                                            <span>جاري التسليم ({{ $sentTickets }}/{{ $totalTickets }})</span>
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                                            <span>جاري التسليم</span>
                                         </span>
                                     @elseif($booking->template_status === 'sent')
                                         <span class="adm-delivery-pill bg-sky-500/15 text-sky-300 border border-sky-500/40" title="أُرسل قالب الاستلام، بانتظار نقر العميل على واتساب">
-                                            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                                            <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
                                             <span>بانتظار نقر العميل</span>
                                         </span>
-                                    @elseif($booking->template_status === 'sending')
-                                        <span class="adm-delivery-pill bg-amber-500/15 text-amber-200 border border-amber-500/40">
+                                    @elseif($inTransitTickets > 0 || $booking->template_status === 'sending')
+                                        <span class="adm-delivery-pill bg-amber-500/15 text-amber-200 border border-amber-500/40" title="أُرسلت لخوادم Meta وبانتظار تأكيد التسليم">
                                             <span class="btn-spinner"></span>
-                                            <span>جاري إرسال القالب…</span>
+                                            <span>جاري الإرسال…</span>
                                         </span>
                                     @else
                                         <span class="adm-delivery-pill bg-white/5 text-slate-400 border border-white/10">
-                                            <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
                                             <span>معتمد (لم يُرسل)</span>
                                         </span>
                                     @endif
@@ -472,16 +482,19 @@
                 $dt = $booking->showTime
                     ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
                     : '';
-                $totalTickets = $booking->tickets->count();
-                $sentTickets  = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
-                $hasFailed    = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
-                $isClaimed    = $booking->tickets->filter(fn($t) => $t->claimed_at)->isNotEmpty();
+                $totalTickets     = $booking->tickets->count();
+                $deliveredTickets = $booking->tickets->where('delivery_status', 'delivered')->count();
+                $inTransitTickets = $booking->tickets->whereIn('delivery_status', ['sending', 'sent'])->count();
+                $sentTickets      = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
+                $hasFailed        = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
+                $isClaimed        = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count() > 0;
             @endphp
 
             <div class="adm-card bg-[#0e131f]/90 border border-white/10 rounded-2xl p-4 space-y-3 shadow-md booking-card"
                  data-search="{{ strtolower($booking->full_name.' '.$booking->phone.' '.$booking->reference_code) }}"
                  data-pn="{{ $booking->public_number ?? '' }}"
                  data-status="{{ $booking->status }}"
+                 data-has-issues="{{ $hasFailed ? '1' : '0' }}"
                  data-datetime="{{ $dt }}">
 
                 {{-- Row 1: #N + Status Pill + Price --}}
@@ -556,20 +569,35 @@
                         </span>
 
                         @if($booking->status === 'approved')
-                            @if($sentTickets === $totalTickets && $totalTickets > 0)
+                            @if($deliveredTickets === $totalTickets && $totalTickets > 0)
                                 <span class="adm-delivery-pill bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 text-[10.5px]">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                    <span>تم الاستلام ({{ $sentTickets }}/{{ $totalTickets }})</span>
+                                    <span>تم الاستلام ({{ $deliveredTickets }}/{{ $totalTickets }})</span>
                                 </span>
                             @elseif($hasFailed)
-                                <span class="adm-delivery-pill bg-rose-500/15 text-rose-300 border border-rose-500/40 text-[10.5px]">
+                                <span class="adm-delivery-pill bg-rose-500/15 text-rose-300 border border-rose-500/40 text-[10.5px]" title="{{ $booking->template_error ?? 'تعذر تسليم بعض التذاكر عبر واتساب' }}">
                                     <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
                                     <span>فشل التسليم</span>
+                                </span>
+                            @elseif($isClaimed)
+                                <span class="adm-delivery-pill bg-amber-500/15 text-amber-300 border border-amber-500/40 text-[10.5px]">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                                    <span>جاري التسليم</span>
                                 </span>
                             @elseif($booking->template_status === 'sent')
                                 <span class="adm-delivery-pill bg-sky-500/15 text-sky-300 border border-sky-500/40 text-[10.5px]">
                                     <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
                                     <span>بانتظار نقر العميل</span>
+                                </span>
+                            @elseif($inTransitTickets > 0 || $booking->template_status === 'sending')
+                                <span class="adm-delivery-pill bg-amber-500/15 text-amber-200 border border-amber-500/40 text-[10.5px]">
+                                    <span class="btn-spinner"></span>
+                                    <span>جاري الإرسال…</span>
+                                </span>
+                            @else
+                                <span class="adm-delivery-pill bg-white/5 text-slate-400 border border-white/10 text-[10.5px]">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                                    <span>معتمد (لم يُرسل)</span>
                                 </span>
                             @endif
                         @endif
@@ -739,7 +767,11 @@ document.addEventListener('DOMContentLoaded', function () {
         function matches(el) {
             if (pnQuery !== null && el.dataset.pn !== pnQuery) return false;
             if (searchQuery && !el.dataset.search.includes(searchQuery)) return false;
-            if (st && el.dataset.status !== st) return false;
+            if (st === 'issues') {
+                if (el.dataset.hasIssues !== '1') return false;
+            } else if (st && el.dataset.status !== st) {
+                return false;
+            }
             if (when && el.dataset.datetime !== when) return false;
             return true;
         }
@@ -878,6 +910,73 @@ document.addEventListener('DOMContentLoaded', function () {
             if (globalResendModal && !globalResendModal.classList.contains('hidden')) closeGlobalResend();
         }
     });
+
+    // -------------------------------------------------------------
+    // LIVE BOOKING MANAGEMENT STATUS POLLING (12s interval)
+    // -------------------------------------------------------------
+    var pollInterval = 12000;
+    var pollTimer = null;
+    var abortCtrl = null;
+    var initialTotal = {{ $bookings->count() }};
+    var latestKnownId = {{ (int) $bookings->max('id') }};
+
+    function pollIndex() {
+        if (document.hidden) return;
+        if (abortCtrl) {
+            try { abortCtrl.abort(); } catch (e) {}
+        }
+        if (window.AbortController) {
+            abortCtrl = new AbortController();
+        }
+
+        fetch("{{ route('admin.bookings.poll-status') }}", {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' },
+            signal: abortCtrl ? abortCtrl.signal : undefined
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data || !data.ok || !data.summary) return;
+            var s = data.summary;
+
+            // 1. Update Global Send Unreceived Button count live
+            var unreceivedBtn = document.getElementById('openGlobalResendModal');
+            if (unreceivedBtn) {
+                var btnSpan = unreceivedBtn.querySelector('span');
+                if (btnSpan) {
+                    btnSpan.textContent = 'إرسال التذاكر غير المستلمة (' + s.unreceived_tickets_count + ')';
+                }
+            }
+
+            // 2. If new booking arrived, display banner
+            if (s.total_bookings > initialTotal || s.latest_booking_id > latestKnownId) {
+                var newBanner = document.getElementById('newBookingsAlert');
+                if (!newBanner) {
+                    var container = document.querySelector('section.space-y-4, section.space-y-6');
+                    if (container) {
+                        var banner = document.createElement('div');
+                        banner.id = 'newBookingsAlert';
+                        banner.className = 'p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs sm:text-sm font-bold flex items-center justify-between gap-3 shadow-lg';
+                        banner.innerHTML = '<div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span><span>🔔 تم استقبال حجوزات جديدة (' + s.total_bookings + ' حجز).</span></div><button type="button" onclick="location.reload()" class="admin-btn admin-btn--primary admin-btn--sm">تحديث القائمة</button>';
+                        container.insertBefore(banner, container.children[1]);
+                    }
+                }
+            }
+        })
+        .catch(function () {});
+    }
+
+    function startIndexPoll() {
+        if (!pollTimer) pollTimer = setInterval(pollIndex, pollInterval);
+    }
+    function stopIndexPoll() {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) stopIndexPoll();
+        else { pollIndex(); startIndexPoll(); }
+    });
+    startIndexPoll();
 });
 </script>
 @endsection

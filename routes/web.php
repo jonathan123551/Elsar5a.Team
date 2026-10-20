@@ -203,6 +203,7 @@ Route::middleware('admin')
     )->name('shows.times.toggle');
     // Bookings
     Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/poll-status', [AdminBookingController::class, 'pollStatus'])->name('poll-status');
         Route::get('/', [AdminBookingController::class, 'index'])->name('index');
         Route::post('/send-all-unreceived', [AdminBookingController::class, 'sendAllUnreceivedTickets'])->name('send-all-unreceived');
         Route::post('/{booking}/approve', [AdminBookingController::class, 'approve'])->name('approve');

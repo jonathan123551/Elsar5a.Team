@@ -59,6 +59,104 @@ class BookingController extends Controller
         return view('admin.bookings.show', compact('booking'));
     }
 
+    /**
+     * Lightweight polling endpoint for live status updates in admin UI.
+     * Accessible by authenticated admins via /admin/bookings/poll-status.
+     */
+    public function pollStatus(Request $request)
+    {
+        $unreceivedTicketsCount = Ticket::whereHas('booking', fn ($q) => $q->where('status', 'approved'))
+            ->where('whatsapp_sent', false)
+            ->where(function ($q) {
+                $q->whereNull('delivery_status')
+                  ->orWhere('delivery_status', '!=', 'delivered');
+            })
+            ->count();
+
+        $counts = [
+            'total_bookings'           => Booking::count(),
+            'pending_bookings'         => Booking::where('status', 'pending')->count(),
+            'approved_bookings'        => Booking::where('status', 'approved')->count(),
+            'rejected_bookings'        => Booking::where('status', 'rejected')->count(),
+            'unreceived_tickets_count' => $unreceivedTicketsCount,
+            'latest_booking_id'        => (int) Booking::max('id'),
+        ];
+
+        $bookingData = null;
+        $bookingId = $request->query('booking_id');
+
+        if ($bookingId) {
+            $booking = Booking::with(['tickets', 'showTime.show'])->find($bookingId);
+            if ($booking) {
+                $totalTickets = $booking->tickets->count();
+                $deliveredTickets = $booking->tickets->where('delivery_status', 'delivered')->count();
+                $sentTickets = $booking->tickets->whereIn('delivery_status', ['sent', 'delivered'])->count();
+                $failedTickets = $booking->tickets->where('delivery_status', 'failed')->count();
+                $claimedTickets = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count();
+                $isTemplateFailed = $booking->template_status === 'failed';
+                $isAllDelivered = ($deliveredTickets === $totalTickets) && ($totalTickets > 0);
+
+                $statusBadgeText = 'معتمد (لم يُرسل)';
+                $statusBadgeType = 'gray';
+
+                if ($isAllDelivered) {
+                    $statusBadgeText = "تم تسليم جميع التذاكر بالكامل ({$deliveredTickets}/{$totalTickets})";
+                    $statusBadgeType = 'emerald';
+                } elseif ($isTemplateFailed) {
+                    $statusBadgeText = 'تعذر تسليم قالب واتساب';
+                    $statusBadgeType = 'rose';
+                } elseif ($failedTickets > 0) {
+                    $statusBadgeText = "تعذر تسليم {$failedTickets} تذكرة ({$deliveredTickets}/{$totalTickets})";
+                    $statusBadgeType = 'rose';
+                } elseif ($booking->template_status === 'sent') {
+                    $statusBadgeText = 'أُرسل القالب · بانتظار نقر العميل على واتساب';
+                    $statusBadgeType = 'sky';
+                } elseif ($booking->status === 'approved') {
+                    $statusBadgeText = 'معتمد · جاري المعالجة والإرسال';
+                    $statusBadgeType = 'amber';
+                }
+
+                $bookingData = [
+                    'id'               => $booking->id,
+                    'status'           => $booking->status,
+                    'template_status'  => $booking->template_status,
+                    'template_error'   => $booking->template_error,
+                    'template_sent_at' => $booking->template_sent_at?->format('g:i A'),
+                    'tickets'          => $booking->tickets->map(function ($ticket) {
+                        return [
+                            'id'              => $ticket->id,
+                            'ticket_num'      => $ticket->ticket_num,
+                            'name'            => $ticket->name,
+                            'phone'           => $ticket->phone,
+                            'delivery_status' => $ticket->delivery_status,
+                            'whatsapp_sent'   => (bool) $ticket->whatsapp_sent,
+                            'delivery_error'  => $ticket->delivery_error,
+                            'claimed_at'      => $ticket->claimed_at?->format('g:i A'),
+                            'last_delivered'  => $ticket->last_delivered_at?->format('g:i A'),
+                        ];
+                    }),
+                    'metrics' => [
+                        'total_count'          => $totalTickets,
+                        'delivered_count'      => $deliveredTickets,
+                        'sent_count'           => $sentTickets,
+                        'failed_count'         => $failedTickets,
+                        'claimed_count'        => $claimedTickets,
+                        'is_all_delivered'     => $isAllDelivered,
+                        'is_template_failed'   => $isTemplateFailed,
+                        'status_badge_text'    => $statusBadgeText,
+                        'status_badge_type'    => $statusBadgeType,
+                    ],
+                ];
+            }
+        }
+
+        return response()->json([
+            'ok'      => true,
+            'summary' => $counts,
+            'booking' => $bookingData,
+        ]);
+    }
+
     /* =======================
      |  APPROVE BOOKING
      ======================= */

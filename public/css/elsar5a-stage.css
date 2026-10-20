@@ -2666,3 +2666,56 @@ body.cinema-complete .production-poster-missing,
 }
 .no-js .camera-track { position: relative; z-index: 1; inset: auto; height: auto; min-height: 0; overflow: visible; opacity: 1; visibility: visible; pointer-events: auto; }
 .no-js .website-world { opacity: 1; }
+
+/* --------------------------------------------------------------------------
+   CINEMATIC INTRO SKIP BUTTON (SUBSEQUENT VISITS ONLY)
+   -------------------------------------------------------------------------- */
+.cinema-skip-btn {
+  position: fixed;
+  top: max(22px, env(safe-area-inset-top));
+  inset-inline-start: max(22px, env(safe-area-inset-left));
+  z-index: 99999;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  min-height: 44px;
+  border-radius: 9999px;
+  background: rgba(12, 16, 26, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(246, 226, 198, 0.28);
+  color: #f6e2c6;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  touch-action: manipulation;
+  user-select: none;
+}
+.cinema-skip-btn:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.65);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 26px rgba(245, 158, 11, 0.28);
+}
+.cinema-skip-btn:active {
+  transform: translateY(1px);
+}
+.cinema-skip-btn .cinema-skip-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.cinema-skip-btn:hover .cinema-skip-icon {
+  transform: translateX(-3px);
+}
+body.cinema-complete .cinema-skip-btn,
+body:not(.cinema-intro-playing) .cinema-skip-btn {
+  display: none !important;
+}
+

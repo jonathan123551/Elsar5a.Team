@@ -54,6 +54,9 @@
   function releaseExperience() {
     if (done) return;
     done = true;
+    try { localStorage.setItem('elsar5a_has_visited', '1'); } catch (e) {}
+    var skipBtn = document.getElementById('cinema-skip-btn');
+    if (skipBtn) skipBtn.style.display = 'none';
     body.dataset.introState = 'complete';
     body.classList.remove('cinema-intro-playing');
     body.classList.add('cinema-complete');
@@ -70,6 +73,9 @@
     unlockIntroScroll();
   }
   function showReducedMotionContent() {
+    try { localStorage.setItem('elsar5a_has_visited', '1'); } catch (e) {}
+    var skipBtn = document.getElementById('cinema-skip-btn');
+    if (skipBtn) skipBtn.style.display = 'none';
     body.dataset.introState = 'complete';
     body.classList.remove('cinema-intro-playing');
     body.classList.add('cinema-complete', 'cinema-static-fallback');
@@ -207,6 +213,37 @@
     };
     if (motionQuery.addEventListener) motionQuery.addEventListener('change', onMotionPreference);
     else if (motionQuery.addListener) motionQuery.addListener(onMotionPreference);
+  }
+
+  var hasVisited = false;
+  try {
+    hasVisited = localStorage.getItem('elsar5a_has_visited') === '1';
+  } catch (e) {}
+
+  if (hasVisited && !reducedMotion) {
+    var homeContainer = document.querySelector('.cinema-home');
+    if (homeContainer && !document.getElementById('cinema-skip-btn')) {
+      var skipBtn = document.createElement('button');
+      skipBtn.type = 'button';
+      skipBtn.id = 'cinema-skip-btn';
+      skipBtn.className = 'cinema-skip-btn';
+      skipBtn.setAttribute('aria-label', 'تخطي المقدمة');
+      skipBtn.innerHTML = '<span>تخطي المقدمة</span><svg class="cinema-skip-icon rtl:rotate-180" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>';
+      homeContainer.appendChild(skipBtn);
+
+      skipBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        try { localStorage.setItem('elsar5a_has_visited', '1'); } catch (err) {}
+        skipBtn.remove();
+        if (master) {
+          master.pause();
+          master.kill();
+        }
+        unlockIntroScroll();
+        showReducedMotionContent();
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      });
+    }
   }
 
   if (reducedMotion) showReducedMotionContent();

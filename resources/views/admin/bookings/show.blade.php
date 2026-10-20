@@ -350,14 +350,16 @@
     $showTime    = $booking->showTime;
     $posterCss   = $show?->poster_path ? "url('" . e($show->poster_path) . "')" : null;
     $totalCount  = $booking->tickets->count() ?: ($booking->tickets_count ?? 1);
+    $deliveredCount = $booking->tickets->where('delivery_status', 'delivered')->count();
+    $inTransitCount = $booking->tickets->whereIn('delivery_status', ['sending', 'sent'])->count();
     $sentCount   = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
     $failedCount = $booking->tickets->where('delivery_status', 'failed')->count();
     $claimedCount = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count();
-    $hasUnreceived = ($sentCount < $totalCount || $failedCount > 0) && ($booking->status === 'approved');
+    $hasUnreceived = ($deliveredCount < $totalCount || $failedCount > 0) && ($booking->status === 'approved');
     $isTemplateFailed = $booking->template_status === 'failed';
     $isTemplateDelivered = $booking->template_status === 'delivered';
     $isTemplateSent = in_array($booking->template_status, ['sent', 'delivered'], true);
-    $isAllTicketsDelivered = ($sentCount === $totalCount) && ($totalCount > 0) && ($failedCount === 0);
+    $isAllTicketsDelivered = ($deliveredCount === $totalCount) && ($totalCount > 0);
 @endphp
 
 <section class="adm2-stage space-y-5 max-w-4xl mx-auto">
@@ -437,35 +439,30 @@
                 @endif
             </div>
 
-            {{-- Booker details & Actions: Customer Info + Transfer Proof Thumbnail + WhatsApp --}}
-            <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {{-- Booker details & Actions: Customer Info + Transfer Proof Thumbnail (above) + WhatsApp Button (below) --}}
+            <div class="pt-2 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div>
                     <div class="text-xs text-slate-400">صاحب الحجز:</div>
-                    <p class="text-base font-bold text-white">{{ $booking->full_name }}</p>
-                    <p class="text-xs text-slate-300 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
+                    <p class="text-base sm:text-lg font-bold text-white">{{ $booking->full_name }}</p>
+                    <p class="text-xs sm:text-sm text-slate-300 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
                 </div>
 
-                <div class="flex items-center gap-2.5">
-                    {{-- Transfer Proof Compact Thumbnail / Icon (inside Summary Card) --}}
+                <div class="flex flex-col items-start sm:items-end gap-2.5">
+                    {{-- Transfer Proof Thumbnail (ABOVE WhatsApp button, slightly larger, NO zoom icon overlay) --}}
                     @if($booking->transfer_screenshot_path)
                         <button type="button"
                                 id="openProofBtn"
-                                class="group relative w-11 h-11 rounded-xl overflow-hidden border border-white/20 hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition shrink-0 bg-slate-900 shadow-sm"
+                                class="group relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-white/20 hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition shrink-0 bg-slate-900 shadow-md cursor-pointer"
                                 aria-label="عرض صورة إثبات التحويل بحجم كبير"
-                                title="عرض صورة إثبات التحويل">
+                                title="انقر لتكبير صورة إثبات التحويل">
                             <img src="{{ $booking->transfer_screenshot_path }}"
-                                 alt="صورة تحويل الحجز"
-                                 class="w-full h-full object-cover group-hover:scale-105 transition"
+                                 alt="صورة إثبات التحويل"
+                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-200"
                                  loading="lazy">
-                            <div class="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition flex items-center justify-center text-white">
-                                <svg class="w-4 h-4 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
-                                </svg>
-                            </div>
                         </button>
                     @endif
 
-                    {{-- WhatsApp Contact Button (Preserved in original Summary Card position) --}}
+                    {{-- WhatsApp Contact Button (Directly under Transfer Proof image in Summary Card) --}}
                     @if($booking->phone)
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $booking->phone) }}"
                            target="_blank" rel="noopener"
@@ -504,7 +501,7 @@
     {{-- ------------------------------------------------------
          2. TICKET DELIVERY STATUS (REFINED & ACCURATE SECTION)
          ------------------------------------------------------ --}}
-    <div class="adm2-glass p-5 sm:p-6 space-y-4">
+    <div id="waDeliverySection" class="adm2-glass p-5 sm:p-6 space-y-4">
         {{-- Section Title & Aggregate Status Pill --}}
         <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3.5 flex-wrap">
             <div class="flex items-center gap-2.5">
@@ -522,144 +519,239 @@
             {{-- Aggregate State Pill --}}
             <div>
                 @if($isAllTicketsDelivered)
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        <span>تم تسليم جميع التذاكر بالكامل ({{ $sentCount }}/{{ $totalCount }})</span>
+                        <span>تم تسليم جميع التذاكر بالكامل ({{ $deliveredCount }}/{{ $totalCount }})</span>
                     </span>
                 @elseif($isTemplateFailed)
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/40">
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/40">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <span>فشل إرسال قالب استلام التذاكر</span>
                     </span>
                 @elseif($failedCount > 0)
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/40">
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/40">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        <span>تعذر تسليم {{ $failedCount }} تذكرة ({{ $sentCount }}/{{ $totalCount }})</span>
+                        <span>تعذر تسليم {{ $failedCount }} تذكرة ({{ $deliveredCount }}/{{ $totalCount }})</span>
                     </span>
                 @elseif($booking->template_status === 'sent')
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-500/15 text-sky-300 border border-sky-500/40">
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-500/15 text-sky-300 border border-sky-500/40">
                         <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
                         <span>أُرسل القالب · بانتظار نقر العميل على واتساب</span>
                     </span>
+                @elseif($inTransitCount > 0)
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40">
+                        <span class="btn-spinner"></span>
+                        <span>جاري الإرسال لـ Meta ({{ $sentCount }}/{{ $totalCount }})</span>
+                    </span>
                 @elseif($booking->status === 'approved')
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40">
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40">
                         <span class="btn-spinner"></span>
                         <span>معتمد · جاري المعالجة والإرسال</span>
                     </span>
                 @else
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
                         <span>بانتظار اعتماد الحجز أولاً</span>
                     </span>
                 @endif
             </div>
         </div>
 
-        {{-- 3-Step Clear Timeline Overview --}}
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {{-- Step 1: Meta Template --}}
-            <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="text-slate-400 font-medium">1. قالب الاستلام (Meta)</span>
-                    @if($booking->template_status === 'delivered')
-                        <span class="text-emerald-400 font-bold flex items-center gap-1">
-                            <span>✓ تم التسليم</span>
-                            @if($booking->template_sent_at)
-                                <span class="text-[10px] text-slate-400 font-normal">({{ $booking->template_sent_at->format('g:i A') }})</span>
-                            @endif
-                        </span>
-                    @elseif($booking->template_status === 'sent')
-                        <span class="text-emerald-400 font-bold flex items-center gap-1">
-                            <span>✓ تم الإرسال</span>
-                            @if($booking->template_sent_at)
-                                <span class="text-[10px] text-slate-400 font-normal">({{ $booking->template_sent_at->format('g:i A') }})</span>
-                            @endif
-                        </span>
-                    @elseif($booking->template_status === 'failed')
-                        <span class="text-rose-400 font-bold">✕ فشل الإرسال</span>
-                    @elseif($booking->template_status === 'sending')
-                        <span class="text-amber-400 font-bold">جاري الإرسال…</span>
-                    @else
-                        <span class="text-slate-500">معلق (لم يُرسل)</span>
-                    @endif
-                </div>
-                <div class="text-[11px] leading-tight">
-                    @if($booking->template_status === 'delivered')
-                        <p class="text-slate-300">وصل القالب بنجاح على تطبيق واتساب لدى العميل.</p>
-                    @elseif($booking->template_status === 'sent')
-                        <p class="text-slate-300">أُرسل للعميل بنجاح وبانتظار تأكيد استلامه على الهاتف.</p>
-                    @elseif($booking->template_status === 'failed')
-                        <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-0.5">
-                            <span class="font-bold block">⚠️ لم يصل قالب الاستلام</span>
-                            <span class="text-rose-200 block">{{ $booking->template_error ?? 'Meta رفضت إرسال القالب لهذا الرقم.' }}</span>
-                        </div>
-                    @else
-                        <p class="text-slate-400">يُرسل تلقائياً لفتح نافذة واتساب الرسمية فور اعتماد الحجز.</p>
-                    @endif
-                </div>
-            </div>
-
-            {{-- Step 2: Customer Tap --}}
-            <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="text-slate-400 font-medium">2. نقر العميل على الاستلام</span>
-                    @if($claimedCount > 0)
-                        <span class="text-emerald-400 font-bold flex items-center gap-1">
-                            <span>✓ نقر العميل</span>
-                            @if($firstClaimedAt = $booking->tickets->whereNotNull('claimed_at')->first()?->claimed_at)
-                                <span class="text-[10px] text-slate-400 font-normal">({{ $firstClaimedAt->format('g:i A') }})</span>
-                            @endif
-                        </span>
-                    @elseif($isTemplateFailed)
-                        <span class="text-rose-400 font-bold">✕ تعذر (فشل القالب)</span>
-                    @elseif($booking->status === 'approved')
-                        <span class="text-sky-400 font-medium">⏳ بانتظار النقر</span>
-                    @else
-                        <span class="text-slate-500">معلق</span>
-                    @endif
-                </div>
-                <div class="text-[11px] leading-tight">
-                    @if($claimedCount > 0)
-                        <p class="text-slate-300">تم استقبال تفاعل العميل بنجاح عبر Webhook وجاري معالجة إرسال التذاكر.</p>
-                    @elseif($isTemplateFailed)
-                        <p class="text-rose-300">لم يصل القالب للعميل، لذلك لم يتمكن من النقر على زر الاستلام.</p>
-                    @else
-                        <p class="text-slate-400">فور نقر العميل على زر "استلام التذكرة"، تُرسل صور التذاكر فورياً.</p>
-                    @endif
-                </div>
-            </div>
-
-            {{-- Step 3: Direct Ticket Delivery --}}
-            <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="text-slate-400 font-medium">3. تسليم صور التذاكر (QR)</span>
-                    <span class="font-bold tabular-nums {{ $isAllTicketsDelivered ? 'text-emerald-400' : ($failedCount > 0 ? 'text-rose-400' : 'text-slate-300') }}">
-                        @if($isAllTicketsDelivered)
-                            ✓ تم التسليم ({{ $sentCount }}/{{ $totalCount }})
-                        @elseif($failedCount > 0)
-                            ✕ فشل الإرسال ({{ $sentCount }}/{{ $totalCount }})
-                        @elseif($claimedCount > 0)
-                            جاري الإرسال… ({{ $sentCount }}/{{ $totalCount }})
-                        @else
-                            لم تُرسل بعد (0/{{ $totalCount }})
-                        @endif
-                    </span>
-                </div>
-                <div class="text-[11px] leading-tight">
+        {{-- 4-Point Clean Summary Strip (Visible by default) --}}
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-black/40 border border-white/10 text-xs">
+            <div>
+                <span class="text-slate-400 block text-[11px] mb-0.5">● حالة الإرسال:</span>
+                <span id="summarySendState" class="font-bold text-white">
                     @if($isAllTicketsDelivered)
-                        <p class="text-emerald-300 font-medium">وصلت جميع التذاكر على هاتف العميل بالكامل.</p>
-                    @elseif($failedCount > 0)
-                        <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-0.5">
-                            <span class="font-bold block">⚠️ التذكرة لم تصل للعميل</span>
-                            <span class="text-rose-200 block">{{ $booking->tickets->where('delivery_status', 'failed')->first()?->delivery_error ?? 'حدث خطأ أثناء إرسال التذكرة عبر WhatsApp' }}</span>
-                        </div>
-                    @elseif($claimedCount > 0)
-                        <p class="text-amber-300">ضغط العميل للاستلام وجاري إرسال صور الـ QR.</p>
+                        <span class="text-emerald-400">تم التسليم بالكامل</span>
+                    @elseif($isTemplateFailed || $failedCount > 0)
+                        <span class="text-rose-400">تعذر الإرسال</span>
+                    @elseif($sentCount > 0 || $isTemplateSent)
+                        <span class="text-sky-300">تم الإرسال</span>
                     @else
-                        <p class="text-slate-400">بانتظار نقر العميل لإرسال صور التذاكر.</p>
+                        <span class="text-slate-400">لم يُرسل بعد</span>
                     @endif
-                </div>
+                </span>
+            </div>
+            <div>
+                <span class="text-slate-400 block text-[11px] mb-0.5">● حالة Meta:</span>
+                <span id="summaryMetaState" class="font-bold text-white">
+                    @if($isTemplateDelivered || $isAllTicketsDelivered)
+                        <span class="text-emerald-400">تم التسليم (مؤكد)</span>
+                    @elseif($isTemplateFailed)
+                        <span class="text-rose-400">فشل لدى Meta</span>
+                    @elseif($isTemplateSent || $sentCount > 0)
+                        <span class="text-amber-300">قيد المعالجة</span>
+                    @else
+                        <span class="text-slate-400">—</span>
+                    @endif
+                </span>
+            </div>
+            <div>
+                <span class="text-slate-400 block text-[11px] mb-0.5">● حالة العميل:</span>
+                <span id="summaryCustomerState" class="font-bold text-white">
+                    @if($claimedCount > 0)
+                        <span class="text-emerald-400">تم طلب التذكرة</span>
+                    @elseif($isTemplateFailed)
+                        <span class="text-rose-400">تعذر النقر</span>
+                    @elseif($booking->status === 'approved')
+                        <span class="text-sky-300">بانتظار النقر</span>
+                    @else
+                        <span class="text-slate-400">—</span>
+                    @endif
+                </span>
+            </div>
+            <div>
+                <span class="text-slate-400 block text-[11px] mb-0.5">● حالة التذاكر:</span>
+                <span id="summaryTicketsState" class="font-bold text-white">
+                    @if($isAllTicketsDelivered)
+                        <span class="text-emerald-400">تم التسليم ({{ $deliveredCount }}/{{ $totalCount }})</span>
+                    @elseif($failedCount > 0)
+                        <span class="text-rose-400">فشل ({{ $failedCount }}/{{ $totalCount }})</span>
+                    @elseif($sentCount > 0)
+                        <span class="text-amber-300">أُرسلت ({{ $sentCount }}/{{ $totalCount }})</span>
+                    @else
+                        <span class="text-slate-400">لم تُرسل بعد</span>
+                    @endif
+                </span>
             </div>
         </div>
+
+        {{-- Error Banner with Human-Readable Meta Error Hint --}}
+        @if($isTemplateFailed || $booking->template_error || $failedCount > 0)
+            <div id="metaErrorBanner" class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200 flex items-start gap-2.5">
+                <svg class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <div class="space-y-0.5">
+                    <span class="font-bold block text-rose-300">⚠️ تنبيه خطأ واتساب (Meta):</span>
+                    <span class="block text-rose-100">
+                        {{ $booking->template_error ?? ($booking->tickets->where('delivery_status', 'failed')->first()?->delivery_error ?? 'تعذر وصول الرسالة إلى هذا الرقم عبر خوادم WhatsApp.') }}
+                    </span>
+                </div>
+            </div>
+        @endif
+
+        {{-- Collapsible Dropdown Details (Closed by default to keep page compact) --}}
+        <details class="group rounded-xl border border-white/10 bg-black/40 overflow-hidden">
+            <summary class="flex items-center justify-between text-xs text-amber-400 hover:text-amber-300 font-bold cursor-pointer py-2.5 px-3.5 bg-white/5 hover:bg-white/10 transition select-none">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-400 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                    <span>▼ عرض تفاصيل الإرسال والمراحل (Meta & Webhook)</span>
+                </span>
+                <span class="text-[11px] text-slate-400 font-normal">المراحل الثلاث بالتفصيل</span>
+            </summary>
+
+            <div class="p-3.5 space-y-3 border-t border-white/10">
+                {{-- 3-Step Clear Timeline Overview --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {{-- Step 1: Meta Template --}}
+                    <div class="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-400 font-medium">1. قالب الاستلام (Meta)</span>
+                            @if($booking->template_status === 'delivered')
+                                <span class="text-emerald-400 font-bold flex items-center gap-1">
+                                    <span>✓ تم التسليم</span>
+                                    @if($booking->template_sent_at)
+                                        <span class="text-[10px] text-slate-400 font-normal">({{ $booking->template_sent_at->format('g:i A') }})</span>
+                                    @endif
+                                </span>
+                            @elseif($booking->template_status === 'sent')
+                                <span class="text-emerald-400 font-bold flex items-center gap-1">
+                                    <span>✓ تم الإرسال</span>
+                                    @if($booking->template_sent_at)
+                                        <span class="text-[10px] text-slate-400 font-normal">({{ $booking->template_sent_at->format('g:i A') }})</span>
+                                    @endif
+                                </span>
+                            @elseif($booking->template_status === 'failed')
+                                <span class="text-rose-400 font-bold">✕ فشل الإرسال</span>
+                            @elseif($booking->template_status === 'sending')
+                                <span class="text-amber-400 font-bold">جاري الإرسال…</span>
+                            @else
+                                <span class="text-slate-500">معلق (لم يُرسل)</span>
+                            @endif
+                        </div>
+                        <div class="text-[11px] leading-tight text-slate-300">
+                            @if($booking->template_status === 'delivered')
+                                <p>وصل القالب بنجاح على تطبيق واتساب لدى العميل.</p>
+                            @elseif($booking->template_status === 'sent')
+                                <p>أُرسل للعميل بنجاح وبانتظار تأكيد استلامه على الهاتف.</p>
+                            @elseif($booking->template_status === 'failed')
+                                <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-0.5">
+                                    <span class="font-bold block">⚠️ لم يصل قالب الاستلام</span>
+                                    <span class="text-rose-200 block">{{ $booking->template_error ?? 'Meta رفضت إرسال القالب لهذا الرقم.' }}</span>
+                                </div>
+                            @else
+                                <p class="text-slate-400">يُرسل تلقائياً لفتح نافذة واتساب الرسمية فور اعتماد الحجز.</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Step 2: Customer Tap --}}
+                    <div class="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-400 font-medium">2. نقر العميل على الاستلام</span>
+                            @if($claimedCount > 0)
+                                <span class="text-emerald-400 font-bold flex items-center gap-1">
+                                    <span>✓ نقر العميل</span>
+                                    @if($firstClaimedAt = $booking->tickets->whereNotNull('claimed_at')->first()?->claimed_at)
+                                        <span class="text-[10px] text-slate-400 font-normal">({{ $firstClaimedAt->format('g:i A') }})</span>
+                                    @endif
+                                </span>
+                            @elseif($isTemplateFailed)
+                                <span class="text-rose-400 font-bold">✕ تعذر (فشل القالب)</span>
+                            @elseif($booking->status === 'approved')
+                                <span class="text-sky-400 font-medium">⏳ بانتظار النقر</span>
+                            @else
+                                <span class="text-slate-500">معلق</span>
+                            @endif
+                        </div>
+                        <div class="text-[11px] leading-tight text-slate-300">
+                            @if($claimedCount > 0)
+                                <p>تم استقبال تفاعل العميل بنجاح عبر Webhook وجاري معالجة إرسال التذاكر.</p>
+                            @elseif($isTemplateFailed)
+                                <p class="text-rose-300">لم يصل القالب للعميل، لذلك لم يتمكن من النقر على زر الاستلام.</p>
+                            @else
+                                <p class="text-slate-400">فور نقر العميل على زر "استلام التذكرة"، تُرسل صور التذاكر فورياً.</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Step 3: Direct Ticket Delivery --}}
+                    <div class="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-400 font-medium">3. تسليم صور التذاكر (QR)</span>
+                            <span class="font-bold tabular-nums {{ $isAllTicketsDelivered ? 'text-emerald-400' : ($failedCount > 0 ? 'text-rose-400' : 'text-slate-300') }}">
+                                @if($isAllTicketsDelivered)
+                                    ✓ تم التسليم ({{ $deliveredCount }}/{{ $totalCount }})
+                                @elseif($failedCount > 0)
+                                    ✕ فشل الإرسال ({{ $deliveredCount }}/{{ $totalCount }})
+                                @elseif($claimedCount > 0)
+                                    جاري الإرسال… ({{ $sentCount }}/{{ $totalCount }})
+                                @else
+                                    لم تُرسل بعد (0/{{ $totalCount }})
+                                @endif
+                            </span>
+                        </div>
+                        <div class="text-[11px] leading-tight text-slate-300">
+                            @if($isAllTicketsDelivered)
+                                <p class="text-emerald-300 font-medium">وصلت جميع التذاكر على هاتف العميل بالكامل.</p>
+                            @elseif($failedCount > 0)
+                                <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-0.5">
+                                    <span class="font-bold block">⚠️ التذكرة لم تصل للعميل</span>
+                                    <span class="text-rose-200 block">{{ $booking->tickets->where('delivery_status', 'failed')->first()?->delivery_error ?? 'حدث خطأ أثناء إرسال التذكرة عبر WhatsApp' }}</span>
+                                </div>
+                            @elseif($claimedCount > 0)
+                                <p class="text-amber-300">ضغط العميل للاستلام وجاري إرسال صور الـ QR.</p>
+                            @else
+                                <p class="text-slate-400">بانتظار نقر العميل لإرسال صور التذاكر.</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
 
         {{-- Collapsible Ticket Operational Breakdown --}}
         <details class="group rounded-2xl bg-black/30 border border-white/10 overflow-hidden" open>
@@ -681,8 +773,9 @@
             <div class="p-3 sm:p-4 space-y-3 border-t border-white/5">
                 @forelse($booking->tickets as $ticket)
                     @php
-                        $isTicketDelivered = ($ticket->delivery_status === 'delivered') || ($ticket->delivery_status === 'sent' && $ticket->whatsapp_sent);
-                        $isTicketFailed    = $ticket->delivery_status === 'failed';
+                        $isTicketDelivered = ($ticket->delivery_status === 'delivered');
+                        $isTicketSent      = ($ticket->delivery_status === 'sent');
+                        $isTicketFailed    = ($ticket->delivery_status === 'failed');
                     @endphp
                     <div class="adm2-stub">
                         <div class="who min-w-0">
@@ -717,12 +810,14 @@
 
                         {{-- LED Indicator & Status --}}
                         <div class="led shrink-0">
-                            <div class="bulb" data-tone="{{ $isTicketDelivered ? 'ok' : ($isTicketFailed ? 'fail' : 'wait') }}" aria-hidden="true"></div>
-                            <div class="text-[11px] font-semibold {{ $isTicketDelivered ? 'text-emerald-300' : ($isTicketFailed ? 'text-rose-300' : 'text-sky-300') }}">
+                            <div class="bulb" data-tone="{{ $isTicketDelivered ? 'ok' : ($isTicketFailed ? 'fail' : ($isTicketSent ? 'wait' : 'wait')) }}" aria-hidden="true"></div>
+                            <div id="ticket-status-{{ $ticket->id }}" class="text-[11px] font-semibold {{ $isTicketDelivered ? 'text-emerald-300' : ($isTicketFailed ? 'text-rose-300' : ($isTicketSent ? 'text-amber-300' : 'text-sky-300')) }}">
                                 @if($isTicketDelivered)
                                     تم التسليم
                                 @elseif($isTicketFailed)
                                     تعذر التسليم
+                                @elseif($isTicketSent)
+                                    أُرسلت للشبكة
                                 @else
                                     بانتظار الاستلام
                                 @endif
@@ -1002,6 +1097,145 @@
             }
         });
     });
+
+    // -------------------------------------------------------------
+    // LIVE WHATSAPP & DELIVERY STATUS POLLING (12s interval)
+    // -------------------------------------------------------------
+    var pollInterval = 12000;
+    var pollTimer = null;
+    var abortCtrl = null;
+    var bookingId = {{ $booking->id }};
+    var pollUrl = "{{ route('admin.bookings.poll-status') }}?booking_id=" + bookingId;
+
+    function doPoll() {
+        if (document.hidden) return;
+        if (abortCtrl) {
+            try { abortCtrl.abort(); } catch (e) {}
+        }
+        if (window.AbortController) {
+            abortCtrl = new AbortController();
+        }
+
+        fetch(pollUrl, {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' },
+            signal: abortCtrl ? abortCtrl.signal : undefined
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data || !data.ok || !data.booking) return;
+            var b = data.booking;
+            var m = b.metrics;
+
+            // 1. Update overall status pill
+            var pill = document.getElementById('deliverySummaryPill');
+            if (pill && m.status_badge_text) {
+                pill.textContent = m.status_badge_text;
+                pill.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ' +
+                    (m.status_badge_type === 'emerald' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40' :
+                    (m.status_badge_type === 'rose' ? 'bg-rose-500/15 text-rose-300 border border-rose-500/40' :
+                    (m.status_badge_type === 'sky' ? 'bg-sky-500/15 text-sky-300 border border-sky-500/40' :
+                    'bg-amber-500/15 text-amber-300 border border-amber-500/40')));
+            }
+
+            // 2. Update summary indicators
+            var sendEl = document.getElementById('summarySendState');
+            if (sendEl) {
+                if (m.is_all_delivered) sendEl.innerHTML = '<span class="text-emerald-400">تم التسليم بالكامل</span>';
+                else if (m.is_template_failed || m.failed_count > 0) sendEl.innerHTML = '<span class="text-rose-400">تعذر الإرسال</span>';
+                else if (m.sent_count > 0 || b.template_status === 'sent') sendEl.innerHTML = '<span class="text-sky-300">تم الإرسال</span>';
+                else sendEl.innerHTML = '<span class="text-slate-400">لم يُرسل بعد</span>';
+            }
+
+            var metaEl = document.getElementById('summaryMetaState');
+            if (metaEl) {
+                if (b.template_status === 'delivered' || m.is_all_delivered) metaEl.innerHTML = '<span class="text-emerald-400">تم التسليم (مؤكد)</span>';
+                else if (m.is_template_failed) metaEl.innerHTML = '<span class="text-rose-400">فشل لدى Meta</span>';
+                else if (b.template_status === 'sent' || m.sent_count > 0) metaEl.innerHTML = '<span class="text-amber-300">قيد المعالجة</span>';
+                else metaEl.innerHTML = '<span class="text-slate-400">—</span>';
+            }
+
+            var custEl = document.getElementById('summaryCustomerState');
+            if (custEl) {
+                if (m.claimed_count > 0) custEl.innerHTML = '<span class="text-emerald-400">تم طلب التذكرة</span>';
+                else if (m.is_template_failed) custEl.innerHTML = '<span class="text-rose-400">تعذر النقر</span>';
+                else if (b.status === 'approved') custEl.innerHTML = '<span class="text-sky-300">بانتظار النقر</span>';
+                else custEl.innerHTML = '<span class="text-slate-400">—</span>';
+            }
+
+            var tixEl = document.getElementById('summaryTicketsState');
+            if (tixEl) {
+                if (m.is_all_delivered) tixEl.innerHTML = '<span class="text-emerald-400">تم التسليم (' + m.delivered_count + '/' + m.total_count + ')</span>';
+                else if (m.failed_count > 0) tixEl.innerHTML = '<span class="text-rose-400">فشل (' + m.failed_count + '/' + m.total_count + ')</span>';
+                else if (m.sent_count > 0) tixEl.innerHTML = '<span class="text-amber-300">أُرسلت (' + m.sent_count + '/' + m.total_count + ')</span>';
+                else tixEl.innerHTML = '<span class="text-slate-400">لم تُرسل بعد</span>';
+            }
+
+            // 3. Update error banner if error changed
+            var errBanner = document.getElementById('metaErrorBanner');
+            if (b.template_error || m.is_template_failed) {
+                if (!errBanner) {
+                    var wrap = document.getElementById('waDeliverySection');
+                    if (wrap) {
+                        var div = document.createElement('div');
+                        div.id = 'metaErrorBanner';
+                        div.className = 'p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200 flex items-start gap-2.5';
+                        div.innerHTML = '<svg class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> <div class="space-y-0.5"><span class="font-bold block text-rose-300">⚠️ تنبيه خطأ واتساب (Meta):</span> <span class="block text-rose-100">' + (b.template_error || 'لم تؤكد Meta وصول الرسالة إلى الرقم.') + '</span></div>';
+                        wrap.insertBefore(div, wrap.children[2]);
+                    }
+                } else {
+                    var errText = errBanner.querySelector('span:last-child');
+                    if (errText && b.template_error) errText.textContent = b.template_error;
+                }
+            } else if (errBanner) {
+                errBanner.remove();
+            }
+
+            // 4. Update individual ticket badges
+            if (Array.isArray(b.tickets)) {
+                b.tickets.forEach(function (t) {
+                    var badge = document.getElementById('ticket-status-' + t.id);
+                    if (badge) {
+                        if (t.delivery_status === 'delivered') {
+                            badge.textContent = 'تم التسليم';
+                            badge.className = 'text-[11px] font-semibold text-emerald-300';
+                        } else if (t.delivery_status === 'failed') {
+                            badge.textContent = 'تعذر التسليم';
+                            badge.className = 'text-[11px] font-semibold text-rose-300';
+                        } else if (t.delivery_status === 'sent') {
+                            badge.textContent = 'أُرسلت للشبكة';
+                            badge.className = 'text-[11px] font-semibold text-amber-300';
+                        }
+                    }
+                });
+            }
+        })
+        .catch(function () {});
+    }
+
+    function startPoll() {
+        if (!pollTimer) {
+            pollTimer = setInterval(doPoll, pollInterval);
+        }
+    }
+
+    function stopPoll() {
+        if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            stopPoll();
+        } else {
+            doPoll();
+            startPoll();
+        }
+    });
+
+    startPoll();
 })();
 </script>
 @endsection
