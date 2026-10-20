@@ -437,11 +437,46 @@
                 @endif
             </div>
 
-            {{-- Booker details --}}
-            <div class="pt-2">
-                <div class="text-xs text-slate-400">صاحب الحجز:</div>
-                <p class="text-base font-bold text-white">{{ $booking->full_name }}</p>
-                <p class="text-xs text-slate-300 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
+            {{-- Booker details & Actions: Customer Info + Transfer Proof Thumbnail + WhatsApp --}}
+            <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <div class="text-xs text-slate-400">صاحب الحجز:</div>
+                    <p class="text-base font-bold text-white">{{ $booking->full_name }}</p>
+                    <p class="text-xs text-slate-300 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                    {{-- Transfer Proof Compact Thumbnail / Icon (inside Summary Card) --}}
+                    @if($booking->transfer_screenshot_path)
+                        <button type="button"
+                                id="openProofBtn"
+                                class="group relative w-11 h-11 rounded-xl overflow-hidden border border-white/20 hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition shrink-0 bg-slate-900 shadow-sm"
+                                aria-label="عرض صورة إثبات التحويل بحجم كبير"
+                                title="عرض صورة إثبات التحويل">
+                            <img src="{{ $booking->transfer_screenshot_path }}"
+                                 alt="صورة تحويل الحجز"
+                                 class="w-full h-full object-cover group-hover:scale-105 transition"
+                                 loading="lazy">
+                            <div class="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition flex items-center justify-center text-white">
+                                <svg class="w-4 h-4 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
+                                </svg>
+                            </div>
+                        </button>
+                    @endif
+
+                    {{-- WhatsApp Contact Button (Preserved in original Summary Card position) --}}
+                    @if($booking->phone)
+                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $booking->phone) }}"
+                           target="_blank" rel="noopener"
+                           class="admin-btn admin-btn--success admin-btn--sm">
+                            <svg class="w-4 h-4 shrink-0 text-emerald-400" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                            </svg>
+                            <span>مراسلة واتساب</span>
+                        </a>
+                    @endif
+                </div>
             </div>
 
             {{-- Metrics Strip: Quantity + Total EGP (manual_transfer completely removed) --}}
@@ -467,74 +502,7 @@
     </div>
 
     {{-- ------------------------------------------------------
-         2. DEDICATED PAYMENT PROOF CARD (MOVED UP)
-         ------------------------------------------------------ --}}
-    <div class="adm2-glass p-5 sm:p-6 space-y-3">
-        <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
-            <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-sm sm:text-base font-bold text-white">صورة إثبات التحويل</h2>
-                    <p class="text-xs text-slate-400">إشعار الدفع البنكي / المحفظة المرفق مع الحجز</p>
-                </div>
-            </div>
-
-            @if($booking->transfer_screenshot_path)
-                <button type="button"
-                        id="openProofHeaderBtn"
-                        class="admin-btn admin-btn--secondary admin-btn--sm"
-                        aria-label="تكبير صورة إثبات التحويل">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
-                    </svg>
-                    <span>تكبير الصورة</span>
-                </button>
-            @endif
-        </div>
-
-        @if($booking->transfer_screenshot_path)
-            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 pt-1">
-                <button type="button"
-                        id="openProofBtn"
-                        class="adm-proof-thumb group focus:outline-none focus:ring-2 focus:ring-amber-400 shrink-0"
-                        aria-label="عرض صورة إثبات التحويل بحجم كبير">
-                    <img src="{{ $booking->transfer_screenshot_path }}"
-                         alt="صورة تحويل الحجز"
-                         loading="lazy">
-                    <div class="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition flex items-center justify-center text-white">
-                        <svg class="w-6 h-6 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
-                        </svg>
-                    </div>
-                </button>
-                <div class="space-y-1.5 text-center sm:text-start flex-1">
-                    <div class="flex items-center gap-2 justify-center sm:justify-start">
-                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                            <span>مرفق إشعار التحويل</span>
-                        </span>
-                    </div>
-                    <p class="text-xs text-slate-300 font-medium">تم إرفاق إشعار التحويل من قبل العميل بنجاح.</p>
-                    <p class="text-[11px] text-slate-400 leading-relaxed">يرجى مطابقة رقم الحساب / المحفظة وقيمة المبلغ المطلوب ({{ number_format((int) $booking->total_price) }} ج.م) قبل الاعتماد.</p>
-                </div>
-            </div>
-        @else
-            <div class="rounded-xl bg-white/5 border border-dashed border-white/15 p-5 flex flex-col items-center justify-center text-center text-slate-400 text-xs space-y-1">
-                <svg class="w-6 h-6 opacity-50 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                <span class="font-semibold text-slate-300">لم يُرفق إثبات تحويل</span>
-                <span class="text-[11px] text-slate-500">تم إنشاء هذا الحجز دون إرفاق لقطة شاشة للتحويل.</span>
-            </div>
-        @endif
-    </div>
-
-    {{-- ------------------------------------------------------
-         3. TICKET DELIVERY STATUS (REFINED & ACCURATE SECTION)
+         2. TICKET DELIVERY STATUS (REFINED & ACCURATE SECTION)
          ------------------------------------------------------ --}}
     <div class="adm2-glass p-5 sm:p-6 space-y-4">
         {{-- Section Title & Aggregate Status Pill --}}
@@ -551,18 +519,8 @@
                 </div>
             </div>
 
-            {{-- WhatsApp Action & Aggregate State Pill --}}
-            <div class="flex items-center gap-2.5 flex-wrap">
-                @if($booking->phone)
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $booking->phone) }}"
-                       target="_blank" rel="noopener"
-                       class="admin-btn admin-btn--success admin-btn--sm">
-                        <svg class="w-4 h-4 shrink-0 text-emerald-400" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                        </svg>
-                        <span>مراسلة واتساب</span>
-                    </a>
-                @endif
+            {{-- Aggregate State Pill --}}
+            <div>
                 @if($isAllTicketsDelivered)
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>

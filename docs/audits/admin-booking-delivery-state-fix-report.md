@@ -87,17 +87,18 @@ Both columns are nullable and indexed, ensuring zero-downtime application on pro
   * Replaced with a clean, focused metric strip:
     - **عدد التذاكر:** Ticket quantity with clean ticket icon.
     - **إجمالي المبلغ المطلوب:** Formatted in EGP (`ج.م`) with gold gradient styling.
-- **Payment Proof Card Restructuring (Moved Above WhatsApp Actions):**
-  * Elevated the Payment Proof Card so it sits **directly below the Booking Summary Card and ABOVE the WhatsApp messaging button and ticket delivery status card**.
-  * Formatted with dark glassmorphism, responsive thumbnail with zoom overlay, and click-to-open lightbox modal.
-  * The Booker Details row now contains only customer name and phone, ensuring the payment proof image is visually encountered prior to WhatsApp interactions.
-- **WhatsApp Delivery Section (Unified with Messaging Action):**
-  * Incorporates the direct "مراسلة واتساب" action alongside the aggregate delivery badge in the section header.
-  * Replaces vague generic status banners with structured, transparent stage cards:
-    1. *قالب الاستلام (Meta)*
-    2. *نقر العميل على الاستلام*
-    3. *تسليم صور التذاكر (QR)*
-  * When a failure occurs, the exact Meta error message and code are rendered inside an amber/red warning container.
+- **Booking Summary Card Compact Structure:**
+  * Displays:
+    1. Show title, date, time, and venue.
+    2. Customer information (name & phone).
+    3. Transfer proof compact thumbnail (`openProofBtn`): small, non-intrusive thumbnail with zoom overlay that triggers the full lightbox modal.
+    4. WhatsApp messaging button (`مراسلة واتساب`) preserved in its original position inside the summary card.
+    5. Clean metrics strip: Ticket count and Total EGP amount.
+  * Completely removes `manual_transfer` and `طريقة التحويل`.
+  * Completely eliminates the separate large transfer-proof section, making the summary card compact and eliminating vertical bloat.
+- **WhatsApp Delivery Section:**
+  * Positioned directly below the compact summary card.
+  * Contains the 3-stage delivery breakdown and Meta error diagnostic hints without duplicate WhatsApp buttons.
 - **Individual Ticket Stubs:**
   * Individual tickets display their exact delivery state (`تعذر التسليم`, `قيد الإرسال`, `تم التسليم`).
   * Dynamic action buttons:
