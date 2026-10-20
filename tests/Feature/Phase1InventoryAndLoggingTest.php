@@ -240,7 +240,7 @@ class Phase1InventoryAndLoggingTest extends TestCase
                 'public_id'  => 'payments/screenshots/sample_receipt',
             ]);
 
-        $screenshot = UploadedFile::fake()->image('receipt.jpg', 600, 800);
+        $screenshot = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
         $response = $this->post(route('bookings.store', $showTime), [
             'names' => ['Person One', 'Person Two', 'Person Three'],

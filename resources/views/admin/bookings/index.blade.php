@@ -287,12 +287,13 @@
                             $dt = $booking->showTime
                                 ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
                                 : '';
-                            $totalTickets     = $booking->tickets->count();
-                            $deliveredTickets = $booking->tickets->where('delivery_status', 'delivered')->count();
-                            $inTransitTickets = $booking->tickets->whereIn('delivery_status', ['sending', 'sent'])->count();
-                            $sentTickets      = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
-                            $hasFailed        = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
-                            $isClaimed        = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count() > 0;
+                            $totalTickets     = $booking->ticketsTotalCount();
+                            $deliveredTickets = $booking->ticketsDeliveredCount();
+                            $sentTickets      = $booking->ticketsSentCount();
+                            $sendingTickets   = $booking->ticketsSendingCount();
+                            $failedTickets    = $booking->ticketsFailedCount();
+                            $hasFailed        = $failedTickets > 0 || $booking->template_status === 'failed';
+                            $deliveryBadge    = $booking->delivery_badge;
                         @endphp
                         <tr class="booking-row hover:bg-white/[0.03] transition duration-150"
                             data-search="{{ strtolower($booking->full_name.' '.$booking->phone.' '.$booking->reference_code) }}"
@@ -410,37 +411,22 @@
                             {{-- WhatsApp Multi-Stage Delivery Indicator --}}
                             <td class="px-4 py-3 text-center align-middle">
                                 @if($booking->status === 'approved')
-                                    @if($deliveredTickets === $totalTickets && $totalTickets > 0)
-                                        <span class="adm-delivery-pill bg-emerald-500/15 text-emerald-300 border border-emerald-500/40" title="تم تسليم جميع التذاكر للعميل ومؤكد من واتساب">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                            <span>تم الاستلام ({{ $deliveredTickets }}/{{ $totalTickets }})</span>
-                                        </span>
-                                    @elseif($hasFailed)
-                                        <span class="adm-delivery-pill bg-rose-500/15 text-rose-300 border border-rose-500/40" title="{{ $booking->template_error ?? 'تعذر إرسال بعض التذاكر عبر واتساب' }}">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                            <span>فشل التسليم</span>
-                                        </span>
-                                    @elseif($isClaimed)
-                                        <span class="adm-delivery-pill bg-amber-500/15 text-amber-300 border border-amber-500/40" title="نقر العميل وجاري الإرسال">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-                                            <span>جاري التسليم</span>
-                                        </span>
-                                    @elseif($booking->template_status === 'sent')
-                                        <span class="adm-delivery-pill bg-sky-500/15 text-sky-300 border border-sky-500/40" title="أُرسل قالب الاستلام، بانتظار نقر العميل على واتساب">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                                            <span>بانتظار نقر العميل</span>
-                                        </span>
-                                    @elseif($inTransitTickets > 0 || $booking->template_status === 'sending')
-                                        <span class="adm-delivery-pill bg-amber-500/15 text-amber-200 border border-amber-500/40" title="أُرسلت لخوادم Meta وبانتظار تأكيد التسليم">
+                                    <span class="adm-delivery-pill {{ $deliveryBadge['bg'] }}" title="{{ $deliveryBadge['title'] }}">
+                                        @if($deliveryBadge['has_spinner'])
                                             <span class="btn-spinner"></span>
-                                            <span>جاري الإرسال…</span>
-                                        </span>
-                                    @else
-                                        <span class="adm-delivery-pill bg-white/5 text-slate-400 border border-white/10">
+                                        @elseif($deliveryBadge['type'] === 'emerald')
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                        @elseif($deliveryBadge['type'] === 'rose')
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                        @elseif($deliveryBadge['type'] === 'teal')
+                                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                                        @elseif($deliveryBadge['type'] === 'sky')
+                                            <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                                        @else
                                             <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                                            <span>معتمد (لم يُرسل)</span>
-                                        </span>
-                                    @endif
+                                        @endif
+                                        <span>{{ $deliveryBadge['text'] }}</span>
+                                    </span>
                                 @elseif($booking->status === 'rejected')
                                     <span class="text-xs text-slate-500">—</span>
                                 @else
@@ -482,12 +468,12 @@
                 $dt = $booking->showTime
                     ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
                     : '';
-                $totalTickets     = $booking->tickets->count();
-                $deliveredTickets = $booking->tickets->where('delivery_status', 'delivered')->count();
-                $inTransitTickets = $booking->tickets->whereIn('delivery_status', ['sending', 'sent'])->count();
-                $sentTickets      = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
-                $hasFailed        = $booking->tickets->where('delivery_status', 'failed')->isNotEmpty() || $booking->template_status === 'failed';
-                $isClaimed        = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count() > 0;
+                $totalTickets     = $booking->ticketsTotalCount();
+                $deliveredTickets = $booking->ticketsDeliveredCount();
+                $sentTickets      = $booking->ticketsSentCount();
+                $failedTickets    = $booking->ticketsFailedCount();
+                $hasFailed        = $failedTickets > 0 || $booking->template_status === 'failed';
+                $deliveryBadge    = $booking->delivery_badge;
             @endphp
 
             <div class="adm-card bg-[#0e131f]/90 border border-white/10 rounded-2xl p-4 space-y-3 shadow-md booking-card"
@@ -569,37 +555,22 @@
                         </span>
 
                         @if($booking->status === 'approved')
-                            @if($deliveredTickets === $totalTickets && $totalTickets > 0)
-                                <span class="adm-delivery-pill bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 text-[10.5px]">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                    <span>تم الاستلام ({{ $deliveredTickets }}/{{ $totalTickets }})</span>
-                                </span>
-                            @elseif($hasFailed)
-                                <span class="adm-delivery-pill bg-rose-500/15 text-rose-300 border border-rose-500/40 text-[10.5px]" title="{{ $booking->template_error ?? 'تعذر تسليم بعض التذاكر عبر واتساب' }}">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                    <span>فشل التسليم</span>
-                                </span>
-                            @elseif($isClaimed)
-                                <span class="adm-delivery-pill bg-amber-500/15 text-amber-300 border border-amber-500/40 text-[10.5px]">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-                                    <span>جاري التسليم</span>
-                                </span>
-                            @elseif($booking->template_status === 'sent')
-                                <span class="adm-delivery-pill bg-sky-500/15 text-sky-300 border border-sky-500/40 text-[10.5px]">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                                    <span>بانتظار نقر العميل</span>
-                                </span>
-                            @elseif($inTransitTickets > 0 || $booking->template_status === 'sending')
-                                <span class="adm-delivery-pill bg-amber-500/15 text-amber-200 border border-amber-500/40 text-[10.5px]">
+                            <span class="adm-delivery-pill {{ $deliveryBadge['bg'] }} text-[10.5px]" title="{{ $deliveryBadge['title'] }}">
+                                @if($deliveryBadge['has_spinner'])
                                     <span class="btn-spinner"></span>
-                                    <span>جاري الإرسال…</span>
-                                </span>
-                            @else
-                                <span class="adm-delivery-pill bg-white/5 text-slate-400 border border-white/10 text-[10.5px]">
+                                @elseif($deliveryBadge['type'] === 'emerald')
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                @elseif($deliveryBadge['type'] === 'rose')
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                @elseif($deliveryBadge['type'] === 'teal')
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                                @elseif($deliveryBadge['type'] === 'sky')
+                                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                                @else
                                     <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                                    <span>معتمد (لم يُرسل)</span>
-                                </span>
-                            @endif
+                                @endif
+                                <span>{{ $deliveryBadge['text'] }}</span>
+                            </span>
                         @endif
                     </div>
 

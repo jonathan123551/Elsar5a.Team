@@ -349,17 +349,18 @@
     $show        = $booking->showTime?->show;
     $showTime    = $booking->showTime;
     $posterCss   = $show?->poster_path ? "url('" . e($show->poster_path) . "')" : null;
-    $totalCount  = $booking->tickets->count() ?: ($booking->tickets_count ?? 1);
-    $deliveredCount = $booking->tickets->where('delivery_status', 'delivered')->count();
-    $inTransitCount = $booking->tickets->whereIn('delivery_status', ['sending', 'sent'])->count();
-    $sentCount   = $booking->tickets->filter(fn($t) => $t->whatsapp_sent && $t->delivery_status !== 'failed')->count();
-    $failedCount = $booking->tickets->where('delivery_status', 'failed')->count();
+    $totalCount  = $booking->ticketsTotalCount();
+    $deliveredCount = $booking->ticketsDeliveredCount();
+    $sendingCount = $booking->ticketsSendingCount();
+    $sentCount   = $booking->ticketsSentCount();
+    $failedCount = $booking->ticketsFailedCount();
     $claimedCount = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count();
     $hasUnreceived = ($deliveredCount < $totalCount || $failedCount > 0) && ($booking->status === 'approved');
     $isTemplateFailed = $booking->template_status === 'failed';
     $isTemplateDelivered = $booking->template_status === 'delivered';
     $isTemplateSent = in_array($booking->template_status, ['sent', 'delivered'], true);
     $isAllTicketsDelivered = ($deliveredCount === $totalCount) && ($totalCount > 0);
+    $deliveryBadge = $booking->delivery_badge;
 @endphp
 
 <section class="adm2-stage space-y-5 max-w-4xl mx-auto">
@@ -540,15 +541,20 @@
                         <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
                         <span>أُرسل القالب · بانتظار نقر العميل على واتساب</span>
                     </span>
-                @elseif($inTransitCount > 0)
+                @elseif($sendingCount > 0 || $booking->template_status === 'sending')
                     <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40">
                         <span class="btn-spinner"></span>
-                        <span>جاري الإرسال لـ Meta ({{ $sentCount }}/{{ $totalCount }})</span>
+                        <span>جاري الإرسال لـ Meta</span>
+                    </span>
+                @elseif($sentCount > 0)
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/40">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                        <span>أُرسلت التذاكر للشبكة ({{ $sentCount }}/{{ $totalCount }})</span>
                     </span>
                 @elseif($booking->status === 'approved')
-                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40">
-                        <span class="btn-spinner"></span>
-                        <span>معتمد · جاري المعالجة والإرسال</span>
+                    <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                        <span>معتمد (لم يُرسل)</span>
                     </span>
                 @else
                     <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
@@ -567,8 +573,12 @@
                         <span class="text-emerald-400">تم التسليم بالكامل</span>
                     @elseif($isTemplateFailed || $failedCount > 0)
                         <span class="text-rose-400">تعذر الإرسال</span>
-                    @elseif($sentCount > 0 || $isTemplateSent)
-                        <span class="text-sky-300">تم الإرسال</span>
+                    @elseif($sendingCount > 0 || $booking->template_status === 'sending')
+                        <span class="text-amber-300">جاري الإرسال…</span>
+                    @elseif($sentCount > 0)
+                        <span class="text-cyan-300">أُرسلت للشبكة</span>
+                    @elseif($isTemplateSent)
+                        <span class="text-sky-300">أُرسل القالب</span>
                     @else
                         <span class="text-slate-400">لم يُرسل بعد</span>
                     @endif
@@ -581,8 +591,10 @@
                         <span class="text-emerald-400">تم التسليم (مؤكد)</span>
                     @elseif($isTemplateFailed)
                         <span class="text-rose-400">فشل لدى Meta</span>
-                    @elseif($isTemplateSent || $sentCount > 0)
-                        <span class="text-amber-300">قيد المعالجة</span>
+                    @elseif($sendingCount > 0 || $booking->template_status === 'sending')
+                        <span class="text-amber-300">جاري الإرسال…</span>
+                    @elseif($sentCount > 0 || $isTemplateSent)
+                        <span class="text-cyan-300">أُرسلت (مقبولة)</span>
                     @else
                         <span class="text-slate-400">—</span>
                     @endif
@@ -724,13 +736,17 @@
                     <div class="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
                         <div class="flex items-center justify-between text-xs">
                             <span class="text-slate-400 font-medium">3. تسليم صور التذاكر (QR)</span>
-                            <span class="font-bold tabular-nums {{ $isAllTicketsDelivered ? 'text-emerald-400' : ($failedCount > 0 ? 'text-rose-400' : 'text-slate-300') }}">
+                            <span class="font-bold tabular-nums {{ $isAllTicketsDelivered ? 'text-emerald-400' : ($failedCount > 0 ? 'text-rose-400' : ($sentCount > 0 ? 'text-cyan-300' : 'text-slate-300')) }}">
                                 @if($isAllTicketsDelivered)
                                     ✓ تم التسليم ({{ $deliveredCount }}/{{ $totalCount }})
                                 @elseif($failedCount > 0)
                                     ✕ فشل الإرسال ({{ $deliveredCount }}/{{ $totalCount }})
-                                @elseif($claimedCount > 0)
+                                @elseif($sendingCount > 0)
                                     جاري الإرسال… ({{ $sentCount }}/{{ $totalCount }})
+                                @elseif($sentCount > 0)
+                                    أُرسلت للشبكة ({{ $sentCount }}/{{ $totalCount }})
+                                @elseif($claimedCount > 0)
+                                    نقر العميل · بانتظار البدء (0/{{ $totalCount }})
                                 @else
                                     لم تُرسل بعد (0/{{ $totalCount }})
                                 @endif
@@ -744,6 +760,10 @@
                                     <span class="font-bold block">⚠️ التذكرة لم تصل للعميل</span>
                                     <span class="text-rose-200 block">{{ $booking->tickets->where('delivery_status', 'failed')->first()?->delivery_error ?? 'حدث خطأ أثناء إرسال التذكرة عبر WhatsApp' }}</span>
                                 </div>
+                            @elseif($sendingCount > 0)
+                                <p class="text-amber-300">جاري إرسال صور الـ QR إلى واتساب العميل…</p>
+                            @elseif($sentCount > 0)
+                                <p class="text-cyan-300">أُرسلت صور التذاكر لخوادم Meta بنجاح، بانتظار استلام جهاز العميل.</p>
                             @elseif($claimedCount > 0)
                                 <p class="text-amber-300">ضغط العميل للاستلام وجاري إرسال صور الـ QR.</p>
                             @else
@@ -1136,8 +1156,10 @@
                 pill.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ' +
                     (m.status_badge_type === 'emerald' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40' :
                     (m.status_badge_type === 'rose' ? 'bg-rose-500/15 text-rose-300 border border-rose-500/40' :
+                    (m.status_badge_type === 'teal' ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' :
                     (m.status_badge_type === 'sky' ? 'bg-sky-500/15 text-sky-300 border border-sky-500/40' :
-                    'bg-amber-500/15 text-amber-300 border border-amber-500/40')));
+                    (m.status_badge_type === 'gray' ? 'bg-white/5 text-slate-400 border border-white/10' :
+                    'bg-amber-500/15 text-amber-300 border border-amber-500/40')))));
             }
 
             // 2. Update summary indicators
@@ -1145,7 +1167,9 @@
             if (sendEl) {
                 if (m.is_all_delivered) sendEl.innerHTML = '<span class="text-emerald-400">تم التسليم بالكامل</span>';
                 else if (m.is_template_failed || m.failed_count > 0) sendEl.innerHTML = '<span class="text-rose-400">تعذر الإرسال</span>';
-                else if (m.sent_count > 0 || b.template_status === 'sent') sendEl.innerHTML = '<span class="text-sky-300">تم الإرسال</span>';
+                else if (m.sending_count > 0 || b.template_status === 'sending') sendEl.innerHTML = '<span class="text-amber-300">جاري الإرسال…</span>';
+                else if (m.sent_count > 0) sendEl.innerHTML = '<span class="text-cyan-300">أُرسلت للشبكة</span>';
+                else if (b.template_status === 'sent') sendEl.innerHTML = '<span class="text-sky-300">أُرسل القالب</span>';
                 else sendEl.innerHTML = '<span class="text-slate-400">لم يُرسل بعد</span>';
             }
 
@@ -1153,7 +1177,8 @@
             if (metaEl) {
                 if (b.template_status === 'delivered' || m.is_all_delivered) metaEl.innerHTML = '<span class="text-emerald-400">تم التسليم (مؤكد)</span>';
                 else if (m.is_template_failed) metaEl.innerHTML = '<span class="text-rose-400">فشل لدى Meta</span>';
-                else if (b.template_status === 'sent' || m.sent_count > 0) metaEl.innerHTML = '<span class="text-amber-300">قيد المعالجة</span>';
+                else if (m.sending_count > 0 || b.template_status === 'sending') metaEl.innerHTML = '<span class="text-amber-300">جاري الإرسال…</span>';
+                else if (b.template_status === 'sent' || m.sent_count > 0) metaEl.innerHTML = '<span class="text-cyan-300">أُرسلت (مقبولة)</span>';
                 else metaEl.innerHTML = '<span class="text-slate-400">—</span>';
             }
 
@@ -1169,7 +1194,8 @@
             if (tixEl) {
                 if (m.is_all_delivered) tixEl.innerHTML = '<span class="text-emerald-400">تم التسليم (' + m.delivered_count + '/' + m.total_count + ')</span>';
                 else if (m.failed_count > 0) tixEl.innerHTML = '<span class="text-rose-400">فشل (' + m.failed_count + '/' + m.total_count + ')</span>';
-                else if (m.sent_count > 0) tixEl.innerHTML = '<span class="text-amber-300">أُرسلت (' + m.sent_count + '/' + m.total_count + ')</span>';
+                else if (m.sending_count > 0) tixEl.innerHTML = '<span class="text-amber-300">جاري الإرسال (' + m.sent_count + '/' + m.total_count + ')</span>';
+                else if (m.sent_count > 0) tixEl.innerHTML = '<span class="text-cyan-300">أُرسلت للشبكة (' + m.sent_count + '/' + m.total_count + ')</span>';
                 else tixEl.innerHTML = '<span class="text-slate-400">لم تُرسل بعد</span>';
             }
 
@@ -1206,6 +1232,9 @@
                             badge.className = 'text-[11px] font-semibold text-rose-300';
                         } else if (t.delivery_status === 'sent') {
                             badge.textContent = 'أُرسلت للشبكة';
+                            badge.className = 'text-[11px] font-semibold text-cyan-300';
+                        } else if (t.delivery_status === 'sending') {
+                            badge.textContent = 'جاري الإرسال…';
                             badge.className = 'text-[11px] font-semibold text-amber-300';
                         }
                     }

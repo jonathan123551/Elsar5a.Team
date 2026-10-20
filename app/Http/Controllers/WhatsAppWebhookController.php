@@ -222,13 +222,13 @@ class WhatsAppWebhookController extends Controller
         }
 
         // Fallback matching by phone for tickets in active delivery state
-        if (!$ticket && $phoneNormalized && in_array($statusName, ['failed', 'undelivered', 'delivered'], true)) {
+        if (!$ticket && $phoneNormalized && in_array($statusName, ['failed', 'undelivered', 'delivered', 'read'], true)) {
             $ticket = Ticket::where(function ($q) use ($phoneNormalized) {
                 $q->where('phone', $phoneNormalized)
                   ->orWhere('phone', 'like', '%' . substr($phoneNormalized, -9));
             })
             ->whereIn('delivery_status', ['sending', 'sent'])
-            ->latest('resend_requested_at')
+            ->orderBy('id', 'desc')
             ->first();
         }
 

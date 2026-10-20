@@ -88,10 +88,11 @@ class BookingController extends Controller
         if ($bookingId) {
             $booking = Booking::with(['tickets', 'showTime.show'])->find($bookingId);
             if ($booking) {
-                $totalTickets = $booking->tickets->count();
-                $deliveredTickets = $booking->tickets->where('delivery_status', 'delivered')->count();
-                $sentTickets = $booking->tickets->whereIn('delivery_status', ['sent', 'delivered'])->count();
-                $failedTickets = $booking->tickets->where('delivery_status', 'failed')->count();
+                $totalTickets = $booking->ticketsTotalCount();
+                $deliveredTickets = $booking->ticketsDeliveredCount();
+                $sentTickets = $booking->ticketsSentCount();
+                $sendingTickets = $booking->ticketsSendingCount();
+                $failedTickets = $booking->ticketsFailedCount();
                 $claimedTickets = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count();
                 $isTemplateFailed = $booking->template_status === 'failed';
                 $isAllDelivered = ($deliveredTickets === $totalTickets) && ($totalTickets > 0);
@@ -103,7 +104,7 @@ class BookingController extends Controller
                     $statusBadgeText = "تم تسليم جميع التذاكر بالكامل ({$deliveredTickets}/{$totalTickets})";
                     $statusBadgeType = 'emerald';
                 } elseif ($isTemplateFailed) {
-                    $statusBadgeText = 'تعذر تسليم قالب واتساب';
+                    $statusBadgeText = 'فشل إرسال قالب استلام التذاكر';
                     $statusBadgeType = 'rose';
                 } elseif ($failedTickets > 0) {
                     $statusBadgeText = "تعذر تسليم {$failedTickets} تذكرة ({$deliveredTickets}/{$totalTickets})";
@@ -111,9 +112,15 @@ class BookingController extends Controller
                 } elseif ($booking->template_status === 'sent') {
                     $statusBadgeText = 'أُرسل القالب · بانتظار نقر العميل على واتساب';
                     $statusBadgeType = 'sky';
-                } elseif ($booking->status === 'approved') {
-                    $statusBadgeText = 'معتمد · جاري المعالجة والإرسال';
+                } elseif ($sendingTickets > 0 || $booking->template_status === 'sending') {
+                    $statusBadgeText = 'جاري الإرسال لـ Meta';
                     $statusBadgeType = 'amber';
+                } elseif ($sentTickets > 0) {
+                    $statusBadgeText = "أُرسلت التذاكر للشبكة ({$sentTickets}/{$totalTickets})";
+                    $statusBadgeType = 'teal';
+                } elseif ($booking->status === 'approved') {
+                    $statusBadgeText = 'معتمد (لم يُرسل)';
+                    $statusBadgeType = 'gray';
                 }
 
                 $bookingData = [
@@ -138,7 +145,8 @@ class BookingController extends Controller
                     'metrics' => [
                         'total_count'          => $totalTickets,
                         'delivered_count'      => $deliveredTickets,
-                        'sent_count'           => $sentTickets,
+                        'sent_count'           => $booking->tickets->whereIn('delivery_status', ['sent', 'delivered'])->count(),
+                        'sending_count'        => $sendingTickets,
                         'failed_count'         => $failedTickets,
                         'claimed_count'        => $claimedTickets,
                         'is_all_delivered'     => $isAllDelivered,

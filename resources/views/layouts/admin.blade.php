@@ -67,6 +67,52 @@
             }
         }
 
+        /* =========================================================
+           CROSS-BROWSER & iOS SAFARI RTL DATE/TIME INPUT NORMALIZATION
+           Prevents iOS WebKit shadow-DOM from overflowing card bounds
+           ========================================================= */
+        input[type="date"],
+        input[type="time"],
+        input[type="datetime-local"] {
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            background-clip: padding-box;
+        }
+
+        /* WebKit inner shadow DOM controls */
+        input[type="date"]::-webkit-date-and-time-value,
+        input[type="time"]::-webkit-date-and-time-value,
+        input[type="datetime-local"]::-webkit-date-and-time-value {
+            text-align: right !important;
+            direction: rtl !important;
+            min-height: 1.5em !important;
+            width: 100% !important;
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8) brightness(1.2);
+            cursor: pointer;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+            margin: 0 !important;
+            padding: 0 4px !important;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        input[type="time"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
         @media (hover: none) {
             [class*="scale-"]:hover,
             .group:hover [class*="scale-"] {

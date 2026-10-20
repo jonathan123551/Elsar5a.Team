@@ -128,7 +128,17 @@ class Booking extends Model
 
     public function ticketsDeliveredCount(): int
     {
-        return $this->tickets->filter(fn($t) => $t->delivery_status === 'delivered' || ($t->delivery_status === 'sent' && $t->whatsapp_sent))->count();
+        return $this->tickets->filter(fn($t) => $t->delivery_status === 'delivered')->count();
+    }
+
+    public function ticketsSentCount(): int
+    {
+        return $this->tickets->filter(fn($t) => $t->delivery_status === 'sent')->count();
+    }
+
+    public function ticketsSendingCount(): int
+    {
+        return $this->tickets->filter(fn($t) => $t->delivery_status === 'sending')->count();
     }
 
     public function ticketsFailedCount(): int
@@ -139,6 +149,131 @@ class Booking extends Model
     public function ticketsTotalCount(): int
     {
         return $this->tickets->count() ?: ($this->tickets_count ?? 1);
+    }
+
+    /**
+     * Comprehensive Delivery Badge Resolution
+     *
+     * Ensures consistent state representation across Admin desktop table,
+     * mobile cards, booking details, and live polling endpoints.
+     *
+     * States:
+     *  - rejected: '—' (muted)
+     *  - pending: 'بانتظار الاعتماد' (sky)
+     *  - approved + all delivered: 'تم الاستلام (X/Y)' (emerald)
+     *  - approved + failure: 'فشل التسليم' (rose)
+     *  - approved + active sending: 'جاري الإرسال…' (amber with spinner)
+     *  - approved + tickets sent to Meta: 'أُرسلت للشبكة (X/Y)' (cyan/teal, no spinner)
+     *  - approved + template sent: 'بانتظار نقر العميل' (sky, gentle pulse)
+     *  - approved + template claimed: 'جاري التجهيز' (amber)
+     *  - approved + not sent yet: 'معتمد (لم يُرسل)' (gray)
+     */
+    public function getDeliveryBadgeAttribute(): array
+    {
+        $total = $this->ticketsTotalCount();
+        $delivered = $this->ticketsDeliveredCount();
+        $sending = $this->ticketsSendingCount();
+        $sent = $this->ticketsSentCount();
+        $failed = $this->ticketsFailedCount();
+        $hasFailed = $failed > 0 || $this->template_status === 'failed';
+        $isClaimed = $this->tickets->filter(fn($t) => !is_null($t->claimed_at))->count() > 0;
+
+        if ($this->status !== 'approved') {
+            if ($this->status === 'rejected') {
+                return [
+                    'text' => '—',
+                    'type' => 'muted',
+                    'bg' => 'bg-white/5 text-slate-500 border border-white/10',
+                    'has_spinner' => false,
+                    'title' => 'حجز مرفوض',
+                ];
+            }
+            return [
+                'text' => 'بانتظار الاعتماد',
+                'type' => 'pending',
+                'bg' => 'bg-sky-500/10 text-sky-300 border border-sky-500/30',
+                'has_spinner' => false,
+                'title' => 'بانتظار اعتماد الحجز أولاً',
+            ];
+        }
+
+        // 1. All tickets confirmed delivered
+        if ($delivered === $total && $total > 0) {
+            return [
+                'text' => "تم الاستلام ({$delivered}/{$total})",
+                'type' => 'emerald',
+                'bg' => 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40',
+                'has_spinner' => false,
+                'title' => 'تم تسليم جميع التذاكر للعميل ومؤكد من واتساب',
+            ];
+        }
+
+        // 2. Any failure (template or ticket)
+        if ($hasFailed) {
+            $errorMsg = $this->template_error
+                ?? $this->tickets->where('delivery_status', 'failed')->first()?->delivery_error
+                ?? 'تعذر إرسال بعض التذاكر عبر واتساب';
+            return [
+                'text' => 'فشل التسليم',
+                'type' => 'rose',
+                'bg' => 'bg-rose-500/15 text-rose-300 border border-rose-500/40',
+                'has_spinner' => false,
+                'title' => $errorMsg,
+            ];
+        }
+
+        // 3. Actively sending in flight (queued / HTTP request in progress)
+        if ($sending > 0 || $this->template_status === 'sending') {
+            return [
+                'text' => 'جاري الإرسال…',
+                'type' => 'amber',
+                'bg' => 'bg-amber-500/15 text-amber-200 border border-amber-500/40',
+                'has_spinner' => true,
+                'title' => 'جاري المعالجة والإرسال لخوادم Meta',
+            ];
+        }
+
+        // 4. Template sent, waiting for customer tap on WhatsApp
+        if ($this->template_status === 'sent') {
+            return [
+                'text' => 'بانتظار نقر العميل',
+                'type' => 'sky',
+                'bg' => 'bg-sky-500/15 text-sky-300 border border-sky-500/40',
+                'has_spinner' => false,
+                'title' => 'أُرسل قالب الاستلام، بانتظار نقر العميل على واتساب',
+            ];
+        }
+
+        // 5. Customer clicked and claimed, waiting for ticket dispatch
+        if ($isClaimed && $sent === 0) {
+            return [
+                'text' => 'جاري التجهيز',
+                'type' => 'amber',
+                'bg' => 'bg-amber-500/15 text-amber-300 border border-amber-500/40',
+                'has_spinner' => false,
+                'title' => 'نقر العميل وبانتظار بدء إرسال التذاكر',
+            ];
+        }
+
+        // 6. Tickets sent to Meta network (HTTP 200 accepted), waiting for recipient delivery
+        if ($sent > 0) {
+            return [
+                'text' => "أُرسلت للشبكة ({$sent}/{$total})",
+                'type' => 'teal',
+                'bg' => 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40',
+                'has_spinner' => false,
+                'title' => 'أُرسلت التذاكر إلى خوادم واتساب بنجاح، بانتظار استلام جهاز العميل',
+            ];
+        }
+
+        // 7. Approved but no template or tickets sent yet
+        return [
+            'text' => 'معتمد (لم يُرسل)',
+            'type' => 'gray',
+            'bg' => 'bg-white/5 text-slate-400 border border-white/10',
+            'has_spinner' => false,
+            'title' => 'الحجز معتمد ولكن لم يتم إرسال التذاكر بعد',
+        ];
     }
 
     /**
