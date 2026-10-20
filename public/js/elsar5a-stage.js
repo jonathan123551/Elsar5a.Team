@@ -235,12 +235,24 @@
         e.preventDefault();
         try { localStorage.setItem('elsar5a_has_visited', '1'); } catch (err) {}
         skipBtn.remove();
-        if (master) {
-          master.pause();
-          master.kill();
+        if (window.gsap) {
+          try { window.gsap.globalTimeline.progress(1); } catch (ge) {}
         }
+        if (master) {
+          try { master.progress(1); master.kill(); } catch (me) {}
+        }
+        releaseExperience();
+        if (opening) {
+          opening.setAttribute('aria-hidden', 'true');
+          opening.style.pointerEvents = 'none';
+        }
+        if (curtain) {
+          curtain.dataset.state = 'open';
+        }
+        body.classList.add('cinema-website-stage', 'cinema-complete');
+        body.classList.remove('cinema-intro-playing');
+        body.dataset.introState = 'complete';
         unlockIntroScroll();
-        showReducedMotionContent();
         window.scrollTo({ top: 0, behavior: 'instant' });
       });
     }

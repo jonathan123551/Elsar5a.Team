@@ -65,15 +65,15 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 min-w-0">
                 {{-- Date --}}
-                <div>
+                <div class="min-w-0">
                     <label for="date" class="block text-xs text-slate-300 mb-1.5 font-medium">
                         تاريخ العرض <span class="text-amber-400">*</span>
                     </label>
                     <input type="date" name="date" id="date" required
                            value="{{ old('date') }}"
-                           class="w-full rounded-xl bg-black/60 border @error('date') border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/40 @else border-white/15 focus:border-amber-400 focus:ring-amber-400/40 @enderror px-3.5 py-2.5 min-h-[46px] text-sm text-slate-100 focus:outline-none focus:ring-1 transition"
+                           class="w-full max-w-full box-border [color-scheme:dark] rounded-xl bg-black/60 border @error('date') border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/40 @else border-white/15 focus:border-amber-400 focus:ring-amber-400/40 @enderror px-3.5 py-2.5 min-h-[46px] text-sm text-slate-100 focus:outline-none focus:ring-1 transition"
                            aria-invalid="{{ $errors->has('date') ? 'true' : 'false' }}">
                     @error('date')
                         <p class="text-xs text-rose-400 mt-1 flex items-center gap-1">
@@ -84,13 +84,13 @@
                 </div>
 
                 {{-- Time --}}
-                <div>
+                <div class="min-w-0">
                     <label for="time" class="block text-xs text-slate-300 mb-1.5 font-medium">
                         وقت بدء العرض <span class="text-amber-400">*</span>
                     </label>
                     <input type="time" name="time" id="time" required
                            value="{{ old('time') }}"
-                           class="w-full rounded-xl bg-black/60 border @error('time') border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/40 @else border-white/15 focus:border-amber-400 focus:ring-amber-400/40 @enderror px-3.5 py-2.5 min-h-[46px] text-sm text-slate-100 focus:outline-none focus:ring-1 transition"
+                           class="w-full max-w-full box-border [color-scheme:dark] rounded-xl bg-black/60 border @error('time') border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/40 @else border-white/15 focus:border-amber-400 focus:ring-amber-400/40 @enderror px-3.5 py-2.5 min-h-[46px] text-sm text-slate-100 focus:outline-none focus:ring-1 transition"
                            aria-invalid="{{ $errors->has('time') ? 'true' : 'false' }}">
                     @error('time')
                         <p class="text-xs text-rose-400 mt-1 flex items-center gap-1">

@@ -1068,4 +1068,127 @@ class AdminBookingsAndResendTest extends TestCase
         $uiResponse->assertStatus(200);
         $uiResponse->assertSee('تم تسليم جميع التذاكر بالكامل (1/1)');
     }
+
+    /**
+     * Requirement 10: Delivered tickets remain delivered across reloads
+     * and are never overwritten or re-sent.
+     */
+    public function test_delivered_ticket_remains_delivered_after_page_reload()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'ماجد تسليم دائم',
+            'phone' => '01099998888',
+            'reference_code' => 'REF-DELIV-01',
+            'public_number' => 199,
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'delivered',
+            'template_sent_at' => now()->subHours(2),
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'ماجد تسليم دائم',
+            'phone' => '01099998888',
+            'ticket_code' => 'TICK-DELIV-99',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/deliv.jpg',
+            'whatsapp_sent' => true,
+            'whatsapp_message_id' => 'wamid.HBgLMjAx_delivered_perm',
+            'claimed_at' => now()->subHour(),
+            'delivery_status' => 'delivered',
+            'last_delivered_at' => now()->subMinutes(50),
+        ]);
+
+        // First page load
+        $res1 = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking));
+        $res1->assertStatus(200);
+        $res1->assertSee('تم تسليم جميع التذاكر بالكامل (1/1)');
+        $res1->assertSee('تم التسليم');
+
+        // Reload page
+        $res2 = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking));
+        $res2->assertStatus(200);
+        $res2->assertSee('تم تسليم جميع التذاكر بالكامل (1/1)');
+        $res2->assertSee('تم التسليم');
+
+        // Verify ticket state remains untouched
+        $ticket->refresh();
+        $this->assertEquals('delivered', $ticket->delivery_status);
+        $this->assertTrue((bool) $ticket->whatsapp_sent);
+        $this->assertNotNull($ticket->last_delivered_at);
+    }
+
+    /**
+     * Requirement 11: Admin poll status endpoint returns live operational metrics,
+     * unreceived counts, and per-booking delivery states for live dashboard updates.
+     */
+    public function test_admin_poll_status_endpoint_returns_live_counts_and_booking_metrics()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'كريم إحصاء مباشر',
+            'phone' => '01155554444',
+            'reference_code' => 'REF-POLL-01',
+            'public_number' => 201,
+            'tickets_count' => 2,
+            'total_price' => 300,
+            'status' => 'approved',
+            'template_status' => 'delivered',
+        ]);
+
+        $ticket1 = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'كريم تذكرة 1',
+            'phone' => '01155554444',
+            'ticket_code' => 'TICK-P1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/p1.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'delivered',
+        ]);
+
+        $ticket2 = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'كريم تذكرة 2',
+            'phone' => '01155554444',
+            'ticket_code' => 'TICK-P2',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/p2.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        // Global poll without booking_id
+        $resGlobal = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status'));
+        $resGlobal->assertStatus(200);
+        $resGlobal->assertJsonStructure([
+            'ok',
+            'summary' => [
+                'total_bookings',
+                'pending_bookings',
+                'approved_bookings',
+                'rejected_bookings',
+                'unreceived_tickets_count',
+                'latest_booking_id',
+            ],
+            'booking',
+        ]);
+        $this->assertGreaterThanOrEqual(1, $resGlobal->json('summary.unreceived_tickets_count'));
+
+        // Scoped poll with booking_id
+        $resBooking = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', ['booking_id' => $booking->id]));
+        $resBooking->assertStatus(200);
+        $resBooking->assertJson([
+            'ok' => true,
+            'booking' => [
+                'id' => $booking->id,
+                'metrics' => [
+                    'total_count' => 2,
+                    'delivered_count' => 1,
+                    'sent_count' => 1,
+                    'is_all_delivered' => false,
+                ],
+            ],
+        ]);
+    }
 }
