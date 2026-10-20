@@ -36,11 +36,21 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        $bookings = Booking::with('showTime.show')
+        $bookings = Booking::with(['showTime.show', 'tickets'])
             ->latest()
             ->get();
 
-        return view('admin.bookings.index', compact('bookings'));
+        $unreceivedTicketsCount = Ticket::whereHas('booking', function ($q) {
+            $q->where('status', 'approved');
+        })
+        ->where('whatsapp_sent', false)
+        ->where(function ($q) {
+            $q->whereNull('delivery_status')
+              ->orWhere('delivery_status', '!=', 'sent');
+        })
+        ->count();
+
+        return view('admin.bookings.index', compact('bookings', 'unreceivedTicketsCount'));
     }
 
     public function show(Booking $booking)
@@ -477,6 +487,186 @@ public function receiveTicket(Request $request)
         }
 
         return back()->with('error', '❌ فشل إرسال التذاكر عبر واتساب. يرجى مراجعة سجل الأخطاء.');
+    }
+
+    /* =======================
+     | RESEND ONLY UNRECEIVED TICKETS IN BOOKING
+     ======================= */
+    public function resendUnreceivedTickets(Booking $booking, TicketDeliveryService $delivery, TicketRenderer $renderer)
+    {
+        $booking->loadMissing(['tickets', 'showTime.show']);
+
+        $unreceivedTickets = $booking->tickets->filter(function ($t) {
+            return !$t->whatsapp_sent && $t->delivery_status !== 'sent';
+        });
+
+        if ($unreceivedTickets->isEmpty()) {
+            return back()->with('status', 'جميع تذاكر هذا الحجز مستلمة بالفعل ولا توجد أي تذاكر معلقة.');
+        }
+
+        $sentCount = 0;
+        $templateCount = 0;
+        $failCount = 0;
+
+        foreach ($unreceivedTickets as $ticket) {
+            if (!$ticket->qr_image_path) {
+                $renderer->renderAndUpload($ticket);
+                $ticket->refresh();
+            }
+
+            $ticket->update(['resend_requested_at' => now()]);
+            $response = $delivery->sendImage($ticket);
+
+            if ($response->successful() && !$response->json('error')) {
+                $ticket->update([
+                    'whatsapp_sent'     => true,
+                    'delivery_status'   => 'sent',
+                    'last_delivered_at' => now(),
+                    'delivery_error'    => null,
+                ]);
+                $sentCount++;
+            } elseif ($delivery->isWindowClosed($response)) {
+                $tplResponse = $delivery->sendTemplate($ticket->phone);
+                if ($tplResponse->successful() && !$tplResponse->json('error')) {
+                    $templateCount++;
+                    $ticket->update([
+                        'delivery_status' => 'pending',
+                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل (تم إرسال قالب استلام التذاكر للتجديد).',
+                    ]);
+                } else {
+                    $failCount++;
+                    $ticket->update([
+                        'delivery_status' => 'failed',
+                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse),
+                    ]);
+                }
+            } else {
+                $failCount++;
+                $ticket->update([
+                    'delivery_status' => 'failed',
+                    'delivery_error'  => $delivery->getErrorMessage($response),
+                ]);
+            }
+        }
+
+        if ($templateCount > 0) {
+            $booking->update([
+                'template_status'  => 'sent',
+                'template_sent_at' => now(),
+                'template_error'   => null,
+            ]);
+        }
+
+        $feedback = "✓ {$sentCount} تم تسليمها مباشرة · ↻ {$templateCount} قوالب استلام أُرسلت · ⚠ {$failCount} تعذر إرسالها";
+
+        if ($sentCount > 0 || $templateCount > 0) {
+            return back()->with('status', $feedback);
+        }
+
+        return back()->with('error', $feedback);
+    }
+
+    /* ========================================================
+     |  GLOBAL ACTION: SEND ALL UNRECEIVED TICKETS (ALL BOOKINGS)
+     ======================================================== */
+    public function sendAllUnreceivedTickets(TicketDeliveryService $delivery, TicketRenderer $renderer)
+    {
+        $unreceivedTickets = Ticket::with(['booking.showTime.show'])
+            ->whereHas('booking', function ($q) {
+                $q->where('status', 'approved');
+            })
+            ->where('whatsapp_sent', false)
+            ->where(function ($q) {
+                $q->whereNull('delivery_status')
+                  ->orWhere('delivery_status', '!=', 'sent');
+            })
+            ->get();
+
+        $skippedCount = Ticket::whereHas('booking', function ($q) {
+            $q->where('status', 'approved');
+        })
+        ->where(function ($q) {
+            $q->where('whatsapp_sent', true)
+              ->orWhere('delivery_status', 'sent');
+        })
+        ->count();
+
+        if ($unreceivedTickets->isEmpty()) {
+            return redirect()
+                ->route('admin.bookings.index')
+                ->with('status', "جميع التذاكر مستلمة بالفعل ولا توجد أي تذاكر معلقة للإرسال (تم تخطي {$skippedCount} تذكرة مستلمة مسبقاً).");
+        }
+
+        $sentCount = 0;
+        $templateCount = 0;
+        $failCount = 0;
+        $affectedBookings = [];
+
+        foreach ($unreceivedTickets as $ticket) {
+            // Guard: never duplicate-send if state changed concurrently
+            if ($ticket->whatsapp_sent || $ticket->delivery_status === 'sent') {
+                continue;
+            }
+
+            // Ensure QR image is rendered
+            if (!$ticket->qr_image_path) {
+                $renderer->renderAndUpload($ticket);
+                $ticket->refresh();
+            }
+
+            $ticket->update(['resend_requested_at' => now()]);
+            $response = $delivery->sendImage($ticket);
+
+            if ($response->successful() && !$response->json('error')) {
+                $ticket->update([
+                    'whatsapp_sent'     => true,
+                    'delivery_status'   => 'sent',
+                    'last_delivered_at' => now(),
+                    'delivery_error'    => null,
+                ]);
+                $sentCount++;
+            } elseif ($delivery->isWindowClosed($response)) {
+                $tplResponse = $delivery->sendTemplate($ticket->phone);
+                if ($tplResponse->successful() && !$tplResponse->json('error')) {
+                    $templateCount++;
+                    $ticket->update([
+                        'delivery_status' => 'pending',
+                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل (تم إرسال قالب استلام التذاكر للتجديد).',
+                    ]);
+                    if ($ticket->booking_id) {
+                        $affectedBookings[$ticket->booking_id] = true;
+                    }
+                } else {
+                    $failCount++;
+                    $ticket->update([
+                        'delivery_status' => 'failed',
+                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse),
+                    ]);
+                }
+            } else {
+                $failCount++;
+                $ticket->update([
+                    'delivery_status' => 'failed',
+                    'delivery_error'  => $delivery->getErrorMessage($response),
+                ]);
+            }
+        }
+
+        if (!empty($affectedBookings)) {
+            Booking::whereIn('id', array_keys($affectedBookings))->update([
+                'template_status'  => 'sent',
+                'template_sent_at' => now(),
+                'template_error'   => null,
+            ]);
+        }
+
+        $summary = "ملخص الإرسال الشامل: تم إرسال {$sentCount} تذكرة مباشرة · أُرسل {$templateCount} قالب استلام · تعذر إرسال {$failCount} · تم تخطي {$skippedCount} تذكرة مستلمة مسبقاً";
+
+        if ($sentCount > 0 || $templateCount > 0) {
+            return redirect()->route('admin.bookings.index')->with('status', $summary);
+        }
+
+        return redirect()->route('admin.bookings.index')->with('error', $summary);
     }
     public function delete($id)
 {

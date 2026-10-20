@@ -204,10 +204,12 @@ Route::middleware('admin')
     // Bookings
     Route::prefix('bookings')->name('bookings.')->group(function () {
         Route::get('/', [AdminBookingController::class, 'index'])->name('index');
+        Route::post('/send-all-unreceived', [AdminBookingController::class, 'sendAllUnreceivedTickets'])->name('send-all-unreceived');
         Route::post('/{booking}/approve', [AdminBookingController::class, 'approve'])->name('approve');
         Route::post('/{booking}/reject', [AdminBookingController::class, 'reject'])->name('reject');
         Route::get('/{booking}', [AdminBookingController::class, 'show'])->name('show');
         Route::post('/{booking}/resend-all', [AdminBookingController::class, 'resendBookingTickets'])->name('resend-all');
+        Route::post('/{booking}/resend-unreceived', [AdminBookingController::class, 'resendUnreceivedTickets'])->name('resend-unreceived');
     });
 
     Route::post('/resend-ticket/{id}', [AdminBookingController::class, 'resendTicket'])

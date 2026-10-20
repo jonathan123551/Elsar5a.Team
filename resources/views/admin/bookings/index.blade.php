@@ -108,8 +108,10 @@
          ------------------------------------------------------ --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-black/40 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
         <div class="min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-                <span class="text-xl">💳</span>
+            <div class="flex items-center gap-2.5 mb-1">
+                <svg class="w-6 h-6 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                </svg>
                 <h1 class="text-lg sm:text-2xl font-bold font-heading text-white">إدارة الحجوزات والتحويلات</h1>
             </div>
             <p id="resultCount" class="text-xs text-slate-400 tabular-nums">
@@ -117,7 +119,29 @@
             </p>
         </div>
 
-        <div class="flex items-center gap-2 self-start sm:self-auto">
+        <div class="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+            @if(isset($unreceivedTicketsCount) && $unreceivedTicketsCount > 0)
+                <button type="button"
+                        id="openGlobalResendModal"
+                        class="admin-btn admin-btn--indigo"
+                        title="إرسال التذاكر غير المستلمة لكافة الحجوزات المعتمدة">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                    <span>إرسال التذاكر غير المستلمة ({{ $unreceivedTicketsCount }})</span>
+                </button>
+            @else
+                <button type="button"
+                        disabled
+                        class="admin-btn admin-btn--indigo opacity-50 cursor-not-allowed"
+                        title="جميع تذاكر الحجوزات مستلمة بالفعل">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span>إرسال التذاكر غير المستلمة ({{ $unreceivedTicketsCount ?? 0 }})</span>
+                </button>
+            @endif
+
             @include('admin.partials.back-button', ['url' => route('admin.dashboard'), 'label' => 'العودة للوحة التحكم'])
         </div>
     </div>
@@ -162,18 +186,27 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-sm">
             {{-- Search Input --}}
             <div class="relative sm:col-span-1 lg:col-span-2">
+                <div class="absolute inset-y-0 start-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
                 <input id="searchInput" type="search"
                        autocomplete="off"
                        enterkeyhint="search"
                        inputmode="search"
-                       placeholder="🔎 بحث بالاسم / رقم الهاتف / الكود المرجعي / رقم الحجز (#3)"
-                       class="w-full rounded-xl bg-black/60 border border-white/15 px-3.5
-                              py-2.5 pe-10 min-h-[44px] text-sm text-slate-100 placeholder:text-slate-500
+                       placeholder="بحث بالاسم / رقم الهاتف / الكود المرجعي / رقم الحجز (#3)"
+                       class="w-full rounded-xl bg-black/60 border border-white/15 ps-10 pe-10
+                              py-2.5 min-h-[44px] text-sm text-slate-100 placeholder:text-slate-500
                               focus:outline-none focus:border-amber-400/70 transition">
                 <button id="searchClear" type="button"
                         aria-label="مسح نص البحث"
                         class="hidden absolute inset-y-0 end-2 my-auto h-8 w-8 rounded-full
-                               bg-white/10 hover:bg-white/20 text-xs text-slate-300">✕</button>
+                               bg-white/10 hover:bg-white/20 text-xs text-slate-300 items-center justify-center">
+                    <svg class="w-3.5 h-3.5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
 
             {{-- Show / Showtime Dropdown --}}
@@ -210,7 +243,11 @@
     @if($bookings->isEmpty())
         {{-- Empty State --}}
         <div class="bg-black/40 border border-white/10 rounded-2xl p-10 text-center space-y-3">
-            <div class="text-5xl">📬</div>
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+            </div>
             <h2 class="text-base font-semibold text-gray-200">لا توجد حجوزات مسجلة بعد</h2>
             <p class="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
                 بمجرد إتمام الحجز والدفع من قبل الجمهور، ستظهر طلبات الحجز هنا تلقائياً لمراجعة صورة التحويل واعتماد التذاكر.
@@ -266,8 +303,11 @@
                                 <p class="font-bold text-white leading-snug">{{ $booking->full_name }}</p>
                                 <p class="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <span class="text-[11px] text-amber-300 font-medium">
-                                        🎟️ {{ $booking->tickets_count }} تذكرة
+                                    <span class="inline-flex items-center gap-1 text-[11px] text-amber-300 font-medium">
+                                        <svg class="w-3.5 h-3.5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                                        </svg>
+                                        <span>{{ $booking->tickets_count }} تذكرة</span>
                                     </span>
                                     @if($booking->tickets->count() > 1)
                                         <details class="group inline-block">
@@ -277,7 +317,12 @@
                                             <div class="mt-1 space-y-0.5 p-2 rounded-lg bg-black/70 border border-white/10 text-xs">
                                                 @foreach($booking->tickets as $ticket)
                                                     <div class="text-[11px] text-slate-300 flex items-center justify-between gap-2">
-                                                        <span>👤 {{ $ticket->name }}</span>
+                                                        <span class="inline-flex items-center gap-1">
+                                                            <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                                            </svg>
+                                                            <span>{{ $ticket->name }}</span>
+                                                        </span>
                                                         <span class="text-slate-500 font-mono" dir="ltr">{{ $ticket->phone }}</span>
                                                     </div>
                                                 @endforeach
@@ -292,9 +337,13 @@
                                 <p class="font-semibold text-slate-100 text-xs sm:text-sm leading-snug">
                                     {{ $booking->showTime?->show?->title ?? '-' }}
                                 </p>
-                                <span class="text-slate-400 text-xs mt-0.5 block">
-                                    🗓️ {{ $booking->showTime?->date?->format('d/m/Y') }}
-                                    • {{ $booking->showTime?->time ? \Carbon\Carbon::parse($booking->showTime->time)->format('g:i A') : '' }}
+                                <span class="text-slate-400 text-xs mt-0.5 inline-flex items-center gap-1.5 flex-wrap">
+                                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>{{ $booking->showTime?->date?->format('d/m/Y') }}</span>
+                                    <span>•</span>
+                                    <span>{{ $booking->showTime?->time ? \Carbon\Carbon::parse($booking->showTime->time)->format('g:i A') : '' }}</span>
                                 </span>
                             </td>
 
@@ -396,13 +445,15 @@
 
                             {{-- Action --}}
                             <td class="px-3 py-3 align-middle text-center">
-                                <a href="{{ route('admin.bookings.show', $booking) }}"
-                                   class="adm-tap inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
-                                          bg-amber-400 text-black text-xs font-bold hover:bg-amber-300
-                                          active:bg-amber-500 transition shadow-sm">
-                                    <span>تفاصيل</span>
-                                    <span aria-hidden="true">←</span>
-                                </a>
+                                <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                    <a href="{{ route('admin.bookings.show', $booking) }}"
+                                       class="admin-btn admin-btn--primary admin-btn--sm">
+                                        <span>تفاصيل</span>
+                                        <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -468,10 +519,12 @@
                     <div class="min-w-0 flex-1">
                         <h2 class="font-bold text-base text-white truncate">{{ $booking->full_name }}</h2>
                         <p class="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
-                        <p class="text-xs text-slate-300 mt-1.5">
-                            <span class="text-amber-300">🎭</span>
+                        <p class="text-xs text-slate-300 mt-1.5 flex items-center gap-1.5 flex-wrap">
+                            <svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                            </svg>
                             <span class="font-medium text-slate-200">{{ $booking->showTime?->show?->title ?? '—' }}</span>
-                            <span class="text-slate-500 mx-1">·</span>
+                            <span class="text-slate-500 mx-0.5">·</span>
                             <span class="text-slate-400 tabular-nums">
                                 {{ $booking->showTime?->date?->format('d/m') }}
                                 • {{ $booking->showTime?->time ? \Carbon\Carbon::parse($booking->showTime->time)->format('g:i A') : '' }}
@@ -494,9 +547,12 @@
 
                 {{-- Row 3: Tickets & WhatsApp State --}}
                 <div class="flex items-center justify-between gap-2 pt-2 border-t border-white/5 text-xs flex-wrap">
-                    <div class="flex items-center gap-1.5">
-                        <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/25 font-semibold text-[11px]">
-                            🎟️ {{ $booking->tickets_count }} تذكرة
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/25 font-semibold text-[11px]">
+                            <svg class="w-3 h-3 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                            </svg>
+                            <span>{{ $booking->tickets_count }} تذكرة</span>
                         </span>
 
                         @if($booking->status === 'approved')
@@ -519,22 +575,30 @@
                         @endif
                     </div>
 
-                    <a href="{{ route('admin.bookings.show', $booking) }}"
-                       class="adm-tap px-3 py-1.5 rounded-xl bg-amber-400 text-black font-bold text-xs hover:bg-amber-300 transition ms-auto">
-                        <span>عرض التفاصيل</span>
-                        <span aria-hidden="true">←</span>
-                    </a>
+                    <div class="flex items-center gap-1.5 ms-auto">
+                        <a href="{{ route('admin.bookings.show', $booking) }}"
+                           class="admin-btn admin-btn--primary admin-btn--sm">
+                            <span>عرض التفاصيل</span>
+                            <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    </div>
                 </div>
             </div>
         @endforeach
     </div>
 
     {{-- "No matches" empty state --}}
-    <div id="noMatchesEmpty" class="hidden bg-black/40 border border-white/10 rounded-2xl p-8 text-center space-y-2">
-        <div class="text-3xl">🔍</div>
+    <div id="noMatchesEmpty" class="hidden bg-black/40 border border-white/10 rounded-2xl p-8 text-center space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        </div>
         <p class="text-sm text-gray-200">لا توجد حجوزات تطابق معايير البحث الحالية.</p>
         <button type="button" id="clearFilters"
-                class="adm-tap mt-2 inline-flex text-xs px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 transition text-slate-200">
+                class="admin-btn admin-btn--secondary admin-btn--sm mt-2">
             مسح جميع الفلاتر
         </button>
     </div>
@@ -560,7 +624,9 @@
                     id="adm-modal-close"
                     class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 flex items-center justify-center transition focus:outline-none"
                     aria-label="إغلاق المعاينة">
-                ✕
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
             </button>
         </div>
 
@@ -572,15 +638,77 @@
         </div>
 
         <div class="p-3 border-t border-white/10 bg-white/5 flex items-center justify-between">
-            <span class="text-xs text-slate-400">انقر خارج النافذة أو زر ✕ للإغلاق</span>
+            <span class="text-xs text-slate-400">انقر خارج النافذة أو زر الإغلاق للخروج</span>
             <a id="adm-modal-link"
                href=""
                target="_blank"
                rel="noopener"
-               class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-400 text-black hover:bg-amber-300 transition">
-                فتح الرابط الأصلي ↗
+               class="admin-btn admin-btn--primary admin-btn--sm">
+                <span>فتح الرابط الأصلي</span>
+                <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
             </a>
         </div>
+    </div>
+</div>
+
+{{-- =========================================================
+     GLOBAL SEND UNRECEIVED TICKETS CONFIRMATION MODAL
+     ========================================================= --}}
+<div id="adm-global-resend-modal"
+     class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="adm-global-resend-title">
+    <div class="relative w-full max-w-md bg-[#0f172a] border border-white/20 rounded-2xl shadow-2xl p-5 sm:p-6 text-right">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                </div>
+                <h3 id="adm-global-resend-title" class="text-base font-bold text-white">تأكيد الإرسال الشامل للتذاكر</h3>
+            </div>
+            <button type="button"
+                    id="adm-global-resend-close"
+                    class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition"
+                    aria-label="إغلاق">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="space-y-3 mb-5">
+            <p class="text-sm text-slate-100 font-semibold leading-relaxed">
+                سيتم إرسال التذاكر غير المستلمة إلى أصحابها — العدد: <span class="text-amber-400 font-bold tabular-nums text-base">{{ $unreceivedTicketsCount ?? 0 }}</span>
+            </p>
+            <p class="text-xs text-slate-400 leading-normal">
+                سيتم إرسال التذاكر مباشرة عبر واتساب للعملاء المتاحين، أو إرسال قوالب الاستلام لتجديد نافذة الـ 24 ساعة، مع تخطي التذاكر المستلمة مسبقاً تلقائياً لمنع التكرار.
+            </p>
+        </div>
+
+        <form action="{{ route('admin.bookings.send-all-unreceived') }}"
+              method="POST"
+              data-processing-message="جاري معالجة وإرسال التذاكر الشامل عبر واتساب…">
+            @csrf
+            <div class="flex items-center justify-end gap-2.5">
+                <button type="button"
+                        id="adm-global-resend-cancel"
+                        class="admin-btn admin-btn--secondary admin-btn--sm">
+                    إلغاء
+                </button>
+                <button type="submit"
+                        class="admin-btn admin-btn--indigo admin-btn--sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                    <span>تأكيد وإرسال الآن</span>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -716,9 +844,38 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.target === modal) closeModal();
         });
     }
+
+    // Global Send Unreceived Tickets Modal
+    var globalResendModal = document.getElementById('adm-global-resend-modal');
+    var openGlobalResendBtn = document.getElementById('openGlobalResendModal');
+    var closeGlobalResendBtn = document.getElementById('adm-global-resend-close');
+    var cancelGlobalResendBtn = document.getElementById('adm-global-resend-cancel');
+
+    function openGlobalResend() {
+        if (!globalResendModal) return;
+        globalResendModal.classList.remove('hidden');
+        globalResendModal.classList.add('flex');
+    }
+
+    function closeGlobalResend() {
+        if (!globalResendModal) return;
+        globalResendModal.classList.add('hidden');
+        globalResendModal.classList.remove('flex');
+    }
+
+    if (openGlobalResendBtn) openGlobalResendBtn.addEventListener('click', openGlobalResend);
+    if (closeGlobalResendBtn) closeGlobalResendBtn.addEventListener('click', closeGlobalResend);
+    if (cancelGlobalResendBtn) cancelGlobalResendBtn.addEventListener('click', closeGlobalResend);
+    if (globalResendModal) {
+        globalResendModal.addEventListener('click', function (e) {
+            if (e.target === globalResendModal) closeGlobalResend();
+        });
+    }
+
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
-            closeModal();
+        if (e.key === 'Escape') {
+            if (modal && !modal.classList.contains('hidden')) closeModal();
+            if (globalResendModal && !globalResendModal.classList.contains('hidden')) closeGlobalResend();
         }
     });
 });

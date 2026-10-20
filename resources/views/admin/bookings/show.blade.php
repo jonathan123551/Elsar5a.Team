@@ -5,7 +5,7 @@
 @section('content')
 <style>
 /* =========================================================
-   AURORA BACKDROP & STAGE ARCHITECTURE
+   STAGE ARCHITECTURE & GLASS CONTAINERS
    ========================================================= */
 .adm2-aurora {
     position: fixed;
@@ -22,17 +22,17 @@
     height: 60vmax;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: .3;
+    opacity: .25;
 }
 .adm2-aurora::before {
     top: -20vmax;
     inset-inline-start: -10vmax;
-    background: radial-gradient(circle, rgba(245,158,11,0.5), transparent 60%);
+    background: radial-gradient(circle, rgba(245,158,11,0.4), transparent 60%);
 }
 .adm2-aurora::after {
     bottom: -25vmax;
     inset-inline-end: -10vmax;
-    background: radial-gradient(circle, rgba(220,38,38,0.4), transparent 60%);
+    background: radial-gradient(circle, rgba(220,38,38,0.35), transparent 60%);
 }
 
 .adm2-stage {
@@ -66,218 +66,131 @@
 }
 
 /* =========================================================
-   HERO MARQUEE
+   COMPACT BOOKING SUMMARY CARD
    ========================================================= */
-.adm2-hero {
+.adm-summary-card {
     position: relative;
     overflow: hidden;
-    border-radius: 1.75rem;
+    border-radius: 1.5rem;
     border: 1px solid rgba(255,255,255,0.1);
-    padding: 22px 22px 24px;
+    padding: 20px 22px;
     background:
-        linear-gradient(180deg, rgba(15,23,42,0.65) 0%, rgba(2,6,23,0.9) 80%),
+        linear-gradient(180deg, rgba(15,23,42,0.75) 0%, rgba(2,6,23,0.92) 100%),
         rgba(15,23,42,0.6);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
-    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.8);
+    box-shadow: 0 25px 50px -20px rgba(0,0,0,0.8);
 }
-.adm2-hero::before {
+.adm-summary-card::before {
     content: "";
     position: absolute;
     inset: 0;
     background-image: var(--adm2-poster, none);
     background-size: cover;
     background-position: center;
-    opacity: .28;
-    filter: blur(28px) saturate(140%);
-    transform: scale(1.2);
+    opacity: .2;
+    filter: blur(24px) saturate(130%);
+    transform: scale(1.15);
     z-index: 0;
 }
-.adm2-hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(circle at 0% 0%, rgba(252,211,77,0.18), transparent 50%),
-        radial-gradient(circle at 100% 100%, rgba(248,113,113,0.18), transparent 50%);
-    z-index: 0;
-    pointer-events: none;
-}
-.adm2-hero > * { position: relative; z-index: 1; }
+.adm-summary-card > * { position: relative; z-index: 1; }
 
-.adm2-bk-num {
+.adm-price-gold {
     font-feature-settings: "tnum", "ss01";
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-    font-size: clamp(44px, 12vw, 76px);
-    line-height: 1;
-    font-weight: 900;
-    letter-spacing: -0.04em;
-    background: linear-gradient(180deg, #fde68a 0%, #f59e0b 60%, #b45309 100%);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(180deg, #fef08a 0%, #f59e0b 60%, #d97706 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    text-shadow: 0 12px 40px rgba(245,158,11,0.25);
 }
 
 .adm2-status {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 7px 16px;
-    border-radius: 999px;
-    font-size: 13px;
+    gap: 7px;
+    padding: 5px 14px;
+    border-radius: 9999px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.02em;
     border: 1px solid transparent;
 }
 .adm2-status .dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: currentColor;
-    box-shadow: 0 0 12px currentColor;
+    box-shadow: 0 0 10px currentColor;
 }
 .adm2-status[data-tone="approved"] {
     color: rgb(110,231,183);
     background: rgba(16,185,129,0.12);
-    border-color: rgba(16,185,129,0.45);
+    border-color: rgba(16,185,129,0.4);
 }
 .adm2-status[data-tone="rejected"] {
     color: rgb(252,165,165);
     background: rgba(239,68,68,0.12);
-    border-color: rgba(239,68,68,0.45);
+    border-color: rgba(239,68,68,0.4);
 }
 .adm2-status[data-tone="pending"] {
     color: rgb(125,211,252);
     background: rgba(14,165,233,0.12);
-    border-color: rgba(14,165,233,0.45);
+    border-color: rgba(14,165,233,0.4);
 }
 
 /* =========================================================
-   QUICK STATS — 3-UP STRIP
+   PAYMENT PROOF THUMBNAIL
    ========================================================= */
-.adm2-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0,1fr));
-    gap: 0;
-    padding: 14px 8px;
-    border-radius: 1.25rem;
-}
-.adm2-stats > div {
-    padding: 4px 12px;
-    text-align: center;
-    border-inline-end: 1px solid rgba(255,255,255,0.07);
-}
-.adm2-stats > div:last-child { border-inline-end: 0; }
-.adm2-stats .num {
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
-}
-.adm2-stats .lbl {
-    font-size: 11px;
-    color: rgb(156,163,175);
-    margin-top: 6px;
-}
-
-/* =========================================================
-   DELIVERY LIFECYCLE TIMELINE
-   ========================================================= */
-.adm2-timeline-step {
+.adm-proof-thumb {
     position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
+    display: block;
+    width: 80px;
+    height: 104px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: #020617;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    touch-action: manipulation;
 }
-.adm2-timeline-step:not(:last-child)::after {
-    content: "";
-    position: absolute;
-    top: 30px;
-    bottom: -10px;
-    inset-inline-start: 17px;
-    width: 2px;
-    background: rgba(255, 255, 255, 0.1);
+.adm-proof-thumb:hover {
+    border-color: rgba(245,158,11,0.6);
+    transform: scale(1.03);
+    box-shadow: 0 14px 30px -5px rgba(245,158,11,0.25);
 }
-.adm2-step-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    shrink: 0;
-    z-index: 1;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #0f172a;
-}
-.adm2-step-icon.is-done {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: rgba(16, 185, 129, 0.5);
-    color: #6ee7b7;
-    box-shadow: 0 0 14px rgba(16, 185, 129, 0.3);
-}
-.adm2-step-icon.is-active {
-    background: rgba(245, 158, 11, 0.2);
-    border-color: rgba(245, 158, 11, 0.5);
-    color: #fde68a;
-    box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
-}
-.adm2-step-icon.is-failed {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.5);
-    color: #fca5a5;
-    box-shadow: 0 0 14px rgba(239, 68, 68, 0.3);
-}
-.adm2-step-icon.is-pending {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #64748b;
+.adm-proof-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 /* =========================================================
-   TICKET STUB
+   TICKET OPERATIONAL BREAKDOWN & STUBS
    ========================================================= */
 .adm2-stub {
     position: relative;
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 14px;
-    padding: 16px 18px;
-    border-radius: 16px;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
     background:
         linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
-        rgba(15,23,42,0.55);
+        rgba(15,23,42,0.5);
     border: 1px solid rgba(255,255,255,0.08);
-    overflow: hidden;
-    transition: all .2s;
+    transition: all .15s ease-in-out;
 }
 .adm2-stub:hover {
-    border-color: rgba(252,211,77,0.3);
-    box-shadow: 0 12px 30px -12px rgba(0,0,0,0.6);
+    border-color: rgba(245,158,11,0.25);
+    background: rgba(15,23,42,0.65);
 }
-.adm2-stub + .adm2-stub { margin-top: 12px; }
-
-.adm2-stub::before,
-.adm2-stub::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 14px;
-    height: 14px;
-    background: #070a11;
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.08);
-}
-.adm2-stub::before { inset-inline-start: -7px; }
-.adm2-stub::after  { inset-inline-end: -7px; }
-
 .adm2-stub .who .name {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     color: white;
 }
@@ -305,106 +218,36 @@
     align-self: center;
     padding-inline-start: 12px;
     border-inline-start: 1px dashed rgba(255,255,255,0.12);
-    min-width: 72px;
+    min-width: 80px;
 }
 .adm2-stub .led .bulb {
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    margin: 0 auto 6px;
+    margin: 0 auto 5px;
 }
 .adm2-stub .led .bulb[data-tone="ok"] {
     background: rgb(74,222,128);
-    box-shadow: 0 0 14px rgba(74,222,128,0.7);
+    box-shadow: 0 0 12px rgba(74,222,128,0.7);
 }
 .adm2-stub .led .bulb[data-tone="fail"] {
     background: rgb(248,113,113);
-    box-shadow: 0 0 12px rgba(248,113,113,0.55);
+    box-shadow: 0 0 12px rgba(248,113,113,0.6);
 }
 .adm2-stub .led .bulb[data-tone="wait"] {
     background: rgb(56,189,248);
-    box-shadow: 0 0 12px rgba(56,189,248,0.55);
+    box-shadow: 0 0 12px rgba(56,189,248,0.6);
 }
 
 .adm2-stub-acts {
     grid-column: 1 / -1;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px dashed rgba(255,255,255,0.08);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-@media (max-width: 480px) {
-    .adm2-stub-acts { grid-template-columns: 1fr; }
-}
-.adm2-stub-acts > * {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 600;
-    transition: all .15s;
-}
-.adm2-stub-acts .a-view {
-    background: rgba(255,255,255,0.06);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-.adm2-stub-acts .a-view:hover { background: rgba(255,255,255,0.12); }
-.adm2-stub-acts .a-resend {
-    background: linear-gradient(180deg, rgba(56,189,248,0.18), rgba(14,165,233,0.18));
-    color: rgb(125,211,252);
-    border: 1px solid rgba(56,189,248,0.35);
-}
-.adm2-stub-acts .a-resend:hover { background: rgba(56,189,248,0.28); }
-
-/* =========================================================
-   POLAROID PROOF CARD
-   ========================================================= */
-.adm2-polaroid {
-    position: relative;
-    padding: 12px 12px 16px;
-    background: #f8fafc;
-    border-radius: 6px;
-    box-shadow:
-        0 1px 0 rgba(0,0,0,0.4),
-        0 22px 50px -20px rgba(0,0,0,0.7);
-    transform: rotate(-1deg);
-    transition: transform .3s ease;
-    max-width: 100%;
-}
-.adm2-polaroid:hover {
-    transform: rotate(0) translateY(-2px);
-}
-.adm2-polaroid img {
-    width: 100%;
-    display: block;
-    border-radius: 3px;
-    background: #e2e8f0;
-}
-.adm2-polaroid .cap {
     margin-top: 10px;
-    text-align: center;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    color: rgb(71,85,105);
-}
-.adm2-polaroid::before {
-    content: "";
-    position: absolute;
-    top: -10px;
-    inset-inline-start: 50%;
-    transform: translateX(-50%) rotate(-2deg);
-    width: 70px;
-    height: 18px;
-    background: rgba(252,211,77,0.55);
-    border: 1px solid rgba(252,211,77,0.7);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* =========================================================
@@ -420,64 +263,41 @@
 }
 .adm2-dock-inner {
     pointer-events: auto;
-    max-width: 40rem;
+    max-width: 44rem;
     margin: 0 auto;
     display: flex;
-    gap: 10px;
-    padding: 10px;
-    background: rgba(7, 10, 17, 0.85);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 999px;
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.8);
-}
-.adm2-dock-btn {
-    flex: 1;
-    min-height: 50px;
-    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    transition: transform .15s, box-shadow .2s;
-    border: 1px solid transparent;
+    padding: 8px 12px;
+    background: rgba(7, 10, 17, 0.92);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 9999px;
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.85);
 }
-.adm2-dock-btn:active:not([disabled]) { transform: scale(.98); }
-.adm2-dock-approve {
-    background: linear-gradient(180deg, #fde68a, #f59e0b 70%, #b45309);
-    color: rgb(20,20,20);
-    box-shadow: 0 10px 28px -8px rgba(245,158,11,0.6);
-}
-.adm2-dock-approve:hover { box-shadow: 0 14px 32px -8px rgba(245,158,11,0.75); }
-.adm2-dock-reject {
-    background: rgba(239,68,68,0.15);
-    color: rgb(252,165,165);
-    border-color: rgba(239,68,68,0.4);
-}
-.adm2-dock-resend {
-    background: linear-gradient(180deg, rgba(56,189,248,0.22), rgba(14,165,233,0.22));
-    color: rgb(125,211,252);
-    border-color: rgba(56,189,248,0.45);
-}
-.adm2-dock-delete {
-    background: rgba(220,38,38,0.15);
-    color: rgb(252,165,165);
-    border-color: rgba(220,38,38,0.45);
-}
-.adm2-dock-confirm {
-    background: rgb(220,38,38);
-    color: white;
-}
-.adm2-dock-cancel {
-    flex: 0 0 auto;
-    min-width: 90px;
-    background: rgba(255,255,255,0.08);
-    color: rgb(229,231,235);
-    border-color: rgba(255,255,255,0.15);
+@media (max-width: 639.98px) {
+    .adm2-dock {
+        padding: 0 8px max(10px, env(safe-area-inset-bottom));
+    }
+    .adm2-dock-inner {
+        border-radius: 1.25rem;
+        padding: 6px 8px;
+        gap: 5px;
+    }
+    .adm2-dock-inner .admin-btn {
+        min-height: 42px;
+        padding: 0.375rem 0.625rem;
+        font-size: 0.72rem;
+        gap: 0.35rem;
+        flex: 1 1 0%;
+        white-space: nowrap;
+    }
+    .adm2-dock-inner .admin-btn svg {
+        width: 0.875rem;
+        height: 0.875rem;
+    }
 }
 
 /* Two-step confirm states */
@@ -485,7 +305,7 @@
 [data-confirm][data-armed="true"] .adm2-confirm-trigger { display: none; }
 [data-confirm][data-armed="true"] .adm2-confirm-armed {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
 }
 
@@ -504,19 +324,19 @@
 }
 .adm2-processing[data-open="true"] { display: flex; }
 .adm2-processing .panel {
-    width: min(400px, 100%);
-    background: #0f172a;
+    background: rgba(15,23,42,0.95);
     border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 1.5rem;
-    padding: 28px 24px;
+    border-radius: 20px;
+    padding: 28px 32px;
     text-align: center;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.8);
+    max-width: 380px;
+    box-shadow: 0 30px 60px -15px rgba(0,0,0,0.85);
 }
 .adm2-processing .ring {
-    width: 52px;
-    height: 52px;
-    margin: 0 auto 16px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
+    margin: 0 auto 16px;
     border: 3px solid rgba(245,158,11,0.2);
     border-top-color: rgb(252,211,77);
     animation: admSpin .8s linear infinite;
@@ -526,33 +346,41 @@
 <div class="adm2-aurora" aria-hidden="true"></div>
 
 @php
-    $show       = $booking->showTime?->show;
-    $showTime   = $booking->showTime;
-    $posterCss  = $show?->poster_path ? "url('" . e($show->poster_path) . "')" : null;
-    $sentCount  = $booking->tickets->where('whatsapp_sent', true)->count();
-    $totalCount = $booking->tickets->count();
+    $show        = $booking->showTime?->show;
+    $showTime    = $booking->showTime;
+    $posterCss   = $show?->poster_path ? "url('" . e($show->poster_path) . "')" : null;
+    $totalCount  = $booking->tickets->count();
+    $sentCount   = $booking->tickets->where('whatsapp_sent', true)->count();
     $failedCount = $booking->tickets->where('delivery_status', 'failed')->count();
+    $pendingCount = $totalCount - $sentCount - $failedCount;
     $claimedCount = $booking->tickets->filter(fn($t) => $t->claimed_at)->count();
+    $hasUnreceived = ($sentCount < $totalCount) && ($booking->status === 'approved');
 @endphp
 
-<section class="adm2-stage space-y-6 max-w-4xl mx-auto">
+<section class="adm2-stage space-y-5 max-w-4xl mx-auto">
 
-    {{-- Top Navigation Back Affordance --}}
+    {{-- Top Navigation Back Affordance & Reference --}}
     <div class="flex items-center justify-between gap-3">
         @include('admin.partials.back-button', ['url' => route('admin.bookings.index'), 'label' => 'العودة لقائمة الحجوزات'])
 
         <div class="flex items-center gap-2">
-            <span class="text-xs text-slate-400 font-mono" dir="ltr">Ref: {{ $booking->reference_code }}</span>
+            <span class="text-xs text-slate-400 font-mono bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl" dir="ltr">
+                Ref: {{ $booking->reference_code }}
+            </span>
         </div>
     </div>
 
     {{-- ------------------------------------------------------
-         🎭 HERO MARQUEE CARD
+         1. COMPACT BOOKING SUMMARY CARD (WITH INTEGRATED PROOF)
          ------------------------------------------------------ --}}
-    <div class="adm2-hero" @if($posterCss) style="--adm2-poster: {{ $posterCss }};" @endif>
-        <div class="flex items-center justify-between gap-3 flex-wrap">
-            <div class="text-[11px] font-bold tracking-widest uppercase text-amber-300/80">
-                حجز رقم &bull; BOOKING #{{ $booking->public_number ?? $booking->id }}
+    <div class="adm-summary-card" @if($posterCss) style="--adm2-poster: {{ $posterCss }};" @endif>
+        {{-- Header Strip: Booking Number + Status Pill --}}
+        <div class="flex items-center justify-between gap-3 flex-wrap pb-3.5 border-b border-white/10">
+            <div class="flex items-center gap-2.5">
+                <span class="inline-flex items-center justify-center min-w-[50px] h-8 px-2.5 rounded-lg font-bold tabular-nums text-sm bg-amber-400/15 text-amber-200 border border-amber-400/35">
+                    #{{ $booking->public_number ?? $booking->id }}
+                </span>
+                <span class="text-xs text-slate-400 font-medium hidden sm:inline">حجز مؤكد بالنظام</span>
             </div>
 
             @if($booking->status === 'approved')
@@ -573,213 +401,122 @@
             @endif
         </div>
 
-        <div class="adm2-bk-num tabular-nums mt-1">#{{ $booking->public_number ?? $booking->id }}</div>
+        {{-- Core Details Grid --}}
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
 
-        <div class="mt-3 text-sm text-slate-200 flex items-center gap-2 flex-wrap">
-            <span class="text-amber-300">🎭</span>
-            <span class="font-bold text-white text-base">{{ $show?->title ?? '—' }}</span>
-            @if($showTime)
-                <span class="text-slate-500">·</span>
-                <span class="text-slate-300 tabular-nums">
-                    🗓️ {{ $showTime->date?->format('d/m/Y') }}
-                    • {{ $showTime->time ? \Carbon\Carbon::parse($showTime->time)->format('g:i A') : '' }}
-                </span>
-            @endif
-        </div>
-
-        {{-- Booker Info Bar --}}
-        <div class="mt-5 pt-4 border-t border-white/10 flex items-center justify-between gap-3 flex-wrap">
-            <div class="min-w-0">
-                <p class="text-[10px] uppercase tracking-wider text-slate-400">حاجز التذاكر</p>
-                <p class="text-base font-bold text-white truncate mt-0.5">{{ $booking->full_name }}</p>
-                <p class="text-xs text-slate-300 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
-            </div>
-
-            @if($booking->phone)
-                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $booking->phone) }}"
-                   target="_blank" rel="noopener"
-                   class="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl
-                          bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40
-                          text-emerald-200 transition min-h-[44px]">
-                    <span>💬</span>
-                    <span>مراسلة واتساب مباشرة</span>
-                </a>
-            @endif
-        </div>
-    </div>
-
-    {{-- ------------------------------------------------------
-         QUICK STATS (3-UP STRIP)
-         ------------------------------------------------------ --}}
-    <div class="adm2-glass-soft adm2-stats">
-        <div>
-            <div class="num text-white">{{ $booking->tickets_count }}</div>
-            <div class="lbl">عدد التذاكر</div>
-        </div>
-        <div>
-            <div class="num text-amber-300">
-                {{ number_format((int) $booking->total_price) }}
-                <span class="text-xs font-normal text-amber-300/80">ج.م</span>
-            </div>
-            <div class="lbl">إجمالي المبلغ</div>
-        </div>
-        <div>
-            <div class="num {{ $totalCount && $sentCount === $totalCount ? 'text-emerald-300' : 'text-slate-200' }}">
-                {{ $sentCount }}<span class="text-slate-500 text-sm">/{{ $totalCount }}</span>
-            </div>
-            <div class="lbl">تم استلامها واتساب</div>
-        </div>
-    </div>
-
-    {{-- ------------------------------------------------------
-         🌟 VISUAL DELIVERY LIFECYCLE TIMELINE
-         ------------------------------------------------------ --}}
-    <div class="adm2-glass p-5 sm:p-6 space-y-4">
-        <div class="flex items-center justify-between gap-2 border-b border-white/10 pb-3">
-            <h2 class="text-sm sm:text-base font-bold font-heading text-amber-300 flex items-center gap-2">
-                <span>🔄</span>
-                <span>مسار ومراحل دورة الحجز والتسليم</span>
-            </h2>
-            <span class="text-xs text-slate-400">تتبع حي للمراحل</span>
-        </div>
-
-        <div class="space-y-4 pt-1">
-
-            {{-- 1. Creation --}}
-            <div class="adm2-timeline-step">
-                <div class="adm2-step-icon is-done">📝</div>
-                <div class="min-w-0 flex-1">
-                    <p class="font-bold text-sm text-white">تسجيل طلب الحجز</p>
-                    <p class="text-xs text-slate-400 mt-0.5">
-                        تم إنشاء الحجز بنجاح عبر الموقع في:
-                        <span class="text-slate-300 font-mono">{{ $booking->created_at ? $booking->created_at->format('Y-m-d • h:i A') : '-' }}</span>
-                    </p>
-                </div>
-            </div>
-
-            {{-- 2. Payment Proof --}}
-            <div class="adm2-timeline-step">
-                <div class="adm2-step-icon {{ $booking->transfer_screenshot_path ? 'is-done' : 'is-active' }}">💳</div>
-                <div class="min-w-0 flex-1">
-                    <p class="font-bold text-sm text-white">تحويل المبلغ وإرفاق الإثبات</p>
-                    <p class="text-xs text-slate-400 mt-0.5">
-                        طريقة الدفع: <span class="text-slate-200 font-medium">{{ $booking->payment_method ?? 'محفظة / إنستاباي' }}</span>
-                        • القيمة: <span class="text-amber-300 font-bold tabular-nums">{{ number_format((int) $booking->total_price) }} ج.م</span>
-                    </p>
-                    @if($booking->transfer_screenshot_path)
-                        <span class="inline-block mt-1 text-[11px] text-emerald-300 font-medium">✓ تم إرفاق صورة إثبات التحويل</span>
-                    @else
-                        <span class="inline-block mt-1 text-[11px] text-amber-400 font-medium">⚠️ لم يتم إرفاق صورة إثبات التحويل</span>
+            {{-- Show & Booker Info --}}
+            <div class="md:col-span-8 space-y-3">
+                {{-- Show title and timing --}}
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold font-heading text-white flex items-center gap-2 flex-wrap">
+                        <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                        </svg>
+                        <span>{{ $show?->title ?? 'عرض مسرحي' }}</span>
+                    </h1>
+                    @if($showTime)
+                        <p class="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-2 flex-wrap">
+                            <span class="inline-flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span>{{ $showTime->date?->format('d/m/Y') }}</span>
+                            </span>
+                            <span class="text-slate-500">·</span>
+                            <span class="inline-flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>{{ $showTime->time ? \Carbon\Carbon::parse($showTime->time)->format('g:i A') : '' }}</span>
+                            </span>
+                            @if($showTime->hall_name)
+                                <span class="text-slate-500">·</span>
+                                <span class="text-slate-400">{{ $showTime->hall_name }}</span>
+                            @endif
+                        </p>
                     @endif
                 </div>
+
+                {{-- Booker details & Direct WhatsApp Action --}}
+                <div class="pt-2 flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <div class="text-xs text-slate-400">صاحب الحجز:</div>
+                        <p class="text-base font-bold text-white">{{ $booking->full_name }}</p>
+                        <p class="text-xs text-slate-300 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
+                    </div>
+
+                    @if($booking->phone)
+                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $booking->phone) }}"
+                           target="_blank" rel="noopener"
+                           class="admin-btn admin-btn--success admin-btn--sm">
+                            <svg class="w-4 h-4 shrink-0 text-emerald-400" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                            </svg>
+                            <span>مراسلة واتساب</span>
+                        </a>
+                    @endif
+                </div>
+
+                {{-- Metrics Strip: Quantity + Total EGP + Payment Method --}}
+                <div class="pt-3 border-t border-white/10 flex items-center gap-4 sm:gap-6 flex-wrap">
+                    <div>
+                        <span class="text-[11px] text-slate-400 block">عدد التذاكر</span>
+                        <span class="text-base font-bold text-white tabular-nums flex items-center gap-1.5 mt-0.5">
+                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                            </svg>
+                            <span>{{ $booking->tickets_count }} تذكرة</span>
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] text-slate-400 block">إجمالي المبلغ المطلوب</span>
+                        <span class="text-lg sm:text-xl adm-price-gold block mt-0.5 tabular-nums">
+                            {{ number_format((int) $booking->total_price) }} <span class="text-xs font-normal text-amber-200">ج.م</span>
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] text-slate-400 block">طريقة التحويل</span>
+                        <span class="text-xs font-medium text-slate-300 px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 inline-block mt-1">
+                            {{ $booking->payment_method ?? 'محفظة إلكترونية / إنستاباي' }}
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            {{-- 3. Admin Approval --}}
-            <div class="adm2-timeline-step">
-                @if($booking->status === 'approved')
-                    <div class="adm2-step-icon is-done">⚖️</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-white">اعتماد الإدارة</p>
-                        <p class="text-xs text-slate-400 mt-0.5">
-                            تم اعتماد الحجز رسميًا في:
-                            <span class="text-emerald-300 font-mono">{{ $booking->approved_at ? $booking->approved_at->format('Y-m-d • h:i A') : 'نعم' }}</span>
-                        </p>
-                    </div>
-                @elseif($booking->status === 'rejected')
-                    <div class="adm2-step-icon is-failed">✖</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-rose-300">تم رفض الحجز</p>
-                        <p class="text-xs text-slate-400 mt-0.5">تم رفض هذا الحجز من قبل الإدارة ولم يتم إصدار التذاكر.</p>
-                    </div>
-                @else
-                    <div class="adm2-step-icon is-active">⏳</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-sky-300">بانتظار مراجعة الإدارة والاعتماد</p>
-                        <p class="text-xs text-slate-400 mt-0.5">يرجى مطابقة التحويل مع المبلغ المطلوب ثم الضغط على زر "اعتماد الحجز".</p>
-                    </div>
-                @endif
-            </div>
+            {{-- Integrated Payment Proof Thumbnail (Clean in-page Lightbox Trigger) --}}
+            <div class="md:col-span-4 flex flex-col items-center sm:items-end justify-center pt-2 md:pt-0">
+                @if($booking->transfer_screenshot_path)
+                    <div class="text-center sm:text-end space-y-1.5">
+                        <span class="text-[11px] font-semibold text-slate-400 flex items-center gap-1 justify-center sm:justify-end">
+                            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <span>صورة إثبات التحويل</span>
+                        </span>
 
-            {{-- 4. WhatsApp Template Delivery --}}
-            <div class="adm2-timeline-step">
-                @if($booking->template_status === 'sent')
-                    <div class="adm2-step-icon is-done">📩</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-white">إرسال قالب الاستلام الرسمي عبر واتساب (ticket_clean_final)</p>
-                        <p class="text-xs text-slate-400 mt-0.5">
-                            أُرسل للعميل بنجاح في:
-                            <span class="text-emerald-300 font-mono">{{ $booking->template_sent_at ? $booking->template_sent_at->format('Y-m-d • h:i A') : 'نعم' }}</span>
-                        </p>
-                    </div>
-                @elseif($booking->template_status === 'sending')
-                    <div class="adm2-step-icon is-active">🔄</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-amber-300">جاري إرسال قالب الاستلام عبر خوادم واتساب…</p>
-                        <p class="text-xs text-slate-400 mt-0.5">الطلب قيد المعالجة في قائمة الانتظار السريعة.</p>
-                    </div>
-                @elseif($booking->template_status === 'failed')
-                    <div class="adm2-step-icon is-failed">⚠️</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-rose-300">تعذر إرسال قالب الواتساب</p>
-                        <p class="text-xs text-rose-300/80 mt-0.5">{{ $booking->template_error }}</p>
+                        <button type="button"
+                                id="openProofBtn"
+                                class="adm-proof-thumb group focus:outline-none focus:ring-2 focus:ring-amber-400 mx-auto sm:ms-auto sm:me-0"
+                                aria-label="عرض صورة إثبات التحويل بحجم كبير">
+                            <img src="{{ $booking->transfer_screenshot_path }}"
+                                 alt="صورة تحويل الحجز"
+                                 loading="lazy">
+                            <div class="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition flex items-center justify-center text-white">
+                                <svg class="w-5 h-5 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
+                                </svg>
+                            </div>
+                        </button>
+                        <span class="text-[10px] text-slate-500 block">انقر للتكبير الفوري</span>
                     </div>
                 @else
-                    <div class="adm2-step-icon is-pending">📩</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-slate-400">قالب الاستلام عبر واتساب</p>
-                        <p class="text-xs text-slate-500 mt-0.5">يُرسل تلقائيًا بمجرد اعتماد الحجز.</p>
-                    </div>
-                @endif
-            </div>
-
-            {{-- 5. Customer Claim Tap --}}
-            <div class="adm2-timeline-step">
-                @if($claimedCount > 0)
-                    <div class="adm2-step-icon is-done">👆</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-white">نقر العميل على "أستلام التذكرة"</p>
-                        <p class="text-xs text-slate-400 mt-0.5">
-                            قام العميل بالنقر على زر الاستلام وتم استقبال الإشارة عبر الـ Webhook.
-                        </p>
-                    </div>
-                @elseif($booking->status === 'approved')
-                    <div class="adm2-step-icon is-active">💬</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-sky-300">بانتظار نقر العميل على "أستلام التذكرة" في واتساب</p>
-                        <p class="text-xs text-slate-400 mt-0.5">
-                            تصل التذاكر المصورة فور نقر العميل على زر القالب لتجاوز نافذة الـ 24 ساعة الرسمية لـ Meta.
-                        </p>
-                    </div>
-                @else
-                    <div class="adm2-step-icon is-pending">👆</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-slate-400">نقر العميل على الاستلام</p>
-                        <p class="text-xs text-slate-500 mt-0.5">تلقائي بعد استلام العميل للرسالة.</p>
-                    </div>
-                @endif
-            </div>
-
-            {{-- 6. Ticket Image Delivery --}}
-            <div class="adm2-timeline-step">
-                @if($sentCount === $totalCount && $totalCount > 0)
-                    <div class="adm2-step-icon is-done">🎟️</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-white">تسليم التذاكر المصورة (QR Code)</p>
-                        <p class="text-xs text-slate-400 mt-0.5">
-                            تم تسليم جميع التذاكر بالكامل ({{ $sentCount }}/{{ $totalCount }}) على هاتف العميل عبر واتساب.
-                        </p>
-                    </div>
-                @elseif($failedCount > 0)
-                    <div class="adm2-step-icon is-failed">⚠️</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-rose-300">تعذر تسليم بعض التذاكر ({{ $sentCount }}/{{ $totalCount }})</p>
-                        <p class="text-xs text-slate-400 mt-0.5">يمكنك الضغط على "إعادة إرسال" لإعادة المحاولة فورًا.</p>
-                    </div>
-                @else
-                    <div class="adm2-step-icon is-pending">🎟️</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-slate-400">تسليم صور التذاكر ({{ $sentCount }}/{{ $totalCount }})</p>
-                        <p class="text-xs text-slate-500 mt-0.5">يتم إرسال الصور بدقة عالية ومجهزة للمسح على الباب.</p>
+                    <div class="w-24 h-28 rounded-xl bg-white/5 border border-dashed border-white/15 flex flex-col items-center justify-center p-2 text-center text-slate-500 text-[11px]">
+                        <svg class="w-5 h-5 mb-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span>لم يُرفق إثبات تحويل</span>
                     </div>
                 @endif
             </div>
@@ -788,148 +525,237 @@
     </div>
 
     {{-- ------------------------------------------------------
-         🎟️ TICKET STUBS WITH ACTIONS & STATUS
+         2. TICKET DELIVERY STATUS (REFINED & SIMPLIFIED SECTION)
          ------------------------------------------------------ --}}
     <div class="adm2-glass p-5 sm:p-6 space-y-4">
-        <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3 flex-wrap">
-            <div>
-                <h2 class="text-sm sm:text-base font-bold font-heading text-amber-300 flex items-center gap-2">
-                    <span>🎟️</span>
-                    <span>تذاكر الحضور ({{ $totalCount }})</span>
-                </h2>
-                <p class="text-xs text-slate-400 mt-0.5">التذاكر الصادرة وأكواد التحقق الرقمية</p>
+        {{-- Section Title & Aggregate Status Pill --}}
+        <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3.5 flex-wrap">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold font-heading text-white">حالة تسليم التذاكر عبر واتساب</h2>
+                    <p class="text-xs text-slate-400">متابعة دقيقة لحالة الإرسال، قالب Meta، والأخطاء</p>
+                </div>
             </div>
 
-            @if($booking->status === 'approved' && $totalCount > 1)
-                <form action="{{ route('admin.bookings.resend-all', $booking->id) }}"
-                      method="POST"
-                      data-processing-message="جاري إعادة إرسال كافة التذاكر عبر واتساب…">
-                    @csrf
-                    <button type="submit"
-                            class="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl
-                                   bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-200 transition min-h-[44px]">
-                        <span>↪</span>
-                        <span>إعادة إرسال كل التذاكر دفعة واحدة</span>
-                    </button>
-                </form>
-            @endif
+            {{-- Aggregate State Pill --}}
+            <div>
+                @if($totalCount > 0 && $sentCount === $totalCount)
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        <span>تم تسليم جميع التذاكر بالكامل ({{ $sentCount }}/{{ $totalCount }})</span>
+                    </span>
+                @elseif($failedCount > 0)
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/40">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>يوجد {{ $failedCount }} تذكرة متعثرة التسليم ({{ $sentCount }}/{{ $totalCount }})</span>
+                    </span>
+                @elseif($booking->template_status === 'sent')
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-500/15 text-sky-300 border border-sky-500/40">
+                        <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+                        <span>أُرسل القالب · بانتظار نقر العميل على واتساب</span>
+                    </span>
+                @elseif($booking->status === 'approved')
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40">
+                        <span class="btn-spinner"></span>
+                        <span>معتمد · جاري المعالجة والإرسال</span>
+                    </span>
+                @else
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
+                        <span>بانتظار اعتماد الحجز أولاً</span>
+                    </span>
+                @endif
+            </div>
         </div>
 
-        <div class="space-y-3">
-            @forelse($booking->tickets as $ticket)
-                @php
-                    $isTicketDelivered = $ticket->whatsapp_sent || $ticket->delivery_status === 'sent';
-                    $isTicketFailed    = $ticket->delivery_status === 'failed';
-                @endphp
-                <div class="adm2-stub">
-                    <div class="who">
-                        <div class="flex items-center gap-2">
-                            <span class="name">{{ $ticket->name }}</span>
-                            @if($ticket->is_scanned)
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-                                    ✓ تم الدخول
-                                </span>
+        {{-- 3-Step Compact Progress Overview --}}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {{-- Step 1: Meta Template --}}
+            <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 font-medium">1. قالب الاستلام (Meta)</span>
+                    @if($booking->template_status === 'sent')
+                        <span class="text-emerald-400 font-bold">✓ تم الإرسال</span>
+                    @elseif($booking->template_status === 'failed')
+                        <span class="text-rose-400 font-bold">⚠ تعذر الإرسال</span>
+                    @elseif($booking->template_status === 'sending')
+                        <span class="text-amber-400 font-bold">جاري الإرسال…</span>
+                    @else
+                        <span class="text-slate-500">معلق</span>
+                    @endif
+                </div>
+                <p class="text-[11px] text-slate-400 leading-tight">
+                    @if($booking->template_status === 'sent')
+                        أُرسل للعميل بنجاح @if($booking->template_sent_at) ({{ $booking->template_sent_at->format('g:i A') }}) @endif
+                    @elseif($booking->template_status === 'failed')
+                        <span class="text-rose-300">{{ $booking->template_error ?? 'خطأ في إرسال القالب' }}</span>
+                    @else
+                        يُرسل تلقائياً لفتح نافذة واتساب الرسمية.
+                    @endif
+                </p>
+            </div>
+
+            {{-- Step 2: Customer Tap --}}
+            <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 font-medium">2. نقر العميل على الاستلام</span>
+                    @if($claimedCount > 0)
+                        <span class="text-emerald-400 font-bold">✓ نقر العميل</span>
+                    @elseif($booking->status === 'approved')
+                        <span class="text-sky-400 font-medium">بانتظار النقر</span>
+                    @else
+                        <span class="text-slate-500">معلق</span>
+                    @endif
+                </div>
+                <p class="text-[11px] text-slate-400 leading-tight">
+                    @if($claimedCount > 0)
+                        تم استقبال نقرة العميل عبر الـ Webhook.
+                    @else
+                        فور نقر العميل، تُرسل صور التذاكر فورياً.
+                    @endif
+                </p>
+            </div>
+
+            {{-- Step 3: Direct Ticket Delivery --}}
+            <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 font-medium">3. تسليم صور التذاكر (QR)</span>
+                    <span class="font-bold tabular-nums {{ $sentCount === $totalCount && $totalCount > 0 ? 'text-emerald-400' : ($failedCount > 0 ? 'text-rose-400' : 'text-slate-300') }}">
+                        {{ $sentCount }}/{{ $totalCount }}
+                    </span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-tight">
+                    @if($sentCount === $totalCount && $totalCount > 0)
+                        وصلت التذاكر على هاتف العميل بالكامل.
+                    @elseif($failedCount > 0)
+                        <span class="text-rose-300">يوجد {{ $failedCount }} تذكرة لم تُسلّم بعد.</span>
+                    @else
+                        بانتظار اكتمال تسليم التذاكر.
+                    @endif
+                </p>
+            </div>
+        </div>
+
+        {{-- Collapsible Ticket Operational Breakdown --}}
+        <details class="group rounded-2xl bg-black/30 border border-white/10 overflow-hidden" open>
+            <summary class="cursor-pointer flex items-center justify-between p-3.5 sm:p-4 bg-white/[0.03] hover:bg-white/[0.06] transition text-xs sm:text-sm font-bold text-white select-none">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                    </svg>
+                    <span>تفاصيل التذاكر الفردية ({{ $totalCount }})</span>
+                </span>
+                <span class="flex items-center gap-1.5 text-xs text-slate-400 font-normal">
+                    <span>عرض / إخفاء تفاصيل التذاكر</span>
+                    <svg class="w-4 h-4 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </span>
+            </summary>
+
+            <div class="p-3 sm:p-4 space-y-3 border-t border-white/5">
+                @forelse($booking->tickets as $ticket)
+                    @php
+                        $isTicketDelivered = $ticket->whatsapp_sent || $ticket->delivery_status === 'sent';
+                        $isTicketFailed    = $ticket->delivery_status === 'failed';
+                    @endphp
+                    <div class="adm2-stub">
+                        <div class="who min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="name">{{ $ticket->name }}</span>
+                                @if($ticket->is_scanned)
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                                        ✓ تم الدخول على الباب
+                                    </span>
+                                @endif
+                            </div>
+
+                            <p class="phone" dir="ltr">{{ $ticket->phone }}</p>
+
+                            @if($ticket->ticket_code)
+                                <span class="code" dir="ltr">{{ $ticket->ticket_code }}</span>
+                            @endif
+
+                            {{-- Detailed Specific Error Display --}}
+                            @if($ticket->delivery_error)
+                                <div class="mt-2.5 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs space-y-1">
+                                    <div class="font-bold flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                        </svg>
+                                        <span>سبب تعذر تسليم التذكرة:</span>
+                                    </div>
+                                    <p class="text-rose-300 text-[11px] leading-relaxed">{{ $ticket->delivery_error }}</p>
+                                </div>
                             @endif
                         </div>
-                        <p class="phone" dir="ltr">{{ $ticket->phone }}</p>
-                        @if($ticket->ticket_code)
-                            <span class="code" dir="ltr">{{ $ticket->ticket_code }}</span>
-                        @endif
 
-                        @if($ticket->delivery_error)
-                            <div class="mt-2.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs">
-                                ⚠️ <strong>ملاحظة واتساب:</strong> {{ $ticket->delivery_error }}
+                        {{-- LED Indicator & Status --}}
+                        <div class="led shrink-0">
+                            <div class="bulb" data-tone="{{ $isTicketDelivered ? 'ok' : ($isTicketFailed ? 'fail' : 'wait') }}" aria-hidden="true"></div>
+                            <div class="text-[11px] font-semibold {{ $isTicketDelivered ? 'text-emerald-300' : ($isTicketFailed ? 'text-rose-300' : 'text-sky-300') }}">
+                                @if($isTicketDelivered)
+                                    تم الاستلام
+                                @elseif($isTicketFailed)
+                                    تعذر التسليم
+                                @else
+                                    بانتظار الاستلام
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Per-Ticket Operational Actions --}}
+                        @if($booking->status === 'approved')
+                            <div class="adm2-stub-acts">
+                                @if($ticket->qr_image_path)
+                                    <a href="{{ $ticket->qr_image_path }}"
+                                       target="_blank" rel="noopener"
+                                       class="admin-btn admin-btn--secondary admin-btn--sm">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                        <span>معاينة صورة التذكرة</span>
+                                    </a>
+                                @else
+                                    <span class="admin-btn admin-btn--secondary admin-btn--sm opacity-50 cursor-not-allowed">
+                                        <span class="btn-spinner"></span>
+                                        <span>جاري إنشاء التذكرة…</span>
+                                    </span>
+                                @endif
+
+                                <form action="{{ route('admin.resend.ticket', $ticket->id) }}"
+                                      method="POST"
+                                      data-processing-message="جاري إعادة إرسال التذكرة للرقم عبر واتساب…">
+                                    @csrf
+                                    <button type="submit" class="admin-btn admin-btn--warning admin-btn--sm">
+                                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                        </svg>
+                                        <span>إعادة إرسال التذكرة</span>
+                                    </button>
+                                </form>
                             </div>
                         @endif
                     </div>
-
-                    <div class="led">
-                        <div class="bulb" data-tone="{{ $isTicketDelivered ? 'ok' : ($isTicketFailed ? 'fail' : 'wait') }}" aria-hidden="true"></div>
-                        <div class="text-[11px] font-semibold {{ $isTicketDelivered ? 'text-emerald-300' : ($isTicketFailed ? 'text-rose-300' : 'text-sky-300') }}">
-                            @if($isTicketDelivered)
-                                تم الاستلام
-                            @elseif($isTicketFailed)
-                                تعذر التسليم
-                            @else
-                                بانتظار الاستلام
-                            @endif
-                        </div>
+                @empty
+                    <div class="text-center py-6 text-xs text-slate-400">
+                        لا توجد تذاكر مرتبطة بهذا الحجز.
                     </div>
-
-                    @if($booking->status === 'approved')
-                        <div class="adm2-stub-acts">
-                            @if($ticket->qr_image_path)
-                                <a href="{{ $ticket->qr_image_path }}"
-                                   target="_blank" rel="noopener"
-                                   class="a-view">
-                                    <span>🎫</span>
-                                    <span>معاينة صورة التذكرة</span>
-                                </a>
-                            @else
-                                <span class="a-view opacity-50 cursor-not-allowed">
-                                    <span>⏳</span>
-                                    <span>جاري إنشاء التذكرة…</span>
-                                </span>
-                            @endif
-
-                            <form action="{{ route('admin.resend.ticket', $ticket->id) }}"
-                                  method="POST"
-                                  class="contents"
-                                  data-processing-message="جاري إعادة إرسال التذكرة للرقم عبر واتساب…">
-                                @csrf
-                                <button type="submit" class="a-resend">
-                                    <span>↪</span>
-                                    <span>إعادة إرسال التذكرة</span>
-                                </button>
-                            </form>
-                        </div>
-                    @endif
-                </div>
-            @empty
-                <div class="text-center py-8 text-xs text-slate-400">
-                    لا توجد تذاكر مسجلة لهذا الحجز.
-                </div>
-            @endforelse
-        </div>
+                @endforelse
+            </div>
+        </details>
     </div>
-
-    {{-- ------------------------------------------------------
-         📸 PAYMENT PROOF (POLAROID CARD)
-         ------------------------------------------------------ --}}
-    @if($booking->transfer_screenshot_path)
-        <div class="adm2-glass p-5 sm:p-6 space-y-4">
-            <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
-                <h2 class="text-sm sm:text-base font-bold font-heading text-amber-300 flex items-center gap-2">
-                    <span>📸</span>
-                    <span>صورة إثبات التحويل البنكي / المحفظة</span>
-                </h2>
-                <a href="{{ $booking->transfer_screenshot_path }}"
-                   target="_blank" rel="noopener"
-                   class="text-xs px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition">
-                    فتح بالحجم الكامل ↗
-                </a>
-            </div>
-
-            <div class="py-4">
-                <a href="{{ $booking->transfer_screenshot_path }}"
-                   target="_blank" rel="noopener"
-                   class="block mx-auto max-w-sm">
-                    <div class="adm2-polaroid">
-                        <img src="{{ $booking->transfer_screenshot_path }}"
-                             loading="lazy" decoding="async"
-                             alt="لقطة شاشة تحويل الحجز">
-                        <p class="cap">TRANSFER PROOF &bull; #{{ $booking->public_number ?? $booking->id }} &bull; {{ number_format((int) $booking->total_price) }} EGP</p>
-                    </div>
-                </a>
-            </div>
-        </div>
-    @endif
 
 </section>
 
-{{-- ------------------------------------------------------
-     FLOATING ACTION DOCK
-     ------------------------------------------------------ --}}
+{{-- =========================================================
+     3. FLOATING ACTION DOCK
+     ========================================================= --}}
 <div class="adm2-dock" role="region" aria-label="شريط الإجراءات الرئيسي للحجز">
     <div class="adm2-dock-inner">
         @if($booking->status === 'pending')
@@ -938,8 +764,10 @@
                   class="flex-1"
                   data-processing-message="جاري رفض الحجز وتحديث حالة المقاعد…">
                 @csrf
-                <button type="submit" class="adm2-dock-btn adm2-dock-reject w-full">
-                    <span>✖</span>
+                <button type="submit" class="admin-btn admin-btn--danger w-full">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
                     <span>رفض الحجز</span>
                 </button>
             </form>
@@ -949,34 +777,56 @@
                   class="flex-1"
                   data-processing-message="جاري اعتماد الحجز وإنشاء التذاكر وإرسال واتساب…">
                 @csrf
-                <button type="submit" class="adm2-dock-btn adm2-dock-approve w-full">
-                    <span>✔</span>
+                <button type="submit" class="admin-btn admin-btn--primary w-full">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                    </svg>
                     <span>اعتماد وإرسال التذاكر</span>
                 </button>
             </form>
 
         @elseif($booking->status === 'approved')
-            {{-- Resend all tickets button --}}
+            {{-- Resend unreceived tickets action (Primary operational action if any tickets unreceived) --}}
+            @if($hasUnreceived)
+                <form action="{{ route('admin.bookings.resend-unreceived', $booking->id) }}"
+                      method="POST"
+                      class="flex-1"
+                      data-processing-message="جاري إعادة إرسال التذاكر غير المستلمة عبر واتساب…">
+                    @csrf
+                    <button type="submit" class="admin-btn admin-btn--warning w-full" title="إعادة إرسال التذاكر غير المستلمة فقط">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span><span class="hidden sm:inline">إعادة إرسال غير المستلمة</span><span class="sm:hidden">غير المستلمة</span></span>
+                    </button>
+                </form>
+            @endif
+
+            {{-- Resend all tickets action --}}
             <form action="{{ route('admin.bookings.resend-all', $booking->id) }}"
                   method="POST"
                   class="flex-1"
                   data-processing-message="جاري فحص حالة واتساب وإعادة إرسال التذاكر…">
                 @csrf
-                <button type="submit" class="adm2-dock-btn adm2-dock-resend w-full">
-                    <span>↪</span>
-                    <span>إعادة إرسال التذاكر</span>
+                <button type="submit" class="admin-btn admin-btn--secondary w-full" title="إعادة إرسال كل تذاكر الحجز">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span><span class="hidden sm:inline">إعادة إرسال التذاكر</span><span class="sm:hidden">إعادة الكل</span></span>
                 </button>
             </form>
 
             {{-- Two-step Delete button --}}
             <div class="flex-1" data-confirm>
-                <button type="button" class="adm2-dock-btn adm2-dock-delete adm2-confirm-trigger w-full">
-                    <span>🗑️</span>
-                    <span>حذف الحجز</span>
+                <button type="button" class="admin-btn admin-btn--danger adm2-confirm-trigger w-full" title="حذف الحجز نهائياً">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    <span><span class="hidden sm:inline">حذف الحجز</span><span class="sm:hidden">حذف</span></span>
                 </button>
 
                 <div class="adm2-confirm-armed">
-                    <button type="button" class="adm2-dock-btn adm2-dock-cancel adm2-confirm-cancel">
+                    <button type="button" class="admin-btn admin-btn--secondary adm2-confirm-cancel">
                         إلغاء
                     </button>
                     <form action="{{ route('admin.booking.delete', $booking->id) }}" method="POST"
@@ -984,7 +834,7 @@
                           data-processing-message="جاري حذف الحجز نهائياً…">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="adm2-dock-btn adm2-dock-confirm w-full">
+                        <button type="submit" class="admin-btn admin-btn--danger w-full">
                             تأكيد الحذف
                         </button>
                     </form>
@@ -994,13 +844,15 @@
         @elseif($booking->status === 'rejected')
             {{-- Two-step Delete button for rejected bookings --}}
             <div class="w-full" data-confirm>
-                <button type="button" class="adm2-dock-btn adm2-dock-delete adm2-confirm-trigger w-full">
-                    <span>🗑️</span>
+                <button type="button" class="admin-btn admin-btn--danger adm2-confirm-trigger w-full">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
                     <span>حذف الحجز المرفوض</span>
                 </button>
 
                 <div class="adm2-confirm-armed">
-                    <button type="button" class="adm2-dock-btn adm2-dock-cancel adm2-confirm-cancel">
+                    <button type="button" class="admin-btn admin-btn--secondary adm2-confirm-cancel">
                         إلغاء
                     </button>
                     <form action="{{ route('admin.booking.delete', $booking->id) }}" method="POST"
@@ -1008,7 +860,7 @@
                           data-processing-message="جاري حذف الحجز…">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="adm2-dock-btn adm2-dock-confirm w-full">
+                        <button type="submit" class="admin-btn admin-btn--danger w-full">
                             تأكيد الحذف نهائياً
                         </button>
                     </form>
@@ -1017,6 +869,52 @@
         @endif
     </div>
 </div>
+
+{{-- =========================================================
+     IN-PAGE PAYMENT PROOF LIGHTBOX MODAL
+     ========================================================= --}}
+@if($booking->transfer_screenshot_path)
+<div id="adm-proof-modal"
+     class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md transition-opacity duration-200"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="proofModalTitle">
+    <div class="relative max-w-xl w-full bg-[#0b0f19] border border-white/15 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-3.5 border-b border-white/10 bg-white/5">
+            <h3 id="proofModalTitle" class="text-sm sm:text-base font-bold text-white truncate pe-2">
+                إثبات تحويل #{{ $booking->public_number ?? $booking->id }} — {{ $booking->full_name }}
+            </h3>
+            <button type="button"
+                    id="closeProofBtn"
+                    class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 flex items-center justify-center transition focus:outline-none"
+                    aria-label="إغلاق المعاينة">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-3 overflow-auto flex-1 flex items-center justify-center bg-black/60">
+            <img src="{{ $booking->transfer_screenshot_path }}"
+                 alt="لقطة شاشة تحويل الحجز بالحجم الكامل"
+                 class="max-w-full max-h-[72vh] object-contain rounded-lg border border-white/10">
+        </div>
+
+        <div class="p-3 border-t border-white/10 bg-white/5 flex items-center justify-between flex-wrap gap-2">
+            <span class="text-xs text-slate-400">انقر خارج النافذة أو زر الإغلاق للخروج</span>
+            <a href="{{ $booking->transfer_screenshot_path }}"
+               target="_blank"
+               rel="noopener"
+               class="admin-btn admin-btn--primary admin-btn--sm">
+                <span>فتح الرابط الأصلي</span>
+                <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Processing Overlay --}}
 <div id="adm2-processing" class="adm2-processing" role="dialog" aria-modal="true">
@@ -1029,6 +927,39 @@
 
 <script>
 (function () {
+    // Lightbox modal logic
+    var proofModal = document.getElementById('adm-proof-modal');
+    var openBtn    = document.getElementById('openProofBtn');
+    var closeBtn   = document.getElementById('closeProofBtn');
+
+    function openModal() {
+        if (!proofModal) return;
+        proofModal.classList.remove('hidden');
+        proofModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        if (!proofModal) return;
+        proofModal.classList.add('hidden');
+        proofModal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+    if (proofModal) {
+        proofModal.addEventListener('click', function (e) {
+            if (e.target === proofModal) closeModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !proofModal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+    }
+
     // Two-step Delete Confirm
     document.querySelectorAll('[data-confirm]').forEach(function (wrap) {
         var trigger = wrap.querySelector('.adm2-confirm-trigger');

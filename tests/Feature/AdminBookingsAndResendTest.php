@@ -78,6 +78,10 @@ class AdminBookingsAndResendTest extends TestCase
         // MUST NOT contain public layout navigation or manifesto footer
         $response->assertDontSee('فريق الصرخة المسرحي — حركة مسرحية مستقلة');
         $response->assertDontSee('الصوت الصادق لما لا يقال');
+
+        // Specification: Team applications link removed from visible navigation
+        $response->assertDontSee('طلبات الانضمام للفريق');
+        $response->assertDontSee('>الانضمام<', false);
     }
 
     /**
@@ -178,19 +182,17 @@ class AdminBookingsAndResendTest extends TestCase
         // Standardized back button
         $response->assertSee('العودة لقائمة الحجوزات');
 
-        // Visual delivery lifecycle timeline
-        $response->assertSee('مسار ومراحل دورة الحجز والتسليم');
-        $response->assertSee('تسجيل طلب الحجز');
-        $response->assertSee('تحويل المبلغ وإرفاق الإثبات');
-        $response->assertSee('اعتماد الإدارة');
-        $response->assertSee('إرسال قالب الاستلام الرسمي عبر واتساب');
+        // Refined Ticket Delivery Status section (replaces large timeline)
+        $response->assertSee('حالة تسليم التذاكر عبر واتساب');
+        $response->assertSee('تفاصيل التذاكر الفردية');
+        $response->assertSee('صورة إثبات التحويل');
 
         // Ticket stub and error details
         $response->assertSee('TICK-SM-001');
         $response->assertSee('تعذر الوصول لرقم الواتساب');
         $response->assertSee('إعادة إرسال التذكرة');
 
-        // Floating action dock with bulk resend
+        // Floating action dock with resend
         $response->assertSee('إعادة إرسال التذاكر');
     }
 
@@ -451,5 +453,284 @@ class AdminBookingsAndResendTest extends TestCase
 
         $booking->refresh();
         $this->assertEquals('sent', $booking->template_status);
+    }
+
+    /**
+     * Requirement 10: Resend all unreceived tickets targets ONLY unreceived tickets,
+     * skips received tickets completely, and provides summary feedback.
+     */
+    public function test_resend_unreceived_tickets_targets_only_unreceived_and_skips_received()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'ياسر جلال',
+            'phone' => '01223344556',
+            'tickets_count' => 2,
+            'total_price' => 300,
+            'status' => 'approved',
+            'reference_code' => 'SRX-YASSER-001',
+        ]);
+
+        $tDelivered = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'ياسر جلال (1)',
+            'phone' => '01223344556',
+            'ticket_code' => 'TICK-YAS-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/ty1.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'sent',
+            'last_delivered_at' => now()->subDay(),
+        ]);
+
+        $tPending = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'ياسر جلال (2)',
+            'phone' => '01223344556',
+            'ticket_code' => 'TICK-YAS-2',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/ty2.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'failed',
+            'delivery_error' => 'تعذر الاتصال بخادم واتساب',
+        ]);
+
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'contacts' => [['input' => '01223344556', 'wa_id' => '201223344556']],
+                'messages' => [['id' => 'wamid.HBgLMjAx...']],
+            ], 200),
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(route('admin.bookings.resend-unreceived', $booking));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('status');
+
+        // Verify summary feedback format (✓ X تم تسليمها مباشرة · ↻ Y قوالب استلام أُرسلت · ⚠ Z تعذر إرسالها)
+        $this->assertStringContainsString('1 تم تسليمها مباشرة', session('status'));
+
+        // Delivered ticket was NOT resent or modified
+        $tDelivered->refresh();
+        $this->assertTrue((bool) $tDelivered->whatsapp_sent);
+        $this->assertEquals('sent', $tDelivered->delivery_status);
+
+        // Pending ticket was successfully delivered
+        $tPending->refresh();
+        $this->assertTrue((bool) $tPending->whatsapp_sent);
+        $this->assertEquals('sent', $tPending->delivery_status);
+
+        // Exactly one HTTP request was made (for the pending ticket only)
+        Http::assertSentCount(1);
+    }
+
+    /**
+     * Requirement: Global Send Unreceived Tickets Action on Admin Bookings page.
+     * The index page must render ONE global action button beside Back to Dashboard
+     * with live count N, and MUST NOT render per-booking resend buttons on cards/rows.
+     */
+    public function test_admin_bookings_index_renders_global_send_unreceived_action_and_no_per_booking_resend_buttons()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'طارق شوقي',
+            'phone' => '01009988776',
+            'tickets_count' => 2,
+            'total_price' => 300,
+            'status' => 'approved',
+            'reference_code' => 'SRX-TAREQ-001',
+        ]);
+
+        Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'طارق شوقي (1)',
+            'phone' => '01009988776',
+            'ticket_code' => 'TICK-TRQ-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/trq1.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'sent',
+        ]);
+
+        Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'طارق شوقي (2)',
+            'phone' => '01009988776',
+            'ticket_code' => 'TICK-TRQ-2',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/trq2.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'failed',
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
+
+        $response->assertStatus(200);
+
+        // Global action button with live count N (1 unreceived ticket)
+        $response->assertSee('إرسال التذاكر غير المستلمة (1)');
+        $response->assertSee('adm-global-resend-modal');
+        $response->assertSee('سيتم إرسال التذاكر غير المستلمة إلى أصحابها — العدد:');
+
+        // MUST NOT render per-booking "إعادة المعلق" buttons anywhere on the index page
+        $response->assertDontSee('إعادة المعلق');
+    }
+
+    /**
+     * Requirement: Global Send Unreceived Tickets Action Execution.
+     * Processes all eligible unreceived tickets across the entire bookings dataset,
+     * skips already received/sent tickets, skips unapproved bookings, falls back to
+     * templates on Meta error 131047, and returns an accurate result summary.
+     */
+    public function test_global_send_all_unreceived_tickets_processes_all_eligible_bookings_and_skips_received_and_unapproved()
+    {
+        // Booking 1: Approved - 1 received ticket, 1 unreceived ticket (24h open)
+        $booking1 = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'حازم إمام',
+            'phone' => '01111111111',
+            'tickets_count' => 2,
+            'total_price' => 300,
+            'status' => 'approved',
+            'reference_code' => 'SRX-HAZ-001',
+        ]);
+
+        $b1Delivered = Ticket::create([
+            'booking_id' => $booking1->id,
+            'name' => 'حازم (1)',
+            'phone' => '01111111111',
+            'ticket_code' => 'TICK-HAZ-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/h1.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'sent',
+        ]);
+
+        $b1Unreceived = Ticket::create([
+            'booking_id' => $booking1->id,
+            'name' => 'حازم (2)',
+            'phone' => '01111111111',
+            'ticket_code' => 'TICK-HAZ-2',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/h2.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        // Booking 2: Approved - 1 unreceived ticket (24h window closed: Meta 131047)
+        $booking2 = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'محمد بركات',
+            'phone' => '01222222222',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'reference_code' => 'SRX-BRK-002',
+        ]);
+
+        $b2Unreceived = Ticket::create([
+            'booking_id' => $booking2->id,
+            'name' => 'بركات',
+            'phone' => '01222222222',
+            'ticket_code' => 'TICK-BRK-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/b1.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'failed',
+        ]);
+
+        // Booking 3: PENDING - Should NOT be processed by global resend!
+        $booking3 = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'عماد متعب',
+            'phone' => '01333333333',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'pending',
+            'reference_code' => 'SRX-MTB-003',
+        ]);
+
+        $b3Unapproved = Ticket::create([
+            'booking_id' => $booking3->id,
+            'name' => 'متعب',
+            'phone' => '01333333333',
+            'ticket_code' => 'TICK-MTB-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/m1.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $data = $request->data();
+
+            // Direct image to 01111111111 succeeds
+            if (isset($data['type']) && $data['type'] === 'image' && ($data['to'] ?? '') === '01111111111') {
+                return Http::response([
+                    'messaging_product' => 'whatsapp',
+                    'messages' => [['id' => 'wamid.HBgLMjAx_hazem...']],
+                ], 200);
+            }
+
+            // Direct image to 01222222222 fails with 131047
+            if (isset($data['type']) && $data['type'] === 'image' && ($data['to'] ?? '') === '01222222222') {
+                return Http::response([
+                    'error' => [
+                        'message' => 'Message failed to send because more than 24 hours have passed.',
+                        'type' => 'OAuthException',
+                        'code' => 131047,
+                    ],
+                ], 400);
+            }
+
+            // Fallback template to 01222222222 succeeds
+            if (isset($data['type']) && $data['type'] === 'template' && ($data['to'] ?? '') === '01222222222') {
+                return Http::response([
+                    'messaging_product' => 'whatsapp',
+                    'messages' => [['id' => 'wamid.HBgLMjAx_template_barakat...']],
+                ], 200);
+            }
+
+            return Http::response(['error' => 'unexpected destination'], 500);
+        });
+
+        $response = $this->actingAs($this->admin)->post(route('admin.bookings.send-all-unreceived'));
+
+        $response->assertRedirect(route('admin.bookings.index'));
+        $response->assertSessionHas('status');
+
+        $statusMsg = session('status');
+
+        // Check the 4 required metrics in summary:
+        // - Direct tickets sent: 1
+        // - Templates sent: 1
+        // - Failed: 0
+        // - Skipped/already received: 1
+        $this->assertStringContainsString('تم إرسال 1 تذكرة مباشرة', $statusMsg);
+        $this->assertStringContainsString('أُرسل 1 قالب استلام', $statusMsg);
+        $this->assertStringContainsString('تعذر إرسال 0', $statusMsg);
+        $this->assertStringContainsString('تم تخطي 1 تذكرة مستلمة مسبقاً', $statusMsg);
+
+        // Booking 1 unreceived is now sent
+        $b1Unreceived->refresh();
+        $this->assertTrue((bool) $b1Unreceived->whatsapp_sent);
+        $this->assertEquals('sent', $b1Unreceived->delivery_status);
+
+        // Booking 1 already delivered was skipped (not touched)
+        $b1Delivered->refresh();
+        $this->assertTrue((bool) $b1Delivered->whatsapp_sent);
+        $this->assertEquals('sent', $b1Delivered->delivery_status);
+
+        // Booking 2 fell back to template and updated template status
+        $b2Unreceived->refresh();
+        $this->assertFalse((bool) $b2Unreceived->whatsapp_sent);
+        $this->assertEquals('pending', $b2Unreceived->delivery_status);
+        $booking2->refresh();
+        $this->assertEquals('sent', $booking2->template_status);
+
+        // Booking 3 (pending/unapproved) was completely skipped
+        $b3Unapproved->refresh();
+        $this->assertFalse((bool) $b3Unapproved->whatsapp_sent);
+        $this->assertEquals('pending', $b3Unapproved->delivery_status);
+
+        // Verify that visiting the index now shows N = 0
+        // (since b1 is sent and b2 has template sent and b3 is pending)
+        // Wait, b2 still has whatsapp_sent = false and delivery_status = 'pending'!
+        // So b2 is still 1 unreceived until customer taps template.
+        $indexResponse = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
+        $indexResponse->assertSee('إرسال التذاكر غير المستلمة (1)');
     }
 }

@@ -93,6 +93,7 @@
             color: #94a3b8;
             transition: all 0.15s ease-in-out;
             white-space: nowrap;
+            touch-action: manipulation;
         }
         .adm-nav-link:hover {
             color: #ffffff;
@@ -103,6 +104,107 @@
             background: rgba(245, 158, 11, 0.12);
             font-weight: 700;
             border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+
+        /* =========================================================
+           RULE #28: UNIFIED ADMIN BUTTON COMPONENT SYSTEM (.admin-btn)
+           ========================================================= */
+        .admin-btn {
+            min-height: 44px;
+            padding: 0.5rem 1.125rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.8125rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            touch-action: manipulation;
+            cursor: pointer;
+            white-space: nowrap;
+            text-decoration: none;
+            box-sizing: border-box;
+            border: 1px solid transparent;
+            font-family: inherit;
+        }
+        .admin-btn:active:not([disabled]) {
+            transform: scale(0.98);
+        }
+        .admin-btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5);
+        }
+        .admin-btn--primary {
+            background: linear-gradient(180deg, #fde68a 0%, #f59e0b 60%, #d97706 100%);
+            color: #0b0f19 !important;
+            border-color: rgba(245, 158, 11, 0.4);
+            box-shadow: 0 4px 14px -2px rgba(245, 158, 11, 0.45);
+        }
+        .admin-btn--primary:hover {
+            box-shadow: 0 6px 20px -2px rgba(245, 158, 11, 0.6);
+            filter: brightness(1.05);
+        }
+        .admin-btn--success {
+            background: rgba(16, 185, 129, 0.16);
+            color: #6ee7b7 !important;
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+        .admin-btn--success:hover {
+            background: rgba(16, 185, 129, 0.25);
+            color: #a7f3d0 !important;
+        }
+        .admin-btn--secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: #f1f5f9 !important;
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .admin-btn--secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff !important;
+        }
+        .admin-btn--warning {
+            background: rgba(245, 158, 11, 0.16);
+            color: #fde68a !important;
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+        .admin-btn--warning:hover {
+            background: rgba(245, 158, 11, 0.25);
+        }
+        .admin-btn--danger {
+            background: rgba(239, 68, 68, 0.16);
+            color: #fca5a5 !important;
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+        .admin-btn--danger:hover {
+            background: rgba(239, 68, 68, 0.26);
+            color: #fecaca !important;
+        }
+        .admin-btn--indigo {
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.4) 100%);
+            color: #c7d2fe !important;
+            border-color: rgba(99, 102, 241, 0.45);
+            box-shadow: 0 4px 14px -2px rgba(79, 70, 229, 0.35);
+        }
+        .admin-btn--indigo:hover {
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.35) 0%, rgba(79, 70, 229, 0.55) 100%);
+            color: #ffffff !important;
+            border-color: rgba(129, 140, 248, 0.6);
+            box-shadow: 0 6px 20px -2px rgba(79, 70, 229, 0.55);
+        }
+        .admin-btn--ghost {
+            background: transparent;
+            color: #94a3b8 !important;
+            border-color: transparent;
+        }
+        .admin-btn--ghost:hover {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .admin-btn--sm {
+            min-height: 38px;
+            padding: 0.375rem 0.875rem;
+            font-size: 0.75rem;
         }
 
         /* Subtle animated spinner for loading buttons */
@@ -159,16 +261,20 @@
             @php
                 $pendingBookingsCount = \App\Models\Booking::where('status', 'pending')->count();
             @endphp
-            <nav class="hidden lg:flex items-center gap-1 overflow-x-auto py-1" aria-label="أقسام الإدارة الرئيسية">
+            <nav class="hidden lg:flex items-center gap-1.5 overflow-x-auto py-1" aria-label="أقسام الإدارة الرئيسية">
                 <a href="{{ route('admin.dashboard') }}"
                    class="adm-nav-link {{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}">
-                    <span>📊</span>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                    </svg>
                     <span>الرئيسية</span>
                 </a>
 
                 <a href="{{ route('admin.bookings.index') }}"
                    class="adm-nav-link {{ request()->routeIs('admin.bookings.*') || request()->routeIs('admin.resend.ticket') ? 'is-active' : '' }}">
-                    <span>💳</span>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                    </svg>
                     <span>الحجوزات</span>
                     @if($pendingBookingsCount > 0)
                         <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 tabular-nums">
@@ -179,31 +285,34 @@
 
                 <a href="{{ route('admin.shows.index') }}"
                    class="adm-nav-link {{ request()->routeIs('admin.shows.*') || request()->routeIs('admin.shows.times.*') ? 'is-active' : '' }}">
-                    <span>🎭</span>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                    </svg>
                     <span>العروض</span>
                 </a>
 
                 <a href="{{ route('admin.scanner') }}"
                    class="adm-nav-link {{ request()->routeIs('admin.scanner') ? 'is-active' : '' }}">
-                    <span>📷</span>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                    </svg>
                     <span>فحص التذاكر</span>
-                </a>
-
-                <a href="{{ route('admin.team_applications.index') }}"
-                   class="adm-nav-link {{ request()->routeIs('admin.team_applications.*') ? 'is-active' : '' }}">
-                    <span>👥</span>
-                    <span>الانضمام</span>
                 </a>
 
                 <a href="{{ route('admin.archive.index') }}"
                    class="adm-nav-link {{ request()->routeIs('admin.archive.*') ? 'is-active' : '' }}">
-                    <span>🏛️</span>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
                     <span>الأرشيف</span>
                 </a>
 
                 <a href="{{ route('admin.settings.payments.edit') }}"
                    class="adm-nav-link {{ request()->routeIs('admin.settings.*') ? 'is-active' : '' }}">
-                    <span>⚙️</span>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
                     <span>الدفع</span>
                 </a>
             </nav>
@@ -214,9 +323,11 @@
                 <a href="{{ url('/') }}"
                    target="_blank"
                    rel="noopener"
-                   class="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition min-h-[44px]"
+                   class="admin-btn admin-btn--secondary admin-btn--sm hidden sm:inline-flex"
                    title="فتح الموقع العام للجمهور">
-                    <span>🌐</span>
+                    <svg class="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                    </svg>
                     <span>عرض الموقع</span>
                     <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -227,8 +338,10 @@
                 <form action="{{ route('logout') }}" method="POST" class="hidden sm:inline-block">
                     @csrf
                     <button type="submit"
-                            class="inline-flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition min-h-[44px]">
-                        <span>🚪</span>
+                            class="admin-btn admin-btn--danger admin-btn--sm">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
                         <span>خروج</span>
                     </button>
                 </form>
@@ -260,95 +373,107 @@
             <div class="px-4 py-4 space-y-1.5 max-h-[calc(100dvh-5rem)] overflow-y-auto">
 
                 <a href="{{ route('admin.dashboard') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
+                   class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
                     <span class="flex items-center gap-2.5">
-                        <span class="text-base">📊</span>
+                        <svg class="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                        </svg>
                         <span>لوحة التحكم الرئيسية</span>
                     </span>
-                    <span class="text-xs opacity-50">←</span>
+                    <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
 
                 <a href="{{ route('admin.bookings.index') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.bookings.*') || request()->routeIs('admin.resend.ticket') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
+                   class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.bookings.*') || request()->routeIs('admin.resend.ticket') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
                     <span class="flex items-center gap-2.5">
-                        <span class="text-base">💳</span>
+                        <svg class="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                        </svg>
                         <span>إدارة الحجوزات والتحويلات</span>
                     </span>
                     @if($pendingBookingsCount > 0)
                         <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
                             {{ $pendingBookingsCount }} معلّق
                         </span>
+                    @else
+                        <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     @endif
                 </a>
 
                 <a href="{{ route('admin.shows.index') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.shows.*') || request()->routeIs('admin.shows.times.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
+                   class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.shows.*') || request()->routeIs('admin.shows.times.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
                     <span class="flex items-center gap-2.5">
-                        <span class="text-base">🎭</span>
+                        <svg class="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                        </svg>
                         <span>العروض المسرحية والمواعيد</span>
                     </span>
-                    <span class="text-xs opacity-50">←</span>
+                    <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
 
                 <a href="{{ route('admin.scanner') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.scanner') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
+                   class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.scanner') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
                     <span class="flex items-center gap-2.5">
-                        <span class="text-base">📷</span>
+                        <svg class="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                        </svg>
                         <span>ماسح التذاكر على الباب (Scan)</span>
                     </span>
-                    <span class="text-xs opacity-50">←</span>
-                </a>
-
-                <a href="{{ route('admin.team_applications.index') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.team_applications.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
-                    <span class="flex items-center gap-2.5">
-                        <span class="text-base">👥</span>
-                        <span>طلبات الانضمام للفريق</span>
-                    </span>
-                    <span class="text-xs opacity-50">←</span>
+                    <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
 
                 <a href="{{ route('admin.archive.index') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.archive.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
+                   class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.archive.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
                     <span class="flex items-center gap-2.5">
-                        <span class="text-base">🏛️</span>
+                        <svg class="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
                         <span>أرشيف العروض السابقة</span>
                     </span>
-                    <span class="text-xs opacity-50">←</span>
+                    <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
 
                 <a href="{{ route('admin.about.edit') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.about.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
+                   class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.about.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
                     <span class="flex items-center gap-2.5">
-                        <span class="text-base">ℹ️</span>
+                        <svg class="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
                         <span>تعديل عن الفريق</span>
                     </span>
-                    <span class="text-xs opacity-50">←</span>
+                    <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
 
                 <a href="{{ route('admin.settings.payments.edit') }}"
-                   class="flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.settings.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
+                   class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium {{ request()->routeIs('admin.settings.*') ? 'bg-amber-500/15 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5' }}">
                     <span class="flex items-center gap-2.5">
-                        <span class="text-base">⚙️</span>
+                        <svg class="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
                         <span>إعدادات الدفع والمحافظ</span>
                     </span>
-                    <span class="text-xs opacity-50">←</span>
+                    <svg class="w-3.5 h-3.5 rtl:rotate-180 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
 
                 <div class="pt-3 mt-3 border-t border-white/10 grid grid-cols-2 gap-2">
                     <a href="{{ url('/') }}"
                        target="_blank"
                        rel="noopener"
-                       class="flex items-center justify-center gap-1.5 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-slate-200">
-                        <span>🌐</span>
+                       class="admin-btn admin-btn--secondary admin-btn--sm w-full">
+                        <svg class="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                        </svg>
                         <span>عرض الموقع</span>
                     </a>
 
                     <form action="{{ route('logout') }}" method="POST" class="w-full">
                         @csrf
                         <button type="submit"
-                                class="w-full flex items-center justify-center gap-1.5 py-2.5 min-h-[44px] rounded-xl bg-red-500/10 border border-red-500/25 text-xs font-semibold text-red-300">
-                            <span>🚪</span>
+                                class="admin-btn admin-btn--danger admin-btn--sm w-full">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
                             <span>خروج</span>
                         </button>
                     </form>
@@ -365,7 +490,9 @@
         @if(session('status'))
             <div role="status"
                  class="flex items-center gap-2.5 p-3 sm:p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs sm:text-sm font-medium mb-3 shadow-lg shadow-emerald-950/20">
-                <span class="text-emerald-400 text-base">✓</span>
+                <svg class="w-4 h-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
                 <span class="flex-1">{{ session('status') }}</span>
             </div>
         @endif
@@ -373,7 +500,9 @@
         @if(session('success'))
             <div role="status"
                  class="flex items-center gap-2.5 p-3 sm:p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs sm:text-sm font-medium mb-3 shadow-lg shadow-emerald-950/20">
-                <span class="text-emerald-400 text-base">✓</span>
+                <svg class="w-4 h-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
                 <span class="flex-1">{{ session('success') }}</span>
             </div>
         @endif
@@ -381,7 +510,9 @@
         @if(session('error'))
             <div role="alert"
                  class="flex items-center gap-2.5 p-3 sm:p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs sm:text-sm font-medium mb-3 shadow-lg shadow-rose-950/20">
-                <span class="text-rose-400 text-base">✕</span>
+                <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
                 <span class="flex-1">{{ session('error') }}</span>
             </div>
         @endif
@@ -390,7 +521,9 @@
             <div role="alert"
                  class="p-3 sm:p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs sm:text-sm mb-3 shadow-lg shadow-rose-950/20">
                 <div class="font-bold mb-1.5 flex items-center gap-2">
-                    <span>⚠️</span>
+                    <svg class="w-4 h-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
                     <span>يرجى تصحيح الأخطاء التالية:</span>
                 </div>
                 <ul class="list-disc list-inside space-y-1 text-rose-300">
