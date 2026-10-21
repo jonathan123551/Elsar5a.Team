@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AdminBookingsAndResendTest extends TestCase
@@ -18,6 +19,24 @@ class AdminBookingsAndResendTest extends TestCase
     private User $admin;
     private Show $show;
     private ShowTime $showTime;
+
+    private function confirmTicketDelivery(Ticket $ticket): void
+    {
+        $ticket->refresh();
+        $this->postJson('/webhook/whatsapp', [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'statuses' => [[
+                            'id' => $ticket->whatsapp_message_id,
+                            'status' => 'delivered',
+                            'recipient_id' => preg_replace('/[^0-9]/', '', $ticket->phone),
+                        ]],
+                    ],
+                ]],
+            ]],
+        ])->assertOk();
+    }
 
     protected function setUp(): void
     {
@@ -220,6 +239,7 @@ class AdminBookingsAndResendTest extends TestCase
             'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/ticket_amr.jpg',
             'whatsapp_sent' => false,
             'delivery_status' => 'pending',
+            'claimed_at' => now(),
         ]);
 
         // Mock Meta WhatsApp Graph API: image send succeeds with HTTP 200
@@ -239,9 +259,97 @@ class AdminBookingsAndResendTest extends TestCase
         $ticket->refresh();
         $this->assertTrue((bool) $ticket->whatsapp_sent);
         $this->assertEquals('sent', $ticket->delivery_status);
-        $this->assertNotNull($ticket->last_delivered_at);
+        $this->assertNull($ticket->last_delivered_at, 'HTTP acceptance is not Meta-confirmed delivery.');
+        $this->assertFalse($ticket->isTicketDeliveredOrReceived());
         $this->assertNotNull($ticket->resend_requested_at);
         $this->assertNull($ticket->delivery_error);
+    }
+
+
+    public function test_resend_before_customer_click_resends_template_not_qr_image()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'عميل لم ينقر',
+            'phone' => '01234567890',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'delivered',
+            'template_message_id' => 'wamid.template_original',
+            'reference_code' => 'SRX-NO-CLICK-001',
+        ]);
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'عميل لم ينقر',
+            'phone' => '01234567890',
+            'ticket_code' => 'TICK-NO-CLICK-001',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/no_click.jpg',
+            'delivery_status' => 'pending',
+        ]);
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'messages' => [['id' => 'wamid.template_resend']],
+            ], 200),
+        ]);
+
+        $this->actingAs($this->admin)->post(route('admin.resend.ticket', $ticket->id))->assertRedirect();
+
+        Http::assertSent(fn ($request) => ($request['type'] ?? null) === 'template');
+        Http::assertNotSent(fn ($request) => ($request['type'] ?? null) === 'image');
+        $ticket->refresh();
+        $booking->refresh();
+        $this->assertSame('pending', $ticket->delivery_status);
+        $this->assertNull($ticket->claimed_at);
+        $this->assertFalse($ticket->isTicketDeliveredOrReceived());
+        $this->assertSame('delivered', $booking->template_status, 'A resent template must not downgrade a confirmed delivery webhook.');
+        $this->assertSame('wamid.template_resend', $booking->template_message_id);
+        $this->assertNull($booking->template_error);
+    }
+
+
+    public function test_bulk_resend_before_customer_click_sends_one_template_for_booking_phone()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'حجز متعدد بلا نقر',
+            'phone' => '01012345678',
+            'tickets_count' => 2,
+            'total_price' => 300,
+            'status' => 'approved',
+            'template_status' => 'delivered',
+            'template_message_id' => 'wamid.template_existing_bulk',
+            'reference_code' => 'SRX-NO-CLICK-BULK',
+        ]);
+        $tickets = collect(range(1, 2))->map(fn ($n) => Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'حجز متعدد بلا نقر '.$n,
+            'phone' => '01012345678',
+            'ticket_code' => 'TICK-NO-CLICK-BULK-'.$n,
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/no_click_bulk_'.$n.'.jpg',
+            'delivery_status' => 'pending',
+        ]));
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'messages' => [['id' => 'wamid.template_bulk_resend']],
+            ], 200),
+        ]);
+
+        $this->actingAs($this->admin)->post(route('admin.bookings.resend-all', $booking))->assertRedirect();
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => ($request['type'] ?? null) === 'template');
+        foreach ($tickets as $ticket) {
+            $ticket->refresh();
+            $this->assertSame('pending', $ticket->delivery_status);
+            $this->assertNull($ticket->claimed_at);
+            $this->assertNull($ticket->delivery_error);
+        }
+        $booking->refresh();
+        $this->assertSame('wamid.template_bulk_resend', $booking->template_message_id);
+        $this->assertSame('بانتظار نقر العميل', $booking->delivery_badge['text']);
     }
 
     /**
@@ -258,7 +366,8 @@ class AdminBookingsAndResendTest extends TestCase
             'tickets_count' => 1,
             'total_price' => 150,
             'status' => 'approved',
-            'template_status' => 'pending',
+            'template_status' => 'sent',
+            'template_sent_at' => now()->subDays(3),
             'reference_code' => 'SRX-KAREEM-001',
         ]);
 
@@ -270,6 +379,7 @@ class AdminBookingsAndResendTest extends TestCase
             'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/ticket_kareem.jpg',
             'whatsapp_sent' => false,
             'delivery_status' => 'pending',
+            'claimed_at' => now()->subDays(3),
         ]);
 
         // Mock Meta WhatsApp Graph API:
@@ -304,9 +414,12 @@ class AdminBookingsAndResendTest extends TestCase
         $booking->refresh();
 
         $this->assertEquals('pending', $ticket->delivery_status);
-        $this->assertStringContainsString('نافذة الـ 24 ساعة مغلقة', (string) $ticket->delivery_error);
+        $this->assertNull($ticket->claimed_at, 'Recovery template starts a new customer-click cycle.');
+        $this->assertNull($ticket->delivery_error, 'A successful template recovery is not left as a ticket failure.');
         $this->assertEquals('sent', $booking->template_status);
         $this->assertNotNull($booking->template_sent_at);
+        $this->assertTrue($booking->isAwaitingCustomerClick());
+        $this->assertSame('بانتظار نقر العميل', $booking->delivery_badge['text']);
     }
 
     /**
@@ -333,7 +446,7 @@ class AdminBookingsAndResendTest extends TestCase
             'ticket_code' => 'TICK-NOOR-001',
             'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/ticket_noor.jpg',
             'whatsapp_sent' => true,
-            'delivery_status' => 'sent',
+            'delivery_status' => 'delivered',
             'last_delivered_at' => now()->subDay(),
         ]);
 
@@ -351,7 +464,7 @@ class AdminBookingsAndResendTest extends TestCase
 
         $ticket->refresh();
         $this->assertTrue((bool) $ticket->whatsapp_sent);
-        $this->assertEquals('sent', $ticket->delivery_status);
+        $this->assertEquals('delivered', $ticket->delivery_status, 'Resend acceptance must preserve confirmed delivery.');
         $this->assertNotNull($ticket->resend_requested_at);
         $this->assertNull($ticket->delivery_error);
     }
@@ -401,7 +514,7 @@ class AdminBookingsAndResendTest extends TestCase
         $response = $this->actingAs($this->admin)->post(route('admin.bookings.resend-all', $booking));
 
         $response->assertRedirect();
-        $response->assertSessionHas('status', '✅ تم إرسال 2 تذكرة بنجاح عبر واتساب.');
+        $response->assertSessionHas('status', '✅ أُرسل 2 تذكرة مباشرة، وأُعيد إرسال 0 قالب استلام.');
 
         $t1->refresh();
         $t2->refresh();
@@ -477,7 +590,7 @@ class AdminBookingsAndResendTest extends TestCase
             'ticket_code' => 'TICK-YAS-1',
             'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/ty1.jpg',
             'whatsapp_sent' => true,
-            'delivery_status' => 'sent',
+            'delivery_status' => 'delivered',
             'last_delivered_at' => now()->subDay(),
         ]);
 
@@ -511,7 +624,7 @@ class AdminBookingsAndResendTest extends TestCase
         // Delivered ticket was NOT resent or modified
         $tDelivered->refresh();
         $this->assertTrue((bool) $tDelivered->whatsapp_sent);
-        $this->assertEquals('sent', $tDelivered->delivery_status);
+        $this->assertEquals('delivered', $tDelivered->delivery_status);
 
         // Pending ticket was successfully delivered
         $tPending->refresh();
@@ -564,7 +677,8 @@ class AdminBookingsAndResendTest extends TestCase
         $response->assertStatus(200);
 
         // Global action button with live count N (1 unreceived ticket)
-        $response->assertSee('إرسال التذاكر غير المستلمة (1)');
+        $response->assertSee('إرسال التذاكر غير المستلمة (');
+        $response->assertSee('data-live-count="unreceived">1', false);
         $response->assertSee('adm-global-resend-modal');
         $response->assertSee('سيتم إرسال التذاكر غير المستلمة إلى أصحابها — العدد:');
 
@@ -730,7 +844,8 @@ class AdminBookingsAndResendTest extends TestCase
         // Wait, b2 still has whatsapp_sent = false and delivery_status = 'pending'!
         // So b2 is still 1 unreceived until customer taps template.
         $indexResponse = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
-        $indexResponse->assertSee('إرسال التذاكر غير المستلمة (1)');
+        $indexResponse->assertSee('إرسال التذاكر غير المستلمة (');
+        $indexResponse->assertSee('data-live-count="unreceived">1', false);
     }
 
     /**
@@ -1160,6 +1275,7 @@ class AdminBookingsAndResendTest extends TestCase
         // Global poll without booking_id
         $resGlobal = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status'));
         $resGlobal->assertStatus(200);
+        $this->assertStringContainsString('no-store', (string) $resGlobal->headers->get('Cache-Control'));
         $resGlobal->assertJsonStructure([
             'ok',
             'summary' => [
@@ -1169,6 +1285,7 @@ class AdminBookingsAndResendTest extends TestCase
                 'rejected_bookings',
                 'unreceived_tickets_count',
                 'latest_booking_id',
+                'issue_bookings',
             ],
             'booking',
         ]);
@@ -1191,9 +1308,165 @@ class AdminBookingsAndResendTest extends TestCase
         ]);
     }
 
+    public function test_admin_index_poll_returns_incremental_desktop_and_mobile_booking_markup(): void
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'حجز مباشر للاختبار',
+            'phone' => '01012345678',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'reference_code' => 'LIVE-ROW-01',
+            'template_status' => 'sent',
+        ]);
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'حجز مباشر للاختبار',
+            'phone' => '01012345678',
+            'ticket_code' => 'LIVE-ROW-T1',
+            'delivery_status' => 'pending',
+        ]);
+
+        $full = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', ['index' => 1]));
+        $full->assertOk()->assertJsonPath('index_rows.complete', true);
+        $this->assertStringContainsString('data-booking-id="'.$booking->id.'"', $full->json('index_rows.table'));
+        $this->assertStringContainsString('data-booking-id="'.$booking->id.'"', $full->json('index_rows.mobile'));
+
+        $ticket->update(['delivery_status' => 'failed', 'delivery_error' => '131026']);
+        $incremental = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', [
+            'index' => 1,
+            'since' => now()->subMinute()->toISOString(),
+        ]));
+        $incremental->assertOk()->assertJsonPath('index_rows.complete', false);
+        $this->assertStringContainsString('data-booking-id="'.$booking->id.'"', $incremental->json('index_rows.table'));
+        $this->assertStringContainsString('فشل التسليم', $incremental->json('index_rows.table'));
+    }
+
+
+    public function test_poll_includes_new_booking_even_when_its_commit_timestamp_precedes_poll_cursor()
+    {
+        $afterId = (int) (Booking::max('id') ?? 0);
+        $oldTimestamp = now()->subMinute();
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'حجز متأخر الالتزام',
+            'phone' => '01012345678',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'pending',
+            'reference_code' => 'POLL-OLD-TIMESTAMP',
+            'created_at' => $oldTimestamp,
+            'updated_at' => $oldTimestamp,
+        ]);
+
+        $response = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', [
+            'index' => 1,
+            'since' => now()->toISOString(),
+            'after_id' => $afterId,
+        ]));
+
+        $response->assertOk()->assertJsonPath('index_rows.complete', false);
+        $this->assertStringContainsString('data-booking-id="'.$booking->id.'"', $response->json('index_rows.table'));
+    }
+
+    public function test_cta_with_multiple_eligible_bookings_for_same_phone_fails_safely(): void
+    {
+        Http::fake();
+        $ticketIds = [];
+        foreach (['AMBIGUOUS-1', 'AMBIGUOUS-2'] as $reference) {
+            $booking = Booking::create([
+                'show_time_id' => $this->showTime->id,
+                'full_name' => $reference,
+                'phone' => '01012345678',
+                'tickets_count' => 1,
+                'total_price' => 150,
+                'status' => 'approved',
+                'reference_code' => $reference,
+                'template_status' => 'delivered',
+            ]);
+            $ticketIds[] = Ticket::create([
+                'booking_id' => $booking->id,
+                'name' => $reference,
+                'phone' => '01012345678',
+                'ticket_code' => $reference.'-T1',
+                'delivery_status' => 'pending',
+            ])->id;
+        }
+
+        $this->postJson('/webhook/whatsapp', [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'messages' => [[
+                            'id' => 'wamid.inbound_ambiguous_cta',
+                            'from' => '201012345678',
+                            'type' => 'button',
+                            'button' => ['payload' => 'receive_ticket'],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ])->assertOk()->assertJson(['status' => 'ambiguous']);
+
+        foreach ($ticketIds as $id) {
+            $this->assertNull(Ticket::findOrFail($id)->claimed_at);
+            $this->assertEquals('pending', Ticket::findOrFail($id)->delivery_status);
+        }
+        Http::assertNothingSent();
+    }
+
     /**
      * Regression Test 1: Initial template send results in accurate awaiting customer click state.
      */
+
+    public function test_cta_context_message_id_selects_the_matching_booking_when_phone_is_shared()
+    {
+        Queue::fake();
+        Http::fake();
+        $tickets = [];
+        foreach (['CTX-BOOKING-A', 'CTX-BOOKING-B'] as $index => $reference) {
+            $booking = Booking::create([
+                'show_time_id' => $this->showTime->id,
+                'full_name' => $reference,
+                'phone' => '01012345678',
+                'tickets_count' => 1,
+                'total_price' => 150,
+                'status' => 'approved',
+                'reference_code' => $reference,
+                'template_status' => 'delivered',
+                'template_message_id' => $index === 0 ? 'wamid.template_ctx_a' : 'wamid.template_ctx_b',
+            ]);
+            $tickets[$reference] = Ticket::create([
+                'booking_id' => $booking->id,
+                'name' => $reference,
+                'phone' => '01012345678',
+                'ticket_code' => $reference.'-T1',
+                'delivery_status' => 'pending',
+            ]);
+        }
+
+        $this->postJson('/webhook/whatsapp', [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'messages' => [[
+                            'id' => 'wamid.inbound_ctx_b',
+                            'from' => '201012345678',
+                            'context' => ['id' => 'wamid.template_ctx_b'],
+                            'type' => 'button',
+                            'button' => ['payload' => 'receive_ticket'],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ])->assertOk();
+
+        $this->assertNull($tickets['CTX-BOOKING-A']->fresh()->claimed_at);
+        $this->assertNotNull($tickets['CTX-BOOKING-B']->fresh()->claimed_at);
+        Queue::assertPushed(\App\Jobs\SendWhatsAppTicketImageJob::class, 1);
+    }
+
     public function test_initial_template_send_results_in_awaiting_customer_click_state()
     {
         $booking = Booking::create([
@@ -1371,6 +1644,8 @@ class AdminBookingsAndResendTest extends TestCase
         $job = new \App\Jobs\SendWhatsAppTicketImageJob($ticket->id);
         app()->call([$job, 'handle']);
 
+        $this->confirmTicketDelivery($ticket);
+
         $ticket->refresh();
         $this->assertTrue((bool) $ticket->whatsapp_sent);
         $this->assertNotNull($ticket->last_delivered_at);
@@ -1483,6 +1758,10 @@ class AdminBookingsAndResendTest extends TestCase
             app()->call([$job, 'handle']);
         }
 
+        foreach ($ticketIds as $id) {
+            $this->confirmTicketDelivery(Ticket::findOrFail($id));
+        }
+
         $booking->refresh();
         $this->assertEquals(5, $booking->ticketsDeliveredCount());
         $this->assertEquals(0, $booking->ticketsSentCount());
@@ -1533,7 +1812,7 @@ class AdminBookingsAndResendTest extends TestCase
                 'ticket_code' => "TICK-B20-{$i}",
                 'qr_image_path' => "https://res.cloudinary.com/demo/image/upload/v1234/b20_{$i}.jpg",
                 'whatsapp_sent' => true,
-                'delivery_status' => 'sent',
+                'delivery_status' => 'delivered',
                 'whatsapp_message_id' => "wamid.HBgMMjAxMjIyMzUzNjU3FQIAERgSRTIwX1RJQ0tFVF8{$i}",
                 'claimed_at' => now()->subHour(),
                 'last_delivered_at' => now()->subHour(),
@@ -1615,13 +1894,22 @@ class AdminBookingsAndResendTest extends TestCase
         $raceWamid = 'wamid.HBgLMjAx_race_delivered_fast';
 
         Http::fake(function () use ($ticket, $raceWamid) {
-            // Emulate Meta's fast webhook arriving while the HTTP response is returning:
-            // Webhook delivers first:
-            Ticket::where('id', $ticket->id)->update([
-                'delivery_status' => 'delivered',
-                'whatsapp_sent' => true,
-                'last_delivered_at' => now(),
-            ]);
+            // Meta's callback can beat persistence of messages[0].id. It must be
+            // retained by WAMID and reconciled when the send job stores that ID.
+            $this->postJson('/webhook/whatsapp', [
+                'entry' => [[
+                    'changes' => [[
+                        'value' => [
+                            'statuses' => [[
+                                'id' => $raceWamid,
+                                'status' => 'delivered',
+                                'recipient_id' => '201055556666',
+                                'timestamp' => (string) now()->timestamp,
+                            ]],
+                        ],
+                    ]],
+                ]],
+            ])->assertOk();
 
             return Http::response([
                 'messaging_product' => 'whatsapp',
@@ -1636,6 +1924,51 @@ class AdminBookingsAndResendTest extends TestCase
         $this->assertEquals('delivered', $ticket->delivery_status, 'A confirmed delivered status must not be downgraded to sent by the job.');
         $this->assertTrue((bool) $ticket->whatsapp_sent);
         $this->assertEquals($raceWamid, $ticket->whatsapp_message_id);
+        $this->assertNotNull($ticket->last_delivered_at);
+        $this->assertDatabaseMissing('whatsapp_message_status_events', ['message_id' => $raceWamid]);
+    }
+
+
+    public function test_template_webhook_arriving_before_acceptance_is_reconciled_by_wamid()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'قالب سريع',
+            'phone' => '01055556666',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'sending',
+            'reference_code' => 'SRX-TEMPLATE-RACE',
+        ]);
+        $raceWamid = 'wamid.template_race_fast';
+
+        Http::fake(function () use ($raceWamid) {
+            $this->postJson('/webhook/whatsapp', [
+                'entry' => [[
+                    'changes' => [[
+                        'value' => [
+                            'statuses' => [[
+                                'id' => $raceWamid,
+                                'status' => 'delivered',
+                                'recipient_id' => '201055556666',
+                                'timestamp' => (string) now()->timestamp,
+                            ]],
+                        ],
+                    ]],
+                ]],
+            ])->assertOk();
+
+            return Http::response(['messages' => [['id' => $raceWamid]]], 200);
+        });
+
+        $job = new \App\Jobs\SendWhatsAppTicketTemplateJob('01055556666', $booking->id);
+        app()->call([$job, 'handle']);
+
+        $booking->refresh();
+        $this->assertSame($raceWamid, $booking->template_message_id);
+        $this->assertSame('delivered', $booking->template_status);
+        $this->assertDatabaseMissing('whatsapp_message_status_events', ['message_id' => $raceWamid]);
     }
 
     /**
@@ -1743,7 +2076,7 @@ class AdminBookingsAndResendTest extends TestCase
         $res->assertStatus(200);
 
         $ticket->refresh();
-        $this->assertEquals('delivered', $ticket->delivery_status);
+        $this->assertEquals('read', $ticket->delivery_status);
         $this->assertTrue($ticket->isTicketDeliveredOrReceived());
     }
 
@@ -1815,7 +2148,7 @@ class AdminBookingsAndResendTest extends TestCase
     }
 
     /**
-     * Regression Test 10: Safe historical reconciliation migration converts sent+last_delivered_at tickets to delivered.
+     * Regression Test 10: historical migration does not infer delivery from an ambiguous timestamp.
      */
     public function test_historical_reconciliation_migration_reconciles_delivered_sent_tickets()
     {
@@ -1855,7 +2188,7 @@ class AdminBookingsAndResendTest extends TestCase
         $migration = require database_path('migrations/2026_10_21_000001_reconcile_delivered_whatsapp_tickets_status.php');
         $migration->up();
 
-        $this->assertEquals('delivered', $t1->fresh()->delivery_status);
+        $this->assertEquals('sent', $t1->fresh()->delivery_status);
         $this->assertEquals('pending', $t2->fresh()->delivery_status);
     }
 }

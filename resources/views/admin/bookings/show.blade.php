@@ -357,8 +357,8 @@
     $claimedCount = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count();
     $hasUnreceived = ($deliveredCount < $totalCount || $failedCount > 0) && ($booking->status === 'approved');
     $isTemplateFailed = $booking->template_status === 'failed';
-    $isTemplateDelivered = $booking->template_status === 'delivered';
-    $isTemplateSent = in_array($booking->template_status, ['sent', 'delivered'], true);
+    $isTemplateDelivered = in_array($booking->template_status, ['delivered', 'read'], true);
+    $isTemplateSent = in_array($booking->template_status, ['sent', 'delivered', 'read'], true);
     $isAllTicketsDelivered = ($deliveredCount === $totalCount) && ($totalCount > 0);
     $deliveryBadge = $booking->delivery_badge;
 @endphp
@@ -671,7 +671,7 @@
                                         <span class="text-[10px] text-slate-400 font-normal">({{ $booking->template_sent_at->format('g:i A') }})</span>
                                     @endif
                                 </span>
-                            @elseif($booking->template_status === 'sent')
+                            @elseif(in_array($booking->template_status, ['sent', 'delivered', 'read'], true))
                                 <span class="text-emerald-400 font-bold flex items-center gap-1">
                                     <span>✓ تم الإرسال</span>
                                     @if($booking->template_sent_at)
@@ -689,7 +689,7 @@
                         <div class="text-[11px] leading-tight text-slate-300">
                             @if($booking->template_status === 'delivered')
                                 <p>وصل القالب بنجاح على تطبيق واتساب لدى العميل.</p>
-                            @elseif($booking->template_status === 'sent')
+                            @elseif(in_array($booking->template_status, ['sent', 'delivered', 'read'], true))
                                 <p>أُرسل للعميل بنجاح وبانتظار تأكيد استلامه على الهاتف.</p>
                             @elseif($booking->template_status === 'failed')
                                 <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-0.5">
@@ -1171,7 +1171,7 @@
                 else if (m.is_template_failed || m.failed_count > 0) sendEl.innerHTML = '<span class="text-rose-400">تعذر الإرسال</span>';
                 else if (m.sending_count > 0 || b.template_status === 'sending') sendEl.innerHTML = '<span class="text-amber-300">جاري الإرسال…</span>';
                 else if (m.sent_count > 0) sendEl.innerHTML = '<span class="text-cyan-300">أُرسلت للشبكة</span>';
-                else if (b.template_status === 'sent') sendEl.innerHTML = '<span class="text-sky-300">أُرسل القالب</span>';
+                else if (['sent', 'delivered', 'read'].indexOf(b.template_status) !== -1) sendEl.innerHTML = '<span class="text-sky-300">أُرسل القالب · بانتظار نقر العميل</span>';
                 else sendEl.innerHTML = '<span class="text-slate-400">لم يُرسل بعد</span>';
             }
 

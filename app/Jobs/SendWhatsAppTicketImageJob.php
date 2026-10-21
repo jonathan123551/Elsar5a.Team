@@ -109,19 +109,9 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && ! $response->json('error')) {
-                // Reload current status from DB in case a concurrent webhook arrived
-                // while the outbound HTTP call was in flight. Never downgrade 'delivered' or 'read'.
-                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
-                $currentStatus = $freshTicket?->delivery_status;
-                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
-
-                $ticket->update([
-                    'whatsapp_sent'        => true,
-                    'delivery_status'      => $nextStatus,
-                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
-                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
-                    'delivery_error'       => null,
-                ]);
+                // HTTP acceptance is only "sent". The atomic CASE update keeps
+                // a concurrently committed delivered/read webhook monotonic.
+                $ticket->markWhatsAppAccepted($wamid);
 
                 Log::info(
                     'WHATSAPP_TICKET_SENT',
@@ -142,7 +132,7 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
                 return;
             }
 
-            $errorMessage = $response->json('error.message') ?? $response->body();
+            $errorMessage = $delivery->getErrorMessage($response);
 
             Log::error(
                 'WHATSAPP_SEND_FAILED',
@@ -164,11 +154,13 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             $errorCode = $response->json('error.code');
             $permanent = in_array($errorCode, [131026, 131047, 131053], true);
 
-            $ticket->update([
-                'whatsapp_sent'   => false,
-                'delivery_status' => 'failed',
-                'delivery_error'  => $errorMessage,
-            ]);
+            Ticket::whereKey($ticket->id)
+                ->whereNotIn('delivery_status', ['delivered', 'read'])
+                ->update([
+                    'whatsapp_sent'   => false,
+                    'delivery_status' => 'failed',
+                    'delivery_error'  => $errorMessage,
+                ]);
 
             if ($permanent) {
                 $this->fail(new \RuntimeException(
@@ -185,10 +177,12 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             );
         } catch (\Throwable $e) {
             if ($response === null) {
-                $ticket->update([
-                    'delivery_status' => 'failed',
-                    'delivery_error'  => $e->getMessage(),
-                ]);
+                Ticket::whereKey($ticket->id)
+                    ->whereNotIn('delivery_status', ['delivered', 'read'])
+                    ->update([
+                        'delivery_status' => 'failed',
+                        'delivery_error'  => $e->getMessage(),
+                    ]);
 
                 Log::error(
                     'WHATSAPP_SEND_FAILED',
@@ -216,6 +210,7 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
         // customer resend path can re-claim and try again.
         Ticket::where('id', $this->ticketId)
             ->where('whatsapp_sent', false)
+            ->whereNotIn('delivery_status', ['delivered', 'read'])
             ->update([
                 'delivery_status' => 'failed',
                 'delivery_error'  => $e->getMessage(),

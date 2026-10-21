@@ -36,6 +36,7 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
+        $pollCursor = now()->subSeconds(2)->toISOString();
         $bookings = Booking::with(['showTime.show', 'tickets'])
             ->latest()
             ->get();
@@ -50,7 +51,7 @@ class BookingController extends Controller
         })
         ->count();
 
-        return view('admin.bookings.index', compact('bookings', 'unreceivedTicketsCount'));
+        return view('admin.bookings.index', compact('bookings', 'unreceivedTicketsCount', 'pollCursor'));
     }
 
     public function show(Booking $booking)
@@ -65,6 +66,7 @@ class BookingController extends Controller
      */
     public function pollStatus(Request $request)
     {
+        $pollCursor = now()->subSeconds(2)->toISOString();
         $unreceivedTicketsCount = Ticket::whereHas('booking', fn ($q) => $q->where('status', 'approved'))
             ->where('whatsapp_sent', false)
             ->where(function ($q) {
@@ -80,7 +82,31 @@ class BookingController extends Controller
             'rejected_bookings'        => Booking::where('status', 'rejected')->count(),
             'unreceived_tickets_count' => $unreceivedTicketsCount,
             'latest_booking_id'        => (int) Booking::max('id'),
+            'issue_bookings'           => Booking::where('template_status', 'failed')
+                ->orWhereHas('tickets', fn ($tickets) => $tickets->where('delivery_status', 'failed'))
+                ->count(),
         ];
+
+        $indexRows = null;
+        if ($request->boolean('index')) {
+            $since = $request->query('since');
+            $bookingsQuery = Booking::with(['showTime.show', 'tickets'])->latest();
+            if ($since) {
+                $sinceAt = \Illuminate\Support\Carbon::parse($since)->subSeconds(2);
+                $afterId = max(0, (int) $request->query('after_id', 0));
+                $bookingsQuery->where(function ($query) use ($sinceAt, $afterId) {
+                    $query->where('id', '>', $afterId)
+                        ->orWhere('updated_at', '>=', $sinceAt)
+                        ->orWhereHas('tickets', fn ($tickets) => $tickets->where('updated_at', '>=', $sinceAt));
+                });
+            }
+            $bookings = $bookingsQuery->get();
+            $indexRows = [
+                'table' => view('admin.bookings.partials.booking-table-rows', compact('bookings'))->render(),
+                'mobile' => view('admin.bookings.partials.booking-mobile-cards', compact('bookings'))->render(),
+                'complete' => ! $since,
+            ];
+        }
 
         $bookingData = null;
         $bookingId = $request->query('booking_id');
@@ -165,7 +191,10 @@ class BookingController extends Controller
             'ok'      => true,
             'summary' => $counts,
             'booking' => $bookingData,
-        ]);
+            'index_rows' => $indexRows,
+            'cursor' => $pollCursor,
+        ])->header('Cache-Control', 'private, no-store, no-cache, must-revalidate')
+          ->header('Pragma', 'no-cache');
     }
 
     /* =======================
@@ -460,6 +489,22 @@ public function receiveTicket(Request $request)
     {
         $ticket = Ticket::with(['booking.showTime.show'])->findOrFail($id);
 
+        // A delivered template with no CTA claim must be resent as a template, including after 24h.
+        if ($this->isWaitingForCustomerClick($ticket)) {
+            $ticket->update(['resend_requested_at' => now()]);
+            $templateResponse = $delivery->sendTemplate($ticket->phone);
+            if ($templateResponse->successful() && !$templateResponse->json('error')) {
+                $ticket->markAwaitingCustomerClick(null);
+                $ticket->booking->markTemplateAccepted($delivery->getMessageId($templateResponse));
+                return back()->with('status', '✅ تم إعادة إرسال قالب استلام التذكرة، وبانتظار نقر العميل.');
+            }
+
+            $templateError = $delivery->getErrorMessage($templateResponse);
+            $ticket->markWhatsAppFailed($templateError);
+            $ticket->booking->markTemplateFailed($templateError);
+            return back()->with('error', '❌ فشل إرسال قالب استلام التذكرة: ' . $templateError);
+        }
+
         if (!$ticket->qr_image_path) {
             $url = $renderer->renderAndUpload($ticket);
             if (!$url) {
@@ -475,17 +520,7 @@ public function receiveTicket(Request $request)
         $wamid = $delivery->getMessageId($response);
 
         if ($response->successful() && !$response->json('error')) {
-            $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
-            $currentStatus = $freshTicket?->delivery_status;
-            $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
-
-            $ticket->update([
-                'whatsapp_sent'        => true,
-                'delivery_status'      => $nextStatus,
-                'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
-                'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
-                'delivery_error'       => null,
-            ]);
+            $ticket->markWhatsAppAccepted($wamid);
 
             return back()->with('status', '✅ تم إرسال صورة التذكرة بنجاح عبر واتساب مباشرة.');
         }
@@ -496,36 +531,20 @@ public function receiveTicket(Request $request)
             $tplWamid = $delivery->getMessageId($tplResponse);
 
             if ($tplResponse->successful() && !$tplResponse->json('error')) {
-                $ticket->update([
-                    'whatsapp_sent'   => false,
-                    'delivery_status' => 'pending',
-                    'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال رسالة القالب لتجديد المحادثة.',
-                ]);
+                $ticket->markAwaitingCustomerClick(null);
 
                 if ($ticket->booking) {
-                    $ticket->booking->update([
-                        'template_status'     => 'sent',
-                        'template_message_id' => $tplWamid,
-                        'template_sent_at'    => now(),
-                        'template_error'      => null,
-                    ]);
+                    $ticket->booking->markTemplateAccepted($tplWamid);
                 }
 
                 return back()->with('status', '⚠️ نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال قالب استلام التذكرة للعميل، وبمجرد نقره على "أستلام التذكرة" ستصله صورة التذكرة تلقائياً.');
             }
 
             $tplError = $delivery->getErrorMessage($tplResponse);
-            $ticket->update([
-                'whatsapp_sent'   => false,
-                'delivery_status' => 'failed',
-                'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError,
-            ]);
+            $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError);
 
             if ($ticket->booking) {
-                $ticket->booking->update([
-                    'template_status' => 'failed',
-                    'template_error'  => $tplError,
-                ]);
+                $ticket->booking->markTemplateFailed($tplError);
             }
 
             return back()->with('error', '❌ نافذة الـ 24 ساعة مغلقة وفشل إرسال رسالة القالب: ' . $tplError);
@@ -533,11 +552,7 @@ public function receiveTicket(Request $request)
 
         // Other failure
         $errorMsg = $delivery->getErrorMessage($response);
-        $ticket->update([
-            'whatsapp_sent'   => false,
-            'delivery_status' => 'failed',
-            'delivery_error'  => $errorMsg,
-        ]);
+        $ticket->markWhatsAppFailed($errorMsg);
 
         return back()->with('error', '❌ فشل إرسال التذكرة عبر واتساب: ' . $errorMsg);
     }
@@ -554,10 +569,17 @@ public function receiveTicket(Request $request)
         }
 
         $sentCount = 0;
+        $templateCount = 0;
         $windowClosed = false;
         $failCount = 0;
+        $templateResends = [];
 
         foreach ($booking->tickets as $ticket) {
+            $templateResult = $this->resendTemplateIfWaitingClick($ticket, $delivery, $templateResends);
+            if ($templateResult !== null) {
+                $templateResult ? $templateCount++ : $failCount++;
+                continue;
+            }
             if (!$ticket->qr_image_path) {
                 $renderer->renderAndUpload($ticket);
                 $ticket->refresh();
@@ -568,32 +590,14 @@ public function receiveTicket(Request $request)
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
-                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
-                $currentStatus = $freshTicket?->delivery_status;
-                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
-
-                $ticket->update([
-                    'whatsapp_sent'        => true,
-                    'delivery_status'      => $nextStatus,
-                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
-                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
-                    'delivery_error'       => null,
-                ]);
+                $ticket->markWhatsAppAccepted($wamid);
                 $sentCount++;
             } elseif ($delivery->isWindowClosed($response)) {
                 $windowClosed = true;
-                $ticket->update([
-                    'whatsapp_sent'   => false,
-                    'delivery_status' => 'pending',
-                    'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل.',
-                ]);
+                $ticket->markAwaitingCustomerClick(null);
             } else {
                 $failCount++;
-                $ticket->update([
-                    'whatsapp_sent'   => false,
-                    'delivery_status' => 'failed',
-                    'delivery_error'  => $delivery->getErrorMessage($response),
-                ]);
+                $ticket->markWhatsAppFailed($delivery->getErrorMessage($response));
             }
         }
 
@@ -619,26 +623,18 @@ public function receiveTicket(Request $request)
             }
 
             if ($tplSent) {
-                $booking->update([
-                    'template_status'     => 'sent',
-                    'template_message_id' => $lastTplWamid,
-                    'template_sent_at'    => now(),
-                    'template_error'      => null,
-                ]);
+                $booking->markTemplateAccepted($lastTplWamid);
 
                 return back()->with('status', '⚠️ نافذة الـ 24 ساعة مغلقة مع العميل. تم إرسال قالب استلام التذاكر عبر واتساب بنجاح، وستصل التذاكر فور نقره على الزر.');
             }
 
-            $booking->update([
-                'template_status' => 'failed',
-                'template_error'  => $tplErrorMsg,
-            ]);
+            $booking->markTemplateFailed($tplErrorMsg);
 
             return back()->with('error', '❌ نافذة الـ 24 ساعة مغلقة وفشل إرسال قالب استلام التذاكر: ' . $tplErrorMsg);
         }
 
-        if ($sentCount > 0) {
-            return back()->with('status', "✅ تم إرسال {$sentCount} تذكرة بنجاح عبر واتساب.");
+        if ($sentCount > 0 || $templateCount > 0) {
+            return back()->with('status', "✅ أُرسل {$sentCount} تذكرة مباشرة، وأُعيد إرسال {$templateCount} قالب استلام.");
         }
 
         return back()->with('error', '❌ فشل إرسال التذاكر عبر واتساب. يرجى مراجعة سجل الأخطاء.');
@@ -662,8 +658,14 @@ public function receiveTicket(Request $request)
         $sentCount = 0;
         $templateCount = 0;
         $failCount = 0;
+        $templateResends = [];
 
         foreach ($unreceivedTickets as $ticket) {
+            $templateResult = $this->resendTemplateIfWaitingClick($ticket, $delivery, $templateResends);
+            if ($templateResult !== null) {
+                $templateResult ? $templateCount++ : $failCount++;
+                continue;
+            }
             if (!$ticket->qr_image_path) {
                 $renderer->renderAndUpload($ticket);
                 $ticket->refresh();
@@ -674,58 +676,23 @@ public function receiveTicket(Request $request)
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
-                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
-                $currentStatus = $freshTicket?->delivery_status;
-                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
-
-                $ticket->update([
-                    'whatsapp_sent'        => true,
-                    'delivery_status'      => $nextStatus,
-                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
-                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
-                    'delivery_error'       => null,
-                ]);
+                $ticket->markWhatsAppAccepted($wamid);
                 $sentCount++;
             } elseif ($delivery->isWindowClosed($response)) {
                 $tplResponse = $delivery->sendTemplate($ticket->phone);
                 $tplWamid = $delivery->getMessageId($tplResponse);
                 if ($tplResponse->successful() && !$tplResponse->json('error')) {
                     $templateCount++;
-                    $ticket->update([
-                        'whatsapp_sent'   => false,
-                        'delivery_status' => 'pending',
-                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل (تم إرسال قالب استلام التذاكر للتجديد).',
-                    ]);
-                    $booking->update([
-                        'template_status'     => 'sent',
-                        'template_message_id' => $tplWamid,
-                        'template_sent_at'    => now(),
-                        'template_error'      => null,
-                    ]);
+                    $ticket->markAwaitingCustomerClick(null);
+                    $booking->markTemplateAccepted($tplWamid);
                 } else {
                     $failCount++;
-                    $ticket->update([
-                        'whatsapp_sent'   => false,
-                        'delivery_status' => 'failed',
-                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse),
-                    ]);
+                    $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse));
                 }
             } else {
                 $failCount++;
-                $ticket->update([
-                    'whatsapp_sent'   => false,
-                    'delivery_status' => 'failed',
-                    'delivery_error'  => $delivery->getErrorMessage($response),
-                ]);
+                $ticket->markWhatsAppFailed($delivery->getErrorMessage($response));
             }
-        }
-
-        if ($templateCount > 0) {
-            $booking->update([
-                'template_status'  => 'sent',
-                'template_sent_at' => now(),
-                'template_error'   => null,
-            ]);
         }
 
         $feedback = "✓ {$sentCount} تم تسليمها مباشرة · ↻ {$templateCount} قوالب استلام أُرسلت · ⚠ {$failCount} تعذر إرسالها";
@@ -772,8 +739,14 @@ public function receiveTicket(Request $request)
         $templateCount = 0;
         $failCount = 0;
         $affectedBookings = [];
+        $templateResends = [];
 
         foreach ($unreceivedTickets as $ticket) {
+            $templateResult = $this->resendTemplateIfWaitingClick($ticket, $delivery, $templateResends);
+            if ($templateResult !== null) {
+                $templateResult ? $templateCount++ : $failCount++;
+                continue;
+            }
             // Guard: never duplicate-send if state changed concurrently
             if ($ticket->isTicketDeliveredOrReceived() || $ticket->whatsapp_sent || in_array($ticket->delivery_status, ['sent', 'delivered', 'read'], true)) {
                 continue;
@@ -790,56 +763,29 @@ public function receiveTicket(Request $request)
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
-                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
-                $currentStatus = $freshTicket?->delivery_status;
-                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
-
-                $ticket->update([
-                    'whatsapp_sent'        => true,
-                    'delivery_status'      => $nextStatus,
-                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
-                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
-                    'delivery_error'       => null,
-                ]);
+                $ticket->markWhatsAppAccepted($wamid);
                 $sentCount++;
             } elseif ($delivery->isWindowClosed($response)) {
                 $tplResponse = $delivery->sendTemplate($ticket->phone);
                 $tplWamid = $delivery->getMessageId($tplResponse);
                 if ($tplResponse->successful() && !$tplResponse->json('error')) {
                     $templateCount++;
-                    $ticket->update([
-                        'whatsapp_sent'   => false,
-                        'delivery_status' => 'pending',
-                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة مع العميل (تم إرسال قالب استلام التذاكر للتجديد).',
-                    ]);
+                    $ticket->markAwaitingCustomerClick(null);
                     if ($ticket->booking_id) {
                         $affectedBookings[$ticket->booking_id] = $tplWamid;
                     }
                 } else {
                     $failCount++;
-                    $ticket->update([
-                        'whatsapp_sent'   => false,
-                        'delivery_status' => 'failed',
-                        'delivery_error'  => 'نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse),
-                    ]);
+                    $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse));
                 }
             } else {
                 $failCount++;
-                $ticket->update([
-                    'whatsapp_sent'   => false,
-                    'delivery_status' => 'failed',
-                    'delivery_error'  => $delivery->getErrorMessage($response),
-                ]);
+                $ticket->markWhatsAppFailed($delivery->getErrorMessage($response));
             }
         }
 
         foreach ($affectedBookings as $bId => $tplWamid) {
-            Booking::where('id', $bId)->update([
-                'template_status'     => 'sent',
-                'template_message_id' => $tplWamid,
-                'template_sent_at'    => now(),
-                'template_error'      => null,
-            ]);
+            Booking::whereKey($bId)->first()?->markTemplateAccepted($tplWamid);
         }
 
         $summary = "ملخص الإرسال الشامل: تم إرسال {$sentCount} تذكرة مباشرة · أُرسل {$templateCount} قالب استلام · تعذر إرسال {$failCount} · تم تخطي {$skippedCount} تذكرة مستلمة مسبقاً";
@@ -850,6 +796,48 @@ public function receiveTicket(Request $request)
 
         return redirect()->route('admin.bookings.index')->with('error', $summary);
     }
+    /** Send one approved template for each booking/recipient while the customer has not clicked. */
+    private function resendTemplateIfWaitingClick(Ticket $ticket, TicketDeliveryService $delivery, array &$attempts): ?bool
+    {
+        if (! $this->isWaitingForCustomerClick($ticket) || ! $ticket->booking) {
+            return null;
+        }
+
+        $phone = preg_replace('/[^0-9]/', '', (string) $ticket->phone);
+        $key = $ticket->booking_id . ':' . $phone;
+        if (array_key_exists($key, $attempts)) {
+            if ($attempts[$key] === true) {
+                $ticket->markAwaitingCustomerClick(null);
+                return true;
+            }
+            $ticket->markWhatsAppFailed((string) $attempts[$key]);
+            return false;
+        }
+
+        $ticket->update(['resend_requested_at' => now()]);
+        $response = $delivery->sendTemplate($ticket->phone);
+        if ($response->successful() && ! $response->json('error')) {
+            $ticket->markAwaitingCustomerClick(null);
+            $ticket->booking->markTemplateAccepted($delivery->getMessageId($response));
+            $attempts[$key] = true;
+            return true;
+        }
+
+        $error = $delivery->getErrorMessage($response);
+        $ticket->markWhatsAppFailed($error);
+        $ticket->booking->markTemplateFailed($error);
+        $attempts[$key] = $error;
+        return false;
+    }
+
+    private function isWaitingForCustomerClick(Ticket $ticket): bool
+    {
+        return $ticket->claimed_at === null
+            && $ticket->booking !== null
+            && $ticket->booking->isTemplateSent()
+            && in_array($ticket->delivery_status, ['pending', 'failed', null], true);
+    }
+
     public function delete($id)
 {
     DB::transaction(function () use ($id) {

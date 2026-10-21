@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Ticket extends Model
 {
@@ -47,16 +48,11 @@ class Ticket extends Model
 
     /**
      * True when the actual QR ticket image has been delivered/received by the customer
-     * (either confirmed via 'delivered' or 'read' webhook, or sent via SendWhatsAppTicketImageJob
-     * with whatsapp_sent = true and last_delivered_at / claimed_at populated).
+     * only when Meta confirms delivery (or read) for the exact message ID.
      */
     public function isTicketDeliveredOrReceived(): bool
     {
         if (in_array($this->delivery_status, ['delivered', 'read'], true)) {
-            return true;
-        }
-
-        if ($this->delivery_status === 'sent' && $this->whatsapp_sent && ($this->last_delivered_at !== null || $this->claimed_at !== null)) {
             return true;
         }
 
@@ -94,6 +90,47 @@ class Ticket extends Model
     public function isSending(): bool
     {
         return $this->delivery_status === 'sending';
+    }
+
+    /** Persist Meta's synchronous acceptance without allowing a racing webhook to be downgraded. */
+    public function markWhatsAppAccepted(?string $messageId): void
+    {
+        $resolvedMessageId = $messageId ?: $this->whatsapp_message_id;
+        DB::table($this->getTable())->where('id', $this->getKey())->update([
+            'whatsapp_sent' => true,
+            'delivery_status' => DB::raw("CASE WHEN delivery_status IN ('delivered', 'read') THEN delivery_status ELSE 'sent' END"),
+            'whatsapp_message_id' => $resolvedMessageId,
+            'delivery_error' => null,
+            'updated_at' => now(),
+        ]);
+        WhatsAppMessageStatusEvent::applyPendingForMessage($resolvedMessageId);
+    }
+
+    /** Record a terminal send failure without overwriting a webhook-confirmed delivery. */
+    public function markWhatsAppFailed(string $error): void
+    {
+        DB::table($this->getTable())->where('id', $this->getKey())
+            ->whereNotIn('delivery_status', ['delivered', 'read'])
+            ->update([
+                'whatsapp_sent' => false,
+                'delivery_status' => 'failed',
+                'delivery_error' => $error,
+                'updated_at' => now(),
+            ]);
+    }
+
+    /** Return to waiting for a customer CTA after a template recovery, monotonically. */
+    public function markAwaitingCustomerClick(?string $reason): void
+    {
+        DB::table($this->getTable())->where('id', $this->getKey())
+            ->whereNotIn('delivery_status', ['delivered', 'read'])
+            ->update([
+                'whatsapp_sent' => false,
+                'delivery_status' => 'pending',
+                'claimed_at' => null,
+                'delivery_error' => $reason,
+                'updated_at' => now(),
+            ]);
     }
 
     public function booking()

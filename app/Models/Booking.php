@@ -108,12 +108,12 @@ class Booking extends Model
 
     public function isTemplateSent(): bool
     {
-        return in_array($this->template_status, ['sent', 'delivered'], true);
+        return in_array($this->template_status, ['sent', 'delivered', 'read'], true);
     }
 
     public function isTemplateDelivered(): bool
     {
-        return $this->template_status === 'delivered';
+        return in_array($this->template_status, ['delivered', 'read'], true);
     }
 
     public function isTemplateFailed(): bool
@@ -124,6 +124,32 @@ class Booking extends Model
     public function isTemplateSending(): bool
     {
         return $this->template_status === 'sending';
+    }
+
+    /** Persist Meta acceptance without downgrading a concurrently confirmed webhook status. */
+    public function markTemplateAccepted(?string $messageId): void
+    {
+        $resolvedMessageId = $messageId ?: $this->template_message_id;
+        DB::table($this->getTable())->where('id', $this->getKey())->update([
+            'template_status' => DB::raw("CASE WHEN template_status IN ('delivered', 'read') THEN template_status ELSE 'sent' END"),
+            'template_message_id' => $resolvedMessageId,
+            'template_sent_at' => now(),
+            'template_error' => null,
+            'updated_at' => now(),
+        ]);
+        WhatsAppMessageStatusEvent::applyPendingForMessage($resolvedMessageId);
+    }
+
+    /** Preserve stronger delivery webhook outcomes when a synchronous template attempt fails. */
+    public function markTemplateFailed(string $error): void
+    {
+        DB::table($this->getTable())->where('id', $this->getKey())
+            ->whereNotIn('template_status', ['delivered', 'read'])
+            ->update([
+                'template_status' => 'failed',
+                'template_error' => $error,
+                'updated_at' => now(),
+            ]);
     }
 
     public function ticketsDeliveredCount(): int
@@ -160,14 +186,14 @@ class Booking extends Model
             return false;
         }
 
-        if (! in_array($this->template_status, ['sent', 'delivered'], true) && ! $this->whatsapp_sent) {
+        if (! in_array($this->template_status, ['sent', 'delivered', 'read'], true) && ! $this->whatsapp_sent) {
             return false;
         }
 
-        $anyClaimedOrSent = $this->tickets->contains(function ($t) {
-            return $t->claimed_at !== null
-                || $t->whatsapp_sent
-                || in_array($t->delivery_status, ['sent', 'delivered', 'read', 'sending'], true);
+        $anyClaimedOrSent = $this->tickets->contains(function ($ticket) {
+            return $ticket->claimed_at !== null
+                || $ticket->whatsapp_sent
+                || in_array($ticket->delivery_status, ['sent', 'delivered', 'read', 'sending'], true);
         });
 
         return ! $anyClaimedOrSent;

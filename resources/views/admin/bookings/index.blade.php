@@ -120,27 +120,15 @@
         </div>
 
         <div class="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
-            @if(isset($unreceivedTicketsCount) && $unreceivedTicketsCount > 0)
-                <button type="button"
-                        id="openGlobalResendModal"
-                        class="admin-btn admin-btn--indigo"
-                        title="إرسال التذاكر غير المستلمة لكافة الحجوزات المعتمدة">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                    </svg>
-                    <span>إرسال التذاكر غير المستلمة ({{ $unreceivedTicketsCount }})</span>
-                </button>
-            @else
-                <button type="button"
-                        disabled
-                        class="admin-btn admin-btn--indigo opacity-50 cursor-not-allowed"
-                        title="جميع تذاكر الحجوزات مستلمة بالفعل">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    <span>إرسال التذاكر غير المستلمة ({{ $unreceivedTicketsCount ?? 0 }})</span>
-                </button>
-            @endif
+            <button type="button"
+                    id="openGlobalResendModal"
+                    class="admin-btn admin-btn--indigo"
+                    title="إرسال التذاكر غير المستلمة لكافة الحجوزات المعتمدة">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+                <span>إرسال التذاكر غير المستلمة (<span data-live-count="unreceived">{{ $unreceivedTicketsCount ?? 0 }}</span>)</span>
+            </button>
 
             @include('admin.partials.back-button', ['url' => route('admin.dashboard'), 'label' => 'العودة للوحة التحكم'])
         </div>
@@ -160,30 +148,28 @@
         ];
     @endphp
 
-    @if($bookings->isNotEmpty())
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5" role="tablist" aria-label="أقسام حالات الحجز">
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5" role="tablist" aria-label="أقسام حالات الحجز">
             <button type="button" class="adm-chip is-active" data-status-jump="" data-tone="">
                 <span class="opacity-80">الكل</span>
-                <span class="font-bold tabular-nums">({{ $counts['all'] }})</span>
+                <span class="font-bold tabular-nums" data-live-count="total">({{ $counts['all'] }})</span>
             </button>
             <button type="button" class="adm-chip" data-status-jump="pending" data-tone="pending">
                 <span class="opacity-80">قيد المراجعة</span>
-                <span class="font-bold tabular-nums">({{ $counts['pending'] }})</span>
+                <span class="font-bold tabular-nums" data-live-count="pending">({{ $counts['pending'] }})</span>
             </button>
             <button type="button" class="adm-chip" data-status-jump="approved" data-tone="approved">
                 <span class="opacity-80">مقبول</span>
-                <span class="font-bold tabular-nums">({{ $counts['approved'] }})</span>
+                <span class="font-bold tabular-nums" data-live-count="approved">({{ $counts['approved'] }})</span>
             </button>
             <button type="button" class="adm-chip" data-status-jump="rejected" data-tone="rejected">
                 <span class="opacity-80">مرفوض</span>
-                <span class="font-bold tabular-nums">({{ $counts['rejected'] }})</span>
+                <span class="font-bold tabular-nums" data-live-count="rejected">({{ $counts['rejected'] }})</span>
             </button>
             <button type="button" class="adm-chip" data-status-jump="issues" data-tone="rejected">
                 <span class="opacity-80">مشاكل واتساب</span>
-                <span class="font-bold tabular-nums">({{ $counts['issues'] }})</span>
+                <span class="font-bold tabular-nums" data-live-count="issues">({{ $counts['issues'] }})</span>
             </button>
         </div>
-    @endif
 
     {{-- ------------------------------------------------------
          STICKY FILTER & SEARCH BAR
@@ -281,178 +267,8 @@
                             <th class="px-3 py-3 font-semibold text-center w-24">الإجراء</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-white/5">
-                    @foreach($bookings as $booking)
-                        @php
-                            $dt = $booking->showTime
-                                ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
-                                : '';
-                            $totalTickets     = $booking->ticketsTotalCount();
-                            $deliveredTickets = $booking->ticketsDeliveredCount();
-                            $sentTickets      = $booking->ticketsSentCount();
-                            $sendingTickets   = $booking->ticketsSendingCount();
-                            $failedTickets    = $booking->ticketsFailedCount();
-                            $hasFailed        = $failedTickets > 0 || $booking->template_status === 'failed';
-                            $deliveryBadge    = $booking->delivery_badge;
-                        @endphp
-                        <tr class="booking-row hover:bg-white/[0.03] transition duration-150"
-                            data-search="{{ strtolower($booking->full_name.' '.$booking->phone.' '.$booking->reference_code) }}"
-                            data-pn="{{ $booking->public_number ?? '' }}"
-                            data-status="{{ $booking->status }}"
-                            data-has-issues="{{ $hasFailed ? '1' : '0' }}"
-                            data-datetime="{{ $dt }}">
-
-                            {{-- Booking Number --}}
-                            <td class="px-3 py-3 text-center align-middle">
-                                <span class="inline-flex items-center justify-center min-w-[42px] h-8 px-2 rounded-lg font-bold tabular-nums text-xs bg-amber-400/10 text-amber-200 border border-amber-400/30">
-                                    #{{ $booking->public_number ?? $booking->id }}
-                                </span>
-                            </td>
-
-                            {{-- Customer details --}}
-                            <td class="px-4 py-3 align-top">
-                                <p class="font-bold text-white leading-snug">{{ $booking->full_name }}</p>
-                                <p class="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <span class="inline-flex items-center gap-1 text-[11px] text-amber-300 font-medium">
-                                        <svg class="w-3.5 h-3.5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
-                                        </svg>
-                                        <span>{{ $booking->tickets_count }} تذكرة</span>
-                                    </span>
-                                    @if($booking->tickets->count() > 1)
-                                        <details class="group inline-block">
-                                            <summary class="cursor-pointer text-[11px] text-slate-500 hover:text-slate-300 select-none">
-                                                (عرض {{ $booking->tickets->count() }} أسماء)
-                                            </summary>
-                                            <div class="mt-1 space-y-0.5 p-2 rounded-lg bg-black/70 border border-white/10 text-xs">
-                                                @foreach($booking->tickets as $ticket)
-                                                    <div class="text-[11px] text-slate-300 flex items-center justify-between gap-2">
-                                                        <span class="inline-flex items-center gap-1">
-                                                            <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                                            </svg>
-                                                            <span>{{ $ticket->name }}</span>
-                                                        </span>
-                                                        <span class="text-slate-500 font-mono" dir="ltr">{{ $ticket->phone }}</span>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </details>
-                                    @endif
-                                </div>
-                            </td>
-
-                            {{-- Show and ShowTime --}}
-                            <td class="px-4 py-3 align-top">
-                                <p class="font-semibold text-slate-100 text-xs sm:text-sm leading-snug">
-                                    {{ $booking->showTime?->show?->title ?? '-' }}
-                                </p>
-                                <span class="text-slate-400 text-xs mt-0.5 inline-flex items-center gap-1.5 flex-wrap">
-                                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                    </svg>
-                                    <span>{{ $booking->showTime?->date?->format('d/m/Y') }}</span>
-                                    <span>•</span>
-                                    <span>{{ $booking->showTime?->time ? \Carbon\Carbon::parse($booking->showTime->time)->format('g:i A') : '' }}</span>
-                                </span>
-                            </td>
-
-                            {{-- Price & Payment Transfer Proof --}}
-                            <td class="px-4 py-3 align-top">
-                                <div class="flex items-start gap-2.5">
-                                    @if($booking->transfer_screenshot_path)
-                                        <button type="button"
-                                                class="proof-thumb-btn w-12 h-14 shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                                                data-preview-img="{{ $booking->transfer_screenshot_path }}"
-                                                data-preview-title="إثبات تحويل #{{ $booking->public_number ?? $booking->id }} — {{ $booking->full_name }}"
-                                                title="انقر لتكبير صورة التحويل">
-                                            <img src="{{ $booking->transfer_screenshot_path }}"
-                                                 alt="صورة التحويل"
-                                                 class="w-full h-full object-cover">
-                                        </button>
-                                    @else
-                                        <div class="w-12 h-14 rounded-lg bg-white/5 border border-white/10 shrink-0 flex items-center justify-center text-[10px] text-slate-500 text-center p-1">
-                                            لا يوجد إثبات
-                                        </div>
-                                    @endif
-
-                                    <div class="min-w-0">
-                                        <p class="font-extrabold text-amber-300 text-sm tabular-nums">
-                                            {{ number_format((int) $booking->total_price) }} <span class="text-[11px] font-normal text-amber-200/80">ج.م</span>
-                                        </p>
-                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-400 mt-1 inline-block">
-                                            {{ ($booking->payment_method && $booking->payment_method !== 'manual_transfer') ? $booking->payment_method : 'محفظة / إنستاباي' }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </td>
-
-                            {{-- Booking Status Pill --}}
-                            <td class="px-4 py-3 text-center align-middle">
-                                @if($booking->status === 'approved')
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/40">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                        مقبول
-                                    </span>
-                                @elseif($booking->status === 'rejected')
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-200 border border-rose-500/40">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                        مرفوض
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-200 border border-sky-500/40">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
-                                        قيد المراجعة
-                                    </span>
-                                @endif
-                            </td>
-
-                            {{-- WhatsApp Multi-Stage Delivery Indicator --}}
-                            <td class="px-4 py-3 text-center align-middle">
-                                @if($booking->status === 'approved')
-                                    <span class="adm-delivery-pill {{ $deliveryBadge['bg'] }}" title="{{ $deliveryBadge['title'] }}">
-                                        @if($deliveryBadge['has_spinner'])
-                                            <span class="btn-spinner"></span>
-                                        @elseif($deliveryBadge['type'] === 'emerald')
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                        @elseif($deliveryBadge['type'] === 'rose')
-                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                        @elseif($deliveryBadge['type'] === 'teal')
-                                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                                        @elseif($deliveryBadge['type'] === 'sky')
-                                            <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                                        @else
-                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                                        @endif
-                                        <span>{{ $deliveryBadge['text'] }}</span>
-                                    </span>
-                                @elseif($booking->status === 'rejected')
-                                    <span class="text-xs text-slate-500">—</span>
-                                @else
-                                    <span class="text-xs text-slate-500">بانتظار الاعتماد</span>
-                                @endif
-                            </td>
-
-                            {{-- Reference Code --}}
-                            <td class="px-4 py-3 align-middle font-mono text-xs text-slate-300" dir="ltr">
-                                {{ $booking->reference_code }}
-                            </td>
-
-                            {{-- Action --}}
-                            <td class="px-3 py-3 align-middle text-center">
-                                <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                                    <a href="{{ route('admin.bookings.show', $booking) }}"
-                                       class="admin-btn admin-btn--primary admin-btn--sm">
-                                        <span>تفاصيل</span>
-                                        <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                        </svg>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
+                    <tbody id="bookingTableRows" class="divide-y divide-white/5">
+                    @include('admin.bookings.partials.booking-table-rows')
                     </tbody>
                 </table>
             </div>
@@ -462,130 +278,8 @@
     {{-- ------------------------------------------------------
          📱 MOBILE CARDS
          ------------------------------------------------------ --}}
-    <div class="md:hidden space-y-3">
-        @foreach($bookings as $booking)
-            @php
-                $dt = $booking->showTime
-                    ? $booking->showTime->date->format('Y-m-d').' '.$booking->showTime->time
-                    : '';
-                $totalTickets     = $booking->ticketsTotalCount();
-                $deliveredTickets = $booking->ticketsDeliveredCount();
-                $sentTickets      = $booking->ticketsSentCount();
-                $failedTickets    = $booking->ticketsFailedCount();
-                $hasFailed        = $failedTickets > 0 || $booking->template_status === 'failed';
-                $deliveryBadge    = $booking->delivery_badge;
-            @endphp
-
-            <div class="adm-card bg-[#0e131f]/90 border border-white/10 rounded-2xl p-4 space-y-3 shadow-md booking-card"
-                 data-search="{{ strtolower($booking->full_name.' '.$booking->phone.' '.$booking->reference_code) }}"
-                 data-pn="{{ $booking->public_number ?? '' }}"
-                 data-status="{{ $booking->status }}"
-                 data-has-issues="{{ $hasFailed ? '1' : '0' }}"
-                 data-datetime="{{ $dt }}">
-
-                {{-- Row 1: #N + Status Pill + Price --}}
-                <div class="flex items-center justify-between gap-2 border-b border-white/5 pb-2.5">
-                    <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center justify-center min-w-[38px] h-7 px-2 rounded-lg font-bold tabular-nums text-xs bg-amber-400/15 text-amber-200 border border-amber-400/30">
-                            #{{ $booking->public_number ?? $booking->id }}
-                        </span>
-
-                        @if($booking->status === 'approved')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/40">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                مقبول
-                            </span>
-                        @elseif($booking->status === 'rejected')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-200 border border-rose-500/40">
-                                <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                مرفوض
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-200 border border-sky-500/40">
-                                <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
-                                قيد المراجعة
-                            </span>
-                        @endif
-                    </div>
-
-                    <div class="font-extrabold text-amber-300 text-sm tabular-nums">
-                        {{ number_format((int) $booking->total_price) }} <span class="text-[11px] font-normal text-amber-200/80">ج.م</span>
-                    </div>
-                </div>
-
-                {{-- Row 2: Customer Name & Phone & Screenshot Preview --}}
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 flex-1">
-                        <h2 class="font-bold text-base text-white truncate">{{ $booking->full_name }}</h2>
-                        <p class="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">{{ $booking->phone }}</p>
-                        <p class="text-xs text-slate-300 mt-1.5 flex items-center gap-1.5 flex-wrap">
-                            <svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
-                            </svg>
-                            <span class="font-medium text-slate-200">{{ $booking->showTime?->show?->title ?? '—' }}</span>
-                            <span class="text-slate-500 mx-0.5">·</span>
-                            <span class="text-slate-400 tabular-nums">
-                                {{ $booking->showTime?->date?->format('d/m') }}
-                                • {{ $booking->showTime?->time ? \Carbon\Carbon::parse($booking->showTime->time)->format('g:i A') : '' }}
-                            </span>
-                        </p>
-                    </div>
-
-                    @if($booking->transfer_screenshot_path)
-                        <button type="button"
-                                class="proof-thumb-btn w-12 h-16 shrink-0"
-                                data-preview-img="{{ $booking->transfer_screenshot_path }}"
-                                data-preview-title="إثبات تحويل #{{ $booking->public_number ?? $booking->id }} — {{ $booking->full_name }}"
-                                title="عرض لقطة شاشة التحويل">
-                            <img src="{{ $booking->transfer_screenshot_path }}"
-                                 alt="صورة التحويل"
-                                 class="w-full h-full object-cover">
-                        </button>
-                    @endif
-                </div>
-
-                {{-- Row 3: Tickets & WhatsApp State --}}
-                <div class="flex items-center justify-between gap-2 pt-2 border-t border-white/5 text-xs flex-wrap">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/25 font-semibold text-[11px]">
-                            <svg class="w-3 h-3 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
-                            </svg>
-                            <span>{{ $booking->tickets_count }} تذكرة</span>
-                        </span>
-
-                        @if($booking->status === 'approved')
-                            <span class="adm-delivery-pill {{ $deliveryBadge['bg'] }} text-[10.5px]" title="{{ $deliveryBadge['title'] }}">
-                                @if($deliveryBadge['has_spinner'])
-                                    <span class="btn-spinner"></span>
-                                @elseif($deliveryBadge['type'] === 'emerald')
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                @elseif($deliveryBadge['type'] === 'rose')
-                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                @elseif($deliveryBadge['type'] === 'teal')
-                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                                @elseif($deliveryBadge['type'] === 'sky')
-                                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                                @else
-                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                                @endif
-                                <span>{{ $deliveryBadge['text'] }}</span>
-                            </span>
-                        @endif
-                    </div>
-
-                    <div class="flex items-center gap-1.5 ms-auto">
-                        <a href="{{ route('admin.bookings.show', $booking) }}"
-                           class="admin-btn admin-btn--primary admin-btn--sm">
-                            <span>عرض التفاصيل</span>
-                            <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        @endforeach
+    <div id="bookingMobileCards" class="md:hidden space-y-3">
+        @include('admin.bookings.partials.booking-mobile-cards')
     </div>
 
     {{-- "No matches" empty state --}}
@@ -721,9 +415,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var resultCount  = document.getElementById('resultCount');
     var noMatches    = document.getElementById('noMatchesEmpty');
     var statusChips  = document.querySelectorAll('[data-status-jump]');
-    var rows         = document.querySelectorAll('.booking-row');
-    var cards        = document.querySelectorAll('.booking-card');
-    var totalItems   = rows.length;
+    var totalItems   = document.querySelectorAll('.booking-row').length;
 
     function filter() {
         if (!search) return;
@@ -748,6 +440,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         var visibleRows = 0;
+        var rows = document.querySelectorAll('.booking-row');
+        var cards = document.querySelectorAll('.booking-card');
+        totalItems = rows.length;
         rows.forEach(function (el) {
             var ok = matches(el);
             el.style.display = ok ? '' : 'none';
@@ -768,6 +463,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : 'إجمالي الحجوزات: ' + totalItems + ' حجز';
         }
     }
+    window.adminBookingRefilter = filter;
 
     function syncChips() {
         statusChips.forEach(function (c) {
@@ -883,13 +579,53 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // -------------------------------------------------------------
-    // LIVE BOOKING MANAGEMENT STATUS POLLING (12s interval)
+    // LIVE BOOKING MANAGEMENT STATUS POLLING (5s incremental updates)
     // -------------------------------------------------------------
-    var pollInterval = 12000;
+    var pollInterval = 5000;
     var pollTimer = null;
     var abortCtrl = null;
-    var initialTotal = {{ $bookings->count() }};
     var latestKnownId = {{ (int) $bookings->max('id') }};
+    var lastPollCursor = @json($pollCursor);
+
+    function mergeBookingMarkup(container, markup, selector, completeSnapshot) {
+        if (!container || typeof markup !== 'string') return;
+        var template = document.createElement('template');
+        template.innerHTML = markup.trim();
+        var incoming = Array.prototype.slice.call(template.content.querySelectorAll(selector));
+        var desiredIds = {};
+
+        incoming.forEach(function (fresh) {
+            var id = fresh.dataset.bookingId;
+            if (!id) return;
+            desiredIds[id] = true;
+            var current = container.querySelector(selector + '[data-booking-id="' + id + '"]');
+            var comparableCurrent = current && current.cloneNode(true);
+            if (comparableCurrent) comparableCurrent.removeAttribute('style');
+            var comparableFresh = fresh.cloneNode(true);
+            comparableFresh.removeAttribute('style');
+            if (current && comparableCurrent.outerHTML !== comparableFresh.outerHTML) {
+                var display = current.style.display;
+                fresh.style.display = display;
+                current.replaceWith(fresh);
+                current = fresh;
+            } else if (!current) {
+                current = fresh;
+                var before = Array.prototype.slice.call(container.querySelectorAll(selector)).find(function (item) {
+                    var itemSort = Number(item.dataset.bookingSort || 0);
+                    var freshSort = Number(current.dataset.bookingSort || 0);
+                    if (itemSort !== freshSort) return itemSort < freshSort;
+                    return Number(item.dataset.bookingId) < Number(current.dataset.bookingId);
+                });
+                container.insertBefore(current, before || null);
+            }
+        });
+
+        if (completeSnapshot) {
+            Array.prototype.slice.call(container.querySelectorAll(selector)).forEach(function (item) {
+                if (!desiredIds[item.dataset.bookingId]) item.remove();
+            });
+        }
+    }
 
     function pollIndex() {
         if (document.hidden) return;
@@ -900,7 +636,11 @@ document.addEventListener('DOMContentLoaded', function () {
             abortCtrl = new AbortController();
         }
 
-        fetch("{{ route('admin.bookings.poll-status') }}", {
+        var pollUrl = new URL("{{ route('admin.bookings.poll-status') }}", window.location.origin);
+        pollUrl.searchParams.set('index', '1');
+        if (lastPollCursor) pollUrl.searchParams.set('since', lastPollCursor);
+        pollUrl.searchParams.set('after_id', String(latestKnownId));
+        fetch(pollUrl.toString(), {
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json' },
             signal: abortCtrl ? abortCtrl.signal : undefined
@@ -908,30 +648,30 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (!data || !data.ok || !data.summary) return;
+            if (data.cursor) lastPollCursor = data.cursor;
             var s = data.summary;
 
             // 1. Update Global Send Unreceived Button count live
-            var unreceivedBtn = document.getElementById('openGlobalResendModal');
-            if (unreceivedBtn) {
-                var btnSpan = unreceivedBtn.querySelector('span');
-                if (btnSpan) {
-                    btnSpan.textContent = 'إرسال التذاكر غير المستلمة (' + s.unreceived_tickets_count + ')';
+            var liveCounts = {
+                total: s.total_bookings,
+                pending: s.pending_bookings,
+                approved: s.approved_bookings,
+                rejected: s.rejected_bookings,
+                issues: s.issue_bookings,
+                unreceived: s.unreceived_tickets_count
+            };
+            Object.keys(liveCounts).forEach(function (key) {
+                var countNode = document.querySelector('[data-live-count="' + key + '"]');
+                if (countNode && Number.isFinite(Number(liveCounts[key]))) {
+                    countNode.textContent = key === 'unreceived' ? String(liveCounts[key]) : '(' + liveCounts[key] + ')';
                 }
-            }
-
-            // 2. If new booking arrived, display banner
-            if (s.total_bookings > initialTotal || s.latest_booking_id > latestKnownId) {
-                var newBanner = document.getElementById('newBookingsAlert');
-                if (!newBanner) {
-                    var container = document.querySelector('section.space-y-4, section.space-y-6');
-                    if (container) {
-                        var banner = document.createElement('div');
-                        banner.id = 'newBookingsAlert';
-                        banner.className = 'p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs sm:text-sm font-bold flex items-center justify-between gap-3 shadow-lg';
-                        banner.innerHTML = '<div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span><span>🔔 تم استقبال حجوزات جديدة (' + s.total_bookings + ' حجز).</span></div><button type="button" onclick="location.reload()" class="admin-btn admin-btn--primary admin-btn--sm">تحديث القائمة</button>';
-                        container.insertBefore(banner, container.children[1]);
-                    }
-                }
+            });
+            if (data.index_rows) {
+                mergeBookingMarkup(document.getElementById('bookingTableRows'), data.index_rows.table, '.booking-row', data.index_rows.complete);
+                mergeBookingMarkup(document.getElementById('bookingMobileCards'), data.index_rows.mobile, '.booking-card', data.index_rows.complete);
+                latestKnownId = Math.max(latestKnownId, s.latest_booking_id || 0);
+                totalItems = Number(s.total_bookings || 0);
+                if (window.adminBookingRefilter) window.adminBookingRefilter();
             }
         })
         .catch(function () {});

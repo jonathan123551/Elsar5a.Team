@@ -47,12 +47,8 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
 
             if ($response->successful() && !$response->json('error')) {
                 if ($this->bookingId) {
-                    \App\Models\Booking::where('id', $this->bookingId)->update([
-                        'template_status'     => 'sent',
-                        'template_message_id' => $wamid,
-                        'template_sent_at'    => now(),
-                        'template_error'      => null,
-                    ]);
+                    $booking = \App\Models\Booking::find($this->bookingId);
+                    $booking?->markTemplateAccepted($wamid);
                 }
 
                 Log::info(
@@ -72,9 +68,9 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
                 return;
             }
 
-            $errorMessage = $response->json('error.message') ?? $response->body();
+            $errorMessage = $delivery->getErrorMessage($response);
             if ($this->bookingId) {
-                \App\Models\Booking::where('id', $this->bookingId)->update([
+                \App\Models\Booking::where('id', $this->bookingId)->whereNotIn('template_status', ['delivered', 'read'])->update([
                     'template_status' => 'failed',
                     'template_error'  => $errorMessage,
                 ]);
@@ -110,7 +106,7 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
             );
         } catch (\Throwable $e) {
             if ($this->bookingId) {
-                \App\Models\Booking::where('id', $this->bookingId)->update([
+                \App\Models\Booking::where('id', $this->bookingId)->whereNotIn('template_status', ['delivered', 'read'])->update([
                     'template_status' => 'failed',
                     'template_error'  => $e->getMessage(),
                 ]);
@@ -139,7 +135,7 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
     public function failed(\Throwable $e): void
     {
         if ($this->bookingId) {
-            \App\Models\Booking::where('id', $this->bookingId)->update([
+            \App\Models\Booking::where('id', $this->bookingId)->whereNotIn('template_status', ['delivered', 'read'])->update([
                 'template_status' => 'failed',
                 'template_error'  => $e->getMessage(),
             ]);
