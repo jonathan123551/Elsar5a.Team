@@ -536,7 +536,7 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <span>تعذر تسليم {{ $failedCount }} تذكرة ({{ $deliveredCount }}/{{ $totalCount }})</span>
                     </span>
-                @elseif($booking->template_status === 'sent')
+                @elseif($booking->isAwaitingCustomerClick())
                     <span id="deliverySummaryPill" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-500/15 text-sky-300 border border-sky-500/40">
                         <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
                         <span>أُرسل القالب · بانتظار نقر العميل على واتساب</span>
@@ -766,8 +766,10 @@
                                 <p class="text-cyan-300">أُرسلت صور التذاكر لخوادم Meta بنجاح، بانتظار استلام جهاز العميل.</p>
                             @elseif($claimedCount > 0)
                                 <p class="text-amber-300">ضغط العميل للاستلام وجاري إرسال صور الـ QR.</p>
-                            @else
+                            @elseif($booking->isAwaitingCustomerClick())
                                 <p class="text-slate-400">بانتظار نقر العميل لإرسال صور التذاكر.</p>
+                            @else
+                                <p class="text-slate-400">لم تُرسل التذاكر بعد.</p>
                             @endif
                         </div>
                     </div>
@@ -795,8 +797,8 @@
             <div class="p-3 sm:p-4 space-y-3 border-t border-white/5">
                 @forelse($booking->tickets as $ticket)
                     @php
-                        $isTicketDelivered = ($ticket->delivery_status === 'delivered');
-                        $isTicketSent      = ($ticket->delivery_status === 'sent');
+                        $isTicketDelivered = $ticket->isTicketDeliveredOrReceived();
+                        $isTicketSent      = $ticket->isPendingNetworkDelivery();
                         $isTicketFailed    = ($ticket->delivery_status === 'failed');
                     @endphp
                     <div class="adm2-stub">
@@ -1186,7 +1188,7 @@
             if (custEl) {
                 if (m.claimed_count > 0) custEl.innerHTML = '<span class="text-emerald-400">تم طلب التذكرة</span>';
                 else if (m.is_template_failed) custEl.innerHTML = '<span class="text-rose-400">تعذر النقر</span>';
-                else if (b.status === 'approved') custEl.innerHTML = '<span class="text-sky-300">بانتظار النقر</span>';
+                else if (m.awaiting_click) custEl.innerHTML = '<span class="text-sky-300">بانتظار النقر</span>';
                 else custEl.innerHTML = '<span class="text-slate-400">—</span>';
             }
 
@@ -1224,7 +1226,7 @@
                 b.tickets.forEach(function (t) {
                     var badge = document.getElementById('ticket-status-' + t.id);
                     if (badge) {
-                        if (t.delivery_status === 'delivered') {
+                        if (t.delivery_status === 'delivered' || t.is_received) {
                             badge.textContent = 'تم التسليم';
                             badge.className = 'text-[11px] font-semibold text-emerald-300';
                         } else if (t.delivery_status === 'failed') {

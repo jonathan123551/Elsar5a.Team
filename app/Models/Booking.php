@@ -128,17 +128,17 @@ class Booking extends Model
 
     public function ticketsDeliveredCount(): int
     {
-        return $this->tickets->filter(fn($t) => $t->delivery_status === 'delivered')->count();
+        return $this->tickets->filter(fn($t) => $t->isTicketDeliveredOrReceived())->count();
     }
 
     public function ticketsSentCount(): int
     {
-        return $this->tickets->filter(fn($t) => $t->delivery_status === 'sent')->count();
+        return $this->tickets->filter(fn($t) => $t->isPendingNetworkDelivery())->count();
     }
 
     public function ticketsSendingCount(): int
     {
-        return $this->tickets->filter(fn($t) => $t->delivery_status === 'sending')->count();
+        return $this->tickets->filter(fn($t) => in_array($t->delivery_status, ['sending'], true) || ($t->delivery_status === 'pending' && $t->claimed_at !== null))->count();
     }
 
     public function ticketsFailedCount(): int
@@ -149,6 +149,28 @@ class Booking extends Model
     public function ticketsTotalCount(): int
     {
         return $this->tickets->count() ?: ($this->tickets_count ?? 1);
+    }
+
+    /**
+     * True ONLY when the template was sent and ZERO tickets have been claimed/sent/delivered yet.
+     */
+    public function isAwaitingCustomerClick(): bool
+    {
+        if ($this->status !== 'approved') {
+            return false;
+        }
+
+        if (! in_array($this->template_status, ['sent', 'delivered'], true) && ! $this->whatsapp_sent) {
+            return false;
+        }
+
+        $anyClaimedOrSent = $this->tickets->contains(function ($t) {
+            return $t->claimed_at !== null
+                || $t->whatsapp_sent
+                || in_array($t->delivery_status, ['sent', 'delivered', 'read', 'sending'], true);
+        });
+
+        return ! $anyClaimedOrSent;
     }
 
     /**
@@ -234,7 +256,7 @@ class Booking extends Model
         }
 
         // 4. Template sent, waiting for customer tap on WhatsApp
-        if ($this->template_status === 'sent') {
+        if ($this->isAwaitingCustomerClick()) {
             return [
                 'text' => 'بانتظار نقر العميل',
                 'type' => 'sky',
@@ -245,7 +267,7 @@ class Booking extends Model
         }
 
         // 5. Customer clicked and claimed, waiting for ticket dispatch
-        if ($isClaimed && $sent === 0) {
+        if ($isClaimed && $sent === 0 && $delivered === 0) {
             return [
                 'text' => 'جاري التجهيز',
                 'type' => 'amber',

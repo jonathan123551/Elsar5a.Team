@@ -45,19 +45,45 @@ class Ticket extends Model
         return !is_null($this->claimed_at);
     }
 
+    /**
+     * True when the actual QR ticket image has been delivered/received by the customer
+     * (either confirmed via 'delivered' or 'read' webhook, or sent via SendWhatsAppTicketImageJob
+     * with whatsapp_sent = true and last_delivered_at / claimed_at populated).
+     */
+    public function isTicketDeliveredOrReceived(): bool
+    {
+        if (in_array($this->delivery_status, ['delivered', 'read'], true)) {
+            return true;
+        }
+
+        if ($this->delivery_status === 'sent' && $this->whatsapp_sent && ($this->last_delivered_at !== null || $this->claimed_at !== null)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * True when the message is sent to network but not yet confirmed delivered/received.
+     */
+    public function isPendingNetworkDelivery(): bool
+    {
+        return $this->delivery_status === 'sent' && ! $this->isTicketDeliveredOrReceived();
+    }
+
     public function isDelivered(): bool
     {
-        return $this->delivery_status === 'delivered' || ($this->delivery_status === 'sent' && $this->whatsapp_sent);
+        return $this->isTicketDeliveredOrReceived();
     }
 
     public function isConfirmedDelivered(): bool
     {
-        return $this->delivery_status === 'delivered';
+        return in_array($this->delivery_status, ['delivered', 'read'], true);
     }
 
     public function isSent(): bool
     {
-        return in_array($this->delivery_status, ['sent', 'delivered'], true) || $this->whatsapp_sent;
+        return in_array($this->delivery_status, ['sent', 'delivered', 'read'], true) || $this->whatsapp_sent;
     }
 
     public function isFailed(): bool

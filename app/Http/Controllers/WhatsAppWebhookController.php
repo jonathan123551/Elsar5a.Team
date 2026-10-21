@@ -108,7 +108,11 @@ class WhatsAppWebhookController extends Controller
                 // only built at approval). Each ticket gets its own queued job;
                 // the job's atomic claim guarantees exactly-once delivery even if
                 // this same tap arrives twice or collides with a resend.
-                $ticketIds = Ticket::where('phone', $phone)
+                $phoneSuffix = strlen($phone) >= 9 ? substr($phone, -9) : $phone;
+                $ticketIds = Ticket::where(function ($q) use ($phone, $phoneSuffix) {
+                        $q->where('phone', $phone)
+                          ->orWhere('phone', 'like', '%' . $phoneSuffix);
+                    })
                     ->where('whatsapp_sent', false)
                     ->whereHas('booking', fn ($q) => $q->where('status', 'approved'))
                     ->orderBy('id')
@@ -215,21 +219,10 @@ class WhatsAppWebhookController extends Controller
             ]
         ));
 
-        // 1. Try to match a Ticket by message ID
+        // 1. Try to match a Ticket by message ID (exact correlation per ticket)
         $ticket = null;
         if ($wamid) {
             $ticket = Ticket::where('whatsapp_message_id', $wamid)->first();
-        }
-
-        // Fallback matching by phone for tickets in active delivery state
-        if (!$ticket && $phoneNormalized && in_array($statusName, ['failed', 'undelivered', 'delivered', 'read'], true)) {
-            $ticket = Ticket::where(function ($q) use ($phoneNormalized) {
-                $q->where('phone', $phoneNormalized)
-                  ->orWhere('phone', 'like', '%' . substr($phoneNormalized, -9));
-            })
-            ->whereIn('delivery_status', ['sending', 'sent'])
-            ->orderBy('id', 'desc')
-            ->first();
         }
 
         if ($ticket) {
@@ -237,11 +230,11 @@ class WhatsAppWebhookController extends Controller
                 $ticket->update([
                     'delivery_status'   => 'delivered',
                     'whatsapp_sent'     => true,
-                    'last_delivered_at' => now(),
+                    'last_delivered_at' => $ticket->last_delivered_at ?? now(),
                     'delivery_error'    => null,
                 ]);
             } elseif ($statusName === 'sent') {
-                if ($ticket->delivery_status !== 'delivered') {
+                if (!in_array($ticket->delivery_status, ['delivered', 'read'], true)) {
                     $ticket->update([
                         'delivery_status' => 'sent',
                         'whatsapp_sent'   => true,

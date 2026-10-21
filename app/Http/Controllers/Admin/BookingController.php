@@ -96,6 +96,7 @@ class BookingController extends Controller
                 $claimedTickets = $booking->tickets->filter(fn($t) => !is_null($t->claimed_at))->count();
                 $isTemplateFailed = $booking->template_status === 'failed';
                 $isAllDelivered = ($deliveredTickets === $totalTickets) && ($totalTickets > 0);
+                $awaitingClick = $booking->isAwaitingCustomerClick();
 
                 $statusBadgeText = 'معتمد (لم يُرسل)';
                 $statusBadgeType = 'gray';
@@ -109,7 +110,7 @@ class BookingController extends Controller
                 } elseif ($failedTickets > 0) {
                     $statusBadgeText = "تعذر تسليم {$failedTickets} تذكرة ({$deliveredTickets}/{$totalTickets})";
                     $statusBadgeType = 'rose';
-                } elseif ($booking->template_status === 'sent') {
+                } elseif ($awaitingClick) {
                     $statusBadgeText = 'أُرسل القالب · بانتظار نقر العميل على واتساب';
                     $statusBadgeType = 'sky';
                 } elseif ($sendingTickets > 0 || $booking->template_status === 'sending') {
@@ -137,6 +138,7 @@ class BookingController extends Controller
                             'phone'           => $ticket->phone,
                             'delivery_status' => $ticket->delivery_status,
                             'whatsapp_sent'   => (bool) $ticket->whatsapp_sent,
+                            'is_received'     => $ticket->isTicketDeliveredOrReceived(),
                             'delivery_error'  => $ticket->delivery_error,
                             'claimed_at'      => $ticket->claimed_at?->format('g:i A'),
                             'last_delivered'  => $ticket->last_delivered_at?->format('g:i A'),
@@ -145,10 +147,11 @@ class BookingController extends Controller
                     'metrics' => [
                         'total_count'          => $totalTickets,
                         'delivered_count'      => $deliveredTickets,
-                        'sent_count'           => $booking->tickets->whereIn('delivery_status', ['sent', 'delivered'])->count(),
+                        'sent_count'           => $sentTickets,
                         'sending_count'        => $sendingTickets,
                         'failed_count'         => $failedTickets,
                         'claimed_count'        => $claimedTickets,
+                        'awaiting_click'       => $awaitingClick,
                         'is_all_delivered'     => $isAllDelivered,
                         'is_template_failed'   => $isTemplateFailed,
                         'status_badge_text'    => $statusBadgeText,
@@ -472,11 +475,15 @@ public function receiveTicket(Request $request)
         $wamid = $delivery->getMessageId($response);
 
         if ($response->successful() && !$response->json('error')) {
+            $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
+            $currentStatus = $freshTicket?->delivery_status;
+            $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
+
             $ticket->update([
                 'whatsapp_sent'        => true,
-                'delivery_status'      => 'sent',
-                'whatsapp_message_id'  => $wamid,
-                'last_delivered_at'    => now(),
+                'delivery_status'      => $nextStatus,
+                'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
+                'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
                 'delivery_error'       => null,
             ]);
 
@@ -561,11 +568,15 @@ public function receiveTicket(Request $request)
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
+                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
+                $currentStatus = $freshTicket?->delivery_status;
+                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
+
                 $ticket->update([
                     'whatsapp_sent'        => true,
-                    'delivery_status'      => 'sent',
-                    'whatsapp_message_id'  => $wamid,
-                    'last_delivered_at'    => now(),
+                    'delivery_status'      => $nextStatus,
+                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
+                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
                     'delivery_error'       => null,
                 ]);
                 $sentCount++;
@@ -641,7 +652,7 @@ public function receiveTicket(Request $request)
         $booking->loadMissing(['tickets', 'showTime.show']);
 
         $unreceivedTickets = $booking->tickets->filter(function ($t) {
-            return !$t->whatsapp_sent && $t->delivery_status !== 'sent';
+            return ! $t->isTicketDeliveredOrReceived();
         });
 
         if ($unreceivedTickets->isEmpty()) {
@@ -663,11 +674,15 @@ public function receiveTicket(Request $request)
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
+                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
+                $currentStatus = $freshTicket?->delivery_status;
+                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
+
                 $ticket->update([
                     'whatsapp_sent'        => true,
-                    'delivery_status'      => 'sent',
-                    'whatsapp_message_id'  => $wamid,
-                    'last_delivered_at'    => now(),
+                    'delivery_status'      => $nextStatus,
+                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
+                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
                     'delivery_error'       => null,
                 ]);
                 $sentCount++;
@@ -734,7 +749,7 @@ public function receiveTicket(Request $request)
             ->where('whatsapp_sent', false)
             ->where(function ($q) {
                 $q->whereNull('delivery_status')
-                  ->orWhere('delivery_status', '!=', 'sent');
+                  ->orWhereNotIn('delivery_status', ['sent', 'delivered', 'read']);
             })
             ->get();
 
@@ -743,7 +758,7 @@ public function receiveTicket(Request $request)
         })
         ->where(function ($q) {
             $q->where('whatsapp_sent', true)
-              ->orWhere('delivery_status', 'sent');
+              ->orWhereIn('delivery_status', ['sent', 'delivered', 'read']);
         })
         ->count();
 
@@ -760,7 +775,7 @@ public function receiveTicket(Request $request)
 
         foreach ($unreceivedTickets as $ticket) {
             // Guard: never duplicate-send if state changed concurrently
-            if ($ticket->whatsapp_sent || $ticket->delivery_status === 'sent') {
+            if ($ticket->isTicketDeliveredOrReceived() || $ticket->whatsapp_sent || in_array($ticket->delivery_status, ['sent', 'delivered', 'read'], true)) {
                 continue;
             }
 
@@ -775,11 +790,15 @@ public function receiveTicket(Request $request)
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
+                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
+                $currentStatus = $freshTicket?->delivery_status;
+                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
+
                 $ticket->update([
                     'whatsapp_sent'        => true,
-                    'delivery_status'      => 'sent',
-                    'whatsapp_message_id'  => $wamid,
-                    'last_delivered_at'    => now(),
+                    'delivery_status'      => $nextStatus,
+                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
+                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
                     'delivery_error'       => null,
                 ]);
                 $sentCount++;

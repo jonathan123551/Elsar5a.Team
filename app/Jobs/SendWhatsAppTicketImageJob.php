@@ -109,11 +109,17 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && ! $response->json('error')) {
+                // Reload current status from DB in case a concurrent webhook arrived
+                // while the outbound HTTP call was in flight. Never downgrade 'delivered' or 'read'.
+                $freshTicket = Ticket::where('id', $ticket->id)->first(['delivery_status', 'whatsapp_message_id', 'last_delivered_at']);
+                $currentStatus = $freshTicket?->delivery_status;
+                $nextStatus = in_array($currentStatus, ['delivered', 'read'], true) ? $currentStatus : 'sent';
+
                 $ticket->update([
                     'whatsapp_sent'        => true,
-                    'delivery_status'      => 'sent',
-                    'whatsapp_message_id'  => $wamid,
-                    'last_delivered_at'    => now(),
+                    'delivery_status'      => $nextStatus,
+                    'whatsapp_message_id'  => $wamid ?: ($freshTicket?->whatsapp_message_id ?: $ticket->whatsapp_message_id),
+                    'last_delivered_at'    => $freshTicket?->last_delivered_at ?? now(),
                     'delivery_error'       => null,
                 ]);
 

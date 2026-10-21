@@ -109,9 +109,8 @@ class AdminBookingsAndResendTest extends TestCase
             'phone' => '01012345678',
             'ticket_code' => 'TICK-TEST-1',
             'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/t1.jpg',
-            'whatsapp_sent' => true,
-            'delivery_status' => 'sent',
-            'last_delivered_at' => now(),
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
         ]);
 
         Ticket::create([
@@ -1185,10 +1184,678 @@ class AdminBookingsAndResendTest extends TestCase
                 'metrics' => [
                     'total_count' => 2,
                     'delivered_count' => 1,
-                    'sent_count' => 1,
+                    'sent_count' => 0,
                     'is_all_delivered' => false,
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Regression Test 1: Initial template send results in accurate awaiting customer click state.
+     */
+    public function test_initial_template_send_results_in_awaiting_customer_click_state()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'سارة علي',
+            'phone' => '01011112222',
+            'tickets_count' => 2,
+            'total_price' => 300,
+            'status' => 'approved',
+            'template_status' => 'sent',
+            'template_sent_at' => now(),
+            'reference_code' => 'SRX-AWAIT-01',
+        ]);
+
+        Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'سارة علي 1',
+            'phone' => '01011112222',
+            'ticket_code' => 'TICK-AWAIT-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/s1.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'سارة علي 2',
+            'phone' => '01011112222',
+            'ticket_code' => 'TICK-AWAIT-2',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/s2.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        $booking->refresh();
+        $this->assertTrue($booking->isAwaitingCustomerClick());
+        $this->assertEquals('بانتظار نقر العميل', $booking->delivery_badge['text']);
+
+        $resIndex = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
+        $resIndex->assertStatus(200);
+        $resIndex->assertSee('بانتظار نقر العميل');
+
+        $resShow = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking->id));
+        $resShow->assertStatus(200);
+        $resShow->assertSee('أُرسل القالب · بانتظار نقر العميل على واتساب');
+    }
+
+    /**
+     * Regression Test 2: Inbound receive-ticket CTA supports both local (01XXXXXXXXX) and international (201XXXXXXXXX) Egyptian phone formats.
+     */
+    public function test_inbound_receive_ticket_supports_both_local_and_international_egyptian_phone_formats()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'محمود فوزي',
+            'phone' => '01222353657', // Local 11-digit Egyptian format
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'sent',
+            'reference_code' => 'SRX-PHONE-01',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'محمود فوزي',
+            'phone' => '01222353657',
+            'ticket_code' => 'TICK-PHONE-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/mf1.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'contacts' => [['input' => '201222353657', 'wa_id' => '201222353657']],
+                'messages' => [['id' => 'wamid.HBgLMjAx_phone_norm_test']],
+            ], 200),
+        ]);
+
+        // Meta delivers inbound message with international 12-digit format '201222353657'
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'messages' => [
+                                    [
+                                        'id' => 'wamid.inbound_cta_norm_01',
+                                        'from' => '201222353657',
+                                        'type' => 'button',
+                                        'button' => [
+                                            'text' => 'استلام التذكرة',
+                                            'payload' => 'receive_ticket',
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $res = $this->postJson('/webhook/whatsapp', $payload);
+        $res->assertStatus(200);
+        $res->assertJson(['ok' => true]);
+
+        $ticket->refresh();
+        $this->assertNotNull($ticket->claimed_at, 'Ticket claimed_at must be populated after matching normalized phone.');
+        $this->assertTrue((bool) $ticket->whatsapp_sent);
+    }
+
+    /**
+     * Regression Test 3: Single-ticket end-to-end pipeline execution from CTA to image send.
+     */
+    public function test_single_ticket_end_to_end_flow_claims_and_delivers_correctly()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'ياسمين حسام',
+            'phone' => '01099887766',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'template_status' => 'sent',
+            'reference_code' => 'SRX-SINGLE-01',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'ياسمين حسام',
+            'phone' => '01099887766',
+            'ticket_code' => 'TICK-SINGLE-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/single_qr.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'contacts' => [['input' => '01099887766', 'wa_id' => '201099887766']],
+                'messages' => [['id' => 'wamid.HBgLMjAx_single_end2end']],
+            ], 200),
+        ]);
+
+        // Customer clicks CTA
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'messages' => [
+                                    [
+                                        'id' => 'wamid.inbound_single_tap',
+                                        'from' => '201099887766',
+                                        'type' => 'text',
+                                        'text' => ['body' => 'أستلام التذكرة'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->postJson('/webhook/whatsapp', $payload)->assertStatus(200);
+
+        // Run the dispatched image job directly
+        $job = new \App\Jobs\SendWhatsAppTicketImageJob($ticket->id);
+        app()->call([$job, 'handle']);
+
+        $ticket->refresh();
+        $this->assertTrue((bool) $ticket->whatsapp_sent);
+        $this->assertNotNull($ticket->last_delivered_at);
+        $this->assertNotNull($ticket->claimed_at);
+        $this->assertEquals('wamid.HBgLMjAx_single_end2end', $ticket->whatsapp_message_id);
+        $this->assertTrue($ticket->isTicketDeliveredOrReceived());
+
+        $booking->refresh();
+        $this->assertEquals(1, $booking->ticketsDeliveredCount());
+        $this->assertEquals(0, $booking->ticketsSentCount());
+        $this->assertFalse($booking->isAwaitingCustomerClick());
+        $this->assertEquals('تم الاستلام (1/1)', $booking->delivery_badge['text']);
+
+        // Check Admin Index
+        $resIndex = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
+        $resIndex->assertSee('تم الاستلام (1/1)');
+
+        // Check Admin Show
+        $resShow = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking->id));
+        $resShow->assertSee('تم تسليم جميع التذاكر بالكامل (1/1)');
+        $resShow->assertDontSee('بانتظار نقر العميل على واتساب');
+
+        // Check Polling endpoint
+        $resPoll = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', ['booking_id' => $booking->id]));
+        $resPoll->assertJson([
+            'ok' => true,
+            'booking' => [
+                'id' => $booking->id,
+                'metrics' => [
+                    'total_count' => 1,
+                    'delivered_count' => 1,
+                    'sent_count' => 0,
+                    'is_all_delivered' => true,
+                    'awaiting_click' => false,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Regression Test 4: 5-ticket multi-ticket booking aggregates cleanly.
+     */
+    public function test_multi_ticket_5_tickets_aggregates_properly_through_pipeline()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'طارق كمال',
+            'phone' => '01022334455',
+            'tickets_count' => 5,
+            'total_price' => 750,
+            'status' => 'approved',
+            'template_status' => 'sent',
+            'reference_code' => 'SRX-FIVE-01',
+        ]);
+
+        $ticketIds = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $t = Ticket::create([
+                'booking_id' => $booking->id,
+                'name' => "طارق تذكرة {$i}",
+                'phone' => '01022334455',
+                'ticket_code' => "TICK-FIVE-{$i}",
+                'qr_image_path' => "https://res.cloudinary.com/demo/image/upload/v1234/qr_5_{$i}.jpg",
+                'whatsapp_sent' => false,
+                'delivery_status' => 'pending',
+            ]);
+            $ticketIds[] = $t->id;
+        }
+
+        $booking->refresh();
+        $this->assertTrue($booking->isAwaitingCustomerClick());
+        $this->assertEquals(0, $booking->ticketsDeliveredCount());
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            static $callCount = 0;
+            $callCount++;
+            return Http::response([
+                'messaging_product' => 'whatsapp',
+                'messages' => [['id' => "wamid.five_ticket_{$callCount}"]],
+            ], 200);
+        });
+
+        // Customer taps receive ticket once
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'messages' => [
+                                    [
+                                        'id' => 'wamid.inbound_five_tap',
+                                        'from' => '201022334455',
+                                        'type' => 'button',
+                                        'button' => ['text' => 'استلام التذكرة'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->postJson('/webhook/whatsapp', $payload)->assertStatus(200);
+
+        // Execute all 5 image send jobs
+        foreach ($ticketIds as $id) {
+            $job = new \App\Jobs\SendWhatsAppTicketImageJob($id);
+            app()->call([$job, 'handle']);
+        }
+
+        $booking->refresh();
+        $this->assertEquals(5, $booking->ticketsDeliveredCount());
+        $this->assertEquals(0, $booking->ticketsSentCount());
+        $this->assertFalse($booking->isAwaitingCustomerClick());
+        $this->assertEquals('تم الاستلام (5/5)', $booking->delivery_badge['text']);
+
+        $resPoll = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', ['booking_id' => $booking->id]));
+        $resPoll->assertJson([
+            'ok' => true,
+            'booking' => [
+                'id' => $booking->id,
+                'metrics' => [
+                    'total_count' => 5,
+                    'delivered_count' => 5,
+                    'sent_count' => 0,
+                    'is_all_delivered' => true,
+                    'awaiting_click' => false,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Regression Test 5: Exact Booking #20 reproduction with 13 tickets.
+     * Customer j, Phone 201222353657, 13 tickets dispatched and received on WhatsApp.
+     * Must display 13/13 delivered and NEVER show "بانتظار نقر العميل" or stuck spinners.
+     */
+    public function test_multi_ticket_13_tickets_booking_20_exact_regression_reproduction()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'j',
+            'phone' => '201222353657',
+            'public_number' => 20,
+            'tickets_count' => 13,
+            'total_price' => 1950,
+            'status' => 'approved',
+            'template_status' => 'sent',
+            'template_sent_at' => now()->subHours(2),
+            'reference_code' => 'SRX-BOOKING-20',
+        ]);
+
+        for ($i = 1; $i <= 13; $i++) {
+            Ticket::create([
+                'booking_id' => $booking->id,
+                'name' => "j - تذكرة {$i}",
+                'phone' => '201222353657',
+                'ticket_code' => "TICK-B20-{$i}",
+                'qr_image_path' => "https://res.cloudinary.com/demo/image/upload/v1234/b20_{$i}.jpg",
+                'whatsapp_sent' => true,
+                'delivery_status' => 'sent',
+                'whatsapp_message_id' => "wamid.HBgMMjAxMjIyMzUzNjU3FQIAERgSRTIwX1RJQ0tFVF8{$i}",
+                'claimed_at' => now()->subHour(),
+                'last_delivered_at' => now()->subHour(),
+            ]);
+        }
+
+        $booking->refresh();
+
+        // 1. Model aggregations
+        $this->assertEquals(13, $booking->ticketsTotalCount());
+        $this->assertEquals(13, $booking->ticketsDeliveredCount(), 'All 13 tickets must be recognized as delivered/received.');
+        $this->assertEquals(0, $booking->ticketsSentCount(), 'Sent-to-network count must be 0 once tickets are received.');
+        $this->assertEquals(0, $booking->ticketsSendingCount());
+        $this->assertFalse($booking->isAwaitingCustomerClick(), 'Must not be awaiting click after claim.');
+
+        // 2. Delivery Badge
+        $badge = $booking->delivery_badge;
+        $this->assertEquals('تم الاستلام (13/13)', $badge['text']);
+        $this->assertEquals('emerald', $badge['type']);
+        $this->assertFalse($badge['has_spinner']);
+
+        // 3. Admin Index Rendering
+        $resIndex = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
+        $resIndex->assertStatus(200);
+        $resIndex->assertSee('تم الاستلام (13/13)');
+        $resIndex->assertDontSee('أُرسلت للشبكة (13/13)');
+
+        // 4. Admin Booking #20 Details Rendering
+        $resShow = $this->actingAs($this->admin)->get(route('admin.bookings.show', $booking->id));
+        $resShow->assertStatus(200);
+        $resShow->assertSee('تم تسليم جميع التذاكر بالكامل (13/13)');
+        $resShow->assertDontSee('أُرسل القالب · بانتظار نقر العميل على واتساب');
+        $resShow->assertDontSee('بانتظار نقر العميل لإرسال صور التذاكر');
+
+        // 5. Polling endpoint verification
+        $resPoll = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', ['booking_id' => $booking->id]));
+        $resPoll->assertStatus(200);
+        $resPoll->assertJson([
+            'ok' => true,
+            'booking' => [
+                'id' => $booking->id,
+                'metrics' => [
+                    'total_count' => 13,
+                    'delivered_count' => 13,
+                    'sent_count' => 0,
+                    'sending_count' => 0,
+                    'is_all_delivered' => true,
+                    'awaiting_click' => false,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Regression Test 6: In-flight race condition: fast delivered webhook is NOT overwritten by send job.
+     */
+    public function test_job_webhook_race_condition_fast_delivered_webhook_is_not_overwritten_by_job()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'سباق الشبكة',
+            'phone' => '01055556666',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'reference_code' => 'SRX-RACE-01',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'سباق الشبكة',
+            'phone' => '01055556666',
+            'ticket_code' => 'TICK-RACE-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/race.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        $raceWamid = 'wamid.HBgLMjAx_race_delivered_fast';
+
+        Http::fake(function () use ($ticket, $raceWamid) {
+            // Emulate Meta's fast webhook arriving while the HTTP response is returning:
+            // Webhook delivers first:
+            Ticket::where('id', $ticket->id)->update([
+                'delivery_status' => 'delivered',
+                'whatsapp_sent' => true,
+                'last_delivered_at' => now(),
+            ]);
+
+            return Http::response([
+                'messaging_product' => 'whatsapp',
+                'messages' => [['id' => $raceWamid]],
+            ], 200);
+        });
+
+        $job = new \App\Jobs\SendWhatsAppTicketImageJob($ticket->id);
+        app()->call([$job, 'handle']);
+
+        $ticket->refresh();
+        $this->assertEquals('delivered', $ticket->delivery_status, 'A confirmed delivered status must not be downgraded to sent by the job.');
+        $this->assertTrue((bool) $ticket->whatsapp_sent);
+        $this->assertEquals($raceWamid, $ticket->whatsapp_message_id);
+    }
+
+    /**
+     * Regression Test 7: Delayed 'sent' webhook cannot downgrade an already 'delivered' ticket.
+     */
+    public function test_delayed_sent_webhook_cannot_downgrade_delivered_state()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'هاني شاكر',
+            'phone' => '01233445566',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'reference_code' => 'SRX-ORDER-01',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'هاني شاكر',
+            'phone' => '01233445566',
+            'ticket_code' => 'TICK-ORDER-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/order.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'delivered',
+            'whatsapp_message_id' => 'wamid.HBgLMjAx_delivered_first',
+            'last_delivered_at' => now()->subMinutes(5),
+        ]);
+
+        // Out-of-order 'sent' status webhook arrives later
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'statuses' => [
+                                    [
+                                        'id' => 'wamid.HBgLMjAx_delivered_first',
+                                        'status' => 'sent',
+                                        'recipient_id' => '201233445566',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $res = $this->postJson('/webhook/whatsapp', $payload);
+        $res->assertStatus(200);
+
+        $ticket->refresh();
+        $this->assertEquals('delivered', $ticket->delivery_status, 'Delayed sent callback must never overwrite confirmed delivered state.');
+    }
+
+    /**
+     * Regression Test 8: 'read' status webhook marks ticket delivered and preserves receipt.
+     */
+    public function test_read_webhook_marks_delivered_and_does_not_downgrade()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'منى زكي',
+            'phone' => '01122233344',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'reference_code' => 'SRX-READ-01',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'منى زكي',
+            'phone' => '01122233344',
+            'ticket_code' => 'TICK-READ-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/read.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'sent',
+            'whatsapp_message_id' => 'wamid.HBgLMjAx_read_test',
+        ]);
+
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'statuses' => [
+                                    [
+                                        'id' => 'wamid.HBgLMjAx_read_test',
+                                        'status' => 'read',
+                                        'recipient_id' => '201122233344',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $res = $this->postJson('/webhook/whatsapp', $payload);
+        $res->assertStatus(200);
+
+        $ticket->refresh();
+        $this->assertEquals('delivered', $ticket->delivery_status);
+        $this->assertTrue($ticket->isTicketDeliveredOrReceived());
+    }
+
+    /**
+     * Regression Test 9: Unmatched message ID produces diagnostic log and does NOT mutate an arbitrary ticket by phone.
+     */
+    public function test_unmatched_wamid_does_not_mutate_arbitrary_ticket_by_phone_in_multi_ticket_booking()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'عمرو دياب',
+            'phone' => '01077778888',
+            'tickets_count' => 3,
+            'total_price' => 450,
+            'status' => 'approved',
+            'reference_code' => 'SRX-UNMATCH-01',
+        ]);
+
+        $t1 = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'تذكرة 1',
+            'phone' => '01077778888',
+            'ticket_code' => 'TICK-UNMATCH-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/u1.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'sent',
+            'whatsapp_message_id' => 'wamid.exact_ticket_1',
+        ]);
+
+        $t2 = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'تذكرة 2',
+            'phone' => '01077778888',
+            'ticket_code' => 'TICK-UNMATCH-2',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/u2.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'sent',
+            'whatsapp_message_id' => 'wamid.exact_ticket_2',
+        ]);
+
+        // Incoming webhook with unknown wamid but matching phone
+        $payload = [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'statuses' => [
+                                    [
+                                        'id' => 'wamid.unknown_ghost_id',
+                                        'status' => 'failed',
+                                        'recipient_id' => '201077778888',
+                                        'errors' => [['code' => 131026, 'message' => 'Not on WhatsApp']],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $res = $this->postJson('/webhook/whatsapp', $payload);
+        $res->assertStatus(200);
+
+        // Neither ticket should be mutated to failed!
+        $this->assertEquals('sent', $t1->fresh()->delivery_status);
+        $this->assertEquals('sent', $t2->fresh()->delivery_status);
+    }
+
+    /**
+     * Regression Test 10: Safe historical reconciliation migration converts sent+last_delivered_at tickets to delivered.
+     */
+    public function test_historical_reconciliation_migration_reconciles_delivered_sent_tickets()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'توفيق الحكيم',
+            'phone' => '01299990000',
+            'tickets_count' => 2,
+            'total_price' => 300,
+            'status' => 'approved',
+            'reference_code' => 'SRX-MIGRATE-01',
+        ]);
+
+        $t1 = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'تذكرة 1',
+            'phone' => '01299990000',
+            'ticket_code' => 'TICK-MIG-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/m1.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'sent',
+            'last_delivered_at' => now()->subDay(),
+        ]);
+
+        $t2 = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'تذكرة 2',
+            'phone' => '01299990000',
+            'ticket_code' => 'TICK-MIG-2',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/m2.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+            'last_delivered_at' => null,
+        ]);
+
+        // Run reconciliation migration
+        $migration = require database_path('migrations/2026_10_21_000001_reconcile_delivered_whatsapp_tickets_status.php');
+        $migration->up();
+
+        $this->assertEquals('delivered', $t1->fresh()->delivery_status);
+        $this->assertEquals('pending', $t2->fresh()->delivery_status);
     }
 }
