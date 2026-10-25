@@ -269,6 +269,8 @@ Route::middleware('admin')
         ->name('notifications.read-all');
     Route::post('/notifications/preferences', [AdminNotificationController::class, 'updatePreferences'])
         ->name('notifications.preferences.update');
+    Route::post('/notifications/test-push', [AdminNotificationController::class, 'sendTestPush'])
+        ->name('notifications.test-push');
     Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'markAsRead'])
         ->name('notifications.read');
     Route::get('/notifications/{notification}/open', [AdminNotificationController::class, 'open'])

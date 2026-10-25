@@ -578,5 +578,10 @@ class AdminPwaAndPushNotificationTest extends TestCase
         $this->actingAs($this->admin)->postJson(route('admin.notifications.read-all'))
             ->assertStatus(200)
             ->assertJsonPath('unread_count', 0);
+
+        // 13. Test push route sends badge count 1
+        $testPushRes = $this->actingAs($this->admin)->postJson(route('admin.notifications.test-push'));
+        $testPushRes->assertStatus(200)
+            ->assertJsonPath('ok', true);
     }
 }

@@ -67,6 +67,12 @@
                     </button>
 
                     <button type="button"
+                            data-test-admin-push
+                            class="admin-btn admin-btn--secondary text-xs w-full sm:w-auto">
+                        <span>🧪 تجربة الشارة والإشعار 🔴</span>
+                    </button>
+
+                    <button type="button"
                             data-disable-admin-push
                             class="admin-btn admin-btn--danger admin-btn--sm hidden">
                         <span>إيقاف على هذا الجهاز</span>

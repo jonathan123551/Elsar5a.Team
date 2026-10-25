@@ -435,11 +435,19 @@
                             <span id="adm-push-status-text" class="text-[11px] text-amber-200 font-medium">
                                 استقبل تنبيهات الحجوزات على هاتفك
                             </span>
-                            <button type="button"
-                                    data-enable-admin-push
-                                    class="px-3 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-bold transition shrink-0">
-                                تفعيل إشعارات الحجوزات
-                            </button>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button type="button"
+                                        data-test-admin-push
+                                        class="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-amber-300 text-[10px] font-bold transition"
+                                        title="إرسال تجربة فورية واختبار ظهور الشارة على أيقونة التطبيق">
+                                    🧪 تجربة الشارة
+                                </button>
+                                <button type="button"
+                                        data-enable-admin-push
+                                        class="px-3 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-bold transition shrink-0">
+                                    تفعيل الإشعارات
+                                </button>
+                            </div>
                         </div>
 
                         {{-- Notification Items --}}
@@ -1029,6 +1037,37 @@
         }
 
         document.addEventListener('click', function (e) {
+            var testBtn = e.target.closest('[data-test-admin-push]');
+            if (testBtn) {
+                e.preventDefault();
+                testBtn.disabled = true;
+
+                // 1. Locally set badge to 1 immediately so user can see it right away on Home Screen
+                if ('setAppBadge' in navigator) {
+                    navigator.setAppBadge(1).catch(function () {});
+                }
+
+                // 2. Dispatch real Web Push from server
+                var csrf = document.querySelector('meta[name="csrf-token"]');
+                fetch('{{ route('admin.notifications.test-push') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : ''
+                    },
+                    credentials: 'same-origin'
+                }).then(function (r) { return r.json(); })
+                  .then(function (data) {
+                      alert(data.message || 'تم إرسال التجربة! اخرج الآن إلى الشاشة الرئيسية (Home Screen) لتفقد الشارة الحمراء 🔴.');
+                  }).catch(function () {
+                      alert('تم ضبط الشارة (1) محلياً. اخرج للشاشة الرئيسية لتفقد الأيقونة.');
+                  }).finally(function () {
+                      testBtn.disabled = false;
+                  });
+                return;
+            }
+
             var enableBtn = e.target.closest('[data-enable-admin-push]');
             if (enableBtn) {
                 e.preventDefault();

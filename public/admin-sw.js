@@ -7,7 +7,7 @@
  *   - Only caches static PWA shell icons/logos under CACHE_VERSION.
  * ========================================================================== */
 
-const CACHE_VERSION = 'elsar5a-admin-pwa-v2';
+const CACHE_VERSION = 'elsar5a-admin-pwa-v3';
 const SAFE_STATIC_ASSETS = [
     '/images/sarkha-logo.png',
     '/images/pwa/admin-icon-192.png',
@@ -151,11 +151,11 @@ self.addEventListener('push', (event) => {
     ];
 
     // App Badging API: Display unread count badge on the external PWA app icon (iOS 16.4+ & Android/Desktop)
-    if ('setAppBadge' in navigator) {
-        const badgeCount = (typeof payload.unread_count === 'number' && payload.unread_count > 0)
-            ? payload.unread_count
-            : 1;
-        promises.push(navigator.setAppBadge(badgeCount).catch(() => {}));
+    const nav = (typeof self !== 'undefined' && self.navigator) ? self.navigator : (typeof navigator !== 'undefined' ? navigator : null);
+    if (nav && 'setAppBadge' in nav) {
+        const rawCount = parseInt(payload.unread_count, 10);
+        const badgeCount = (!isNaN(rawCount) && rawCount > 0) ? rawCount : 1;
+        promises.push(nav.setAppBadge(badgeCount).catch(() => {}));
     }
 
     event.waitUntil(Promise.all(promises));
@@ -165,8 +165,13 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
     // Clear app icon badge when notification is opened / tapped
-    if ('clearAppBadge' in navigator) {
-        navigator.clearAppBadge().catch(() => {});
+    const nav = (typeof self !== 'undefined' && self.navigator) ? self.navigator : (typeof navigator !== 'undefined' ? navigator : null);
+    if (nav) {
+        if ('clearAppBadge' in nav) {
+            nav.clearAppBadge().catch(() => {});
+        } else if ('setAppBadge' in nav) {
+            nav.setAppBadge(0).catch(() => {});
+        }
     }
 
     const data = event.notification.data || {};

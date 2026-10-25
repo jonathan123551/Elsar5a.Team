@@ -146,4 +146,28 @@ class NotificationController extends Controller
 
         return back()->with('status', 'تم حفظ إعدادات الإشعارات بنجاح ✅');
     }
+
+    public function sendTestPush(Request $request, WebPushService $webPush)
+    {
+        $userId = (int) $request->user()->id;
+
+        $sentCount = $webPush->sendToUser($userId, [
+            'notification_id' => 999999,
+            'type' => 'new_booking',
+            'title' => '🔔 تجربة شارة الحجز #1',
+            'body' => 'هذا إشعار تجريبي لاختبار ظهور رقم الإشعار (Badge) على أيقونة التطبيق.',
+            'url' => '/admin/bookings',
+            'unread_count' => 1,
+            'tag' => 'elsar5a-test-' . time(),
+            'timestamp' => time() * 1000,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'sent_count' => $sentCount,
+            'message' => $sentCount > 0
+                ? 'تم إرسال الإشعار التجريبي بنجاح! اخرج الآن إلى الشاشة الرئيسية (Home Screen) لتفقد الشارة الحمراء 🔴.'
+                : 'لم يتم العثور على اشتراك إشعارات نشط لهذا الجهاز. يرجى التأكد من الضغط على زر "تفعيل إشعارات الحجوزات" والموافقة على إذن الإشعارات.',
+        ]);
+    }
 }
