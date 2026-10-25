@@ -34,6 +34,16 @@
             --adm-gold: #f59e0b;
         }
 
+        /* iOS Safe Area & Standalone PWA Inset Support */
+        .adm-header {
+            padding-top: env(safe-area-inset-top, 0px) !important;
+        }
+        @supports (-webkit-touch-callout: none) {
+            .adm-header {
+                padding-top: max(env(safe-area-inset-top, 0px), 0px) !important;
+            }
+        }
+
         html {
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
@@ -284,7 +294,7 @@
     {{-- =========================================================
          OPERATIONAL ADMIN HEADER
          ========================================================= --}}
-    <header class="sticky top-0 z-40 bg-[#070a11]/85 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/20">
+    <header class="adm-header sticky top-0 z-40 bg-[#070a11]/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/20" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-3">
 
             {{-- Right: Brand Identity Lockup --}}
@@ -395,7 +405,7 @@
 
                     {{-- Dropdown Panel --}}
                     <div id="adm-notif-dropdown"
-                         class="hidden fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 top-16 sm:top-13 sm:w-96 bg-[#0b101b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50">
+                         class="hidden fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 top-[calc(env(safe-area-inset-top,0px)+4.75rem)] sm:top-14 sm:w-96 bg-[#0b101b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50">
                         <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2 bg-black/40">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-bold text-white">🔔 الإشعارات</span>
@@ -684,6 +694,30 @@
          MAIN ADMIN CONTENT CONTAINER
          ========================================================= --}}
     <main class="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 relative z-10 @yield('main_class')">
+        {{-- Auto-Prompt Push Banner if permission not granted yet --}}
+        <div id="adm-pwa-push-prompt-banner"
+             class="hidden mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-black/40 border border-amber-500/40 text-amber-200 flex items-center justify-between gap-3 shadow-xl cursor-pointer">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0 text-xl">
+                    🔔
+                </div>
+                <div class="min-w-0">
+                    <div class="font-bold text-sm text-white flex items-center gap-2">
+                        تفعيل إشعارات الحجوزات الفورية
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold">مهم</span>
+                    </div>
+                    <div class="text-xs text-amber-300/90 mt-0.5">
+                        اضغط هنا للسماح بالإشعارات ليصلك تنبيه فوري عند وصول أي حجز جديد.
+                    </div>
+                </div>
+            </div>
+            <button type="button"
+                    data-enable-admin-push
+                    class="admin-btn admin-btn--primary admin-btn--sm shrink-0 shadow-lg shadow-amber-500/30">
+                تفعيل الإشعارات
+            </button>
+        </div>
+
         @yield('content')
     </main>
 
@@ -788,6 +822,10 @@
                 pageFeedback.textContent = 'تم تفعيل الإشعارات بنجاح ✓';
                 pageFeedback.classList.remove('hidden');
             }
+            var topBanner = document.getElementById('adm-pwa-push-prompt-banner');
+            if (topBanner) {
+                topBanner.classList.add('hidden');
+            }
             document.querySelectorAll('[data-enable-admin-push]').forEach(function (btn) {
                 btn.textContent = 'تم تفعيل الإشعارات بنجاح ✓';
             });
@@ -801,12 +839,43 @@
             swRegistrationPromise = navigator.serviceWorker.register('{{ route('admin.pwa.sw') }}', {
                 scope: '/admin'
             }).then(function (reg) {
-                if ('PushManager' in window && Notification.permission === 'granted') {
-                    reg.pushManager.getSubscription().then(function (sub) {
-                        if (sub) {
-                            markPushUiEnabled();
+                if ('PushManager' in window && 'Notification' in window) {
+                    if (Notification.permission === 'granted') {
+                        markPushUiEnabled();
+                        reg.pushManager.getSubscription().then(function (sub) {
+                            if (!sub) {
+                                enableAdminPush(null, true);
+                            }
+                        }).catch(function () {});
+                    } else if (Notification.permission === 'default') {
+                        var topBanner = document.getElementById('adm-pwa-push-prompt-banner');
+                        if (topBanner) {
+                            topBanner.classList.remove('hidden');
                         }
-                    }).catch(function () {});
+
+                        // Direct prompt on load for Android Chrome & Desktop
+                        try {
+                            Notification.requestPermission().then(function (perm) {
+                                if (perm === 'granted') {
+                                    enableAdminPush(null, true);
+                                }
+                            }).catch(function () {});
+                        } catch (e) {}
+
+                        // One-time gesture listener for iOS Safari WebKit PWA
+                        var hasPrompted = false;
+                        function onFirstTouch() {
+                            if (hasPrompted) return;
+                            hasPrompted = true;
+                            if (Notification.permission === 'default') {
+                                enableAdminPush(null, false);
+                            }
+                            document.removeEventListener('touchstart', onFirstTouch);
+                            document.removeEventListener('click', onFirstTouch);
+                        }
+                        document.addEventListener('touchstart', onFirstTouch, { once: true, passive: true });
+                        document.addEventListener('click', onFirstTouch, { once: true });
+                    }
                 }
                 return reg;
             }).catch(function () {
@@ -814,9 +883,11 @@
             });
         }
 
-        function enableAdminPush(buttonEl) {
+        function enableAdminPush(buttonEl, isSilent) {
             if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-                alert('المتصفح الحالي لا يدعم إشعارات الويب الفورية. على iPhone يرجى إضافة الموقع إلى الشاشة الرئيسية (Add to Home Screen) أولاً.');
+                if (!isSilent) {
+                    alert('المتصفح الحالي لا يدعم إشعارات الويب الفورية. على iPhone يرجى إضافة الموقع إلى الشاشة الرئيسية (Add to Home Screen) أولاً.');
+                }
                 return;
             }
 

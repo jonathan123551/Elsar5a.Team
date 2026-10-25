@@ -193,10 +193,15 @@ class AdminPwaAndPushNotificationTest extends TestCase
     }
 
     /**
-     * 6 & 7. New booking and payment proof create Admin notifications and trigger Web Push.
+     * 6 & 7. New booking creates Admin notification and triggers Web Push; only new bookings send push.
      */
     public function test_new_booking_and_payment_proof_create_admin_notifications_and_send_web_push(): void
     {
+        AdminNotificationPreference::updateOrCreate(
+            ['user_id' => $this->admin->id],
+            ['new_bookings' => true, 'payment_proofs' => true]
+        );
+
         $webPush = app(WebPushService::class);
         $subKeys = $webPush->generateVapidKeys();
         $details = openssl_pkey_get_details(openssl_pkey_get_private($subKeys['private_key_pem']));
@@ -256,6 +261,11 @@ class AdminPwaAndPushNotificationTest extends TestCase
      */
     public function test_whatsapp_template_and_ticket_failures_create_safe_admin_notifications(): void
     {
+        AdminNotificationPreference::updateOrCreate(
+            ['user_id' => $this->admin->id],
+            ['whatsapp_failures' => true]
+        );
+
         $booking = Booking::create([
             'show_time_id' => $this->showTime->id,
             'full_name' => 'منى زكي',
@@ -323,6 +333,11 @@ class AdminPwaAndPushNotificationTest extends TestCase
      */
     public function test_ticket_delivery_creates_notification_only_on_confirmed_delivery_and_deduplicates_webhooks(): void
     {
+        AdminNotificationPreference::updateOrCreate(
+            ['user_id' => $this->admin->id],
+            ['ticket_delivery' => true, 'completed_bookings' => true]
+        );
+
         $booking = Booking::create([
             'show_time_id' => $this->showTime->id,
             'full_name' => 'كريم عبد العزيز',

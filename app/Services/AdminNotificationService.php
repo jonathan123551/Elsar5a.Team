@@ -250,22 +250,28 @@ class AdminNotificationService
                     continue;
                 }
 
-                $sentCount = $this->webPush->sendToUser($admin->id, [
-                    'notification_id' => $notification->id,
-                    'type' => $notification->type,
-                    'title' => $notification->title,
-                    'body' => $notification->body,
-                    'url' => $notification->target_url,
-                    'booking_id' => $notification->booking_id,
-                    'ticket_id' => $notification->ticket_id,
-                    'icon' => '/images/pwa/admin-icon-192.png',
-                    'badge' => '/images/pwa/admin-badge-96.png',
-                    'tag' => $dedupeKey ?: ('elsar5a-notif-' . $notification->id),
-                    'timestamp' => $notification->created_at?->getTimestampMs() ?? (time() * 1000),
-                ]);
+                // Only send Web Push notifications to the Admin device for new bookings,
+                // exactly as requested by the admin: "مش محتاج نوتفيكيشنز تانى غير الحجوزات الجديده"
+                $shouldSendWebPush = ($data['type'] === 'new_booking');
 
-                if ($sentCount > 0) {
-                    $notification->update(['push_sent_at' => now()]);
+                if ($shouldSendWebPush) {
+                    $sentCount = $this->webPush->sendToUser($admin->id, [
+                        'notification_id' => $notification->id,
+                        'type' => $notification->type,
+                        'title' => $notification->title,
+                        'body' => $notification->body,
+                        'url' => $notification->target_url,
+                        'booking_id' => $notification->booking_id,
+                        'ticket_id' => $notification->ticket_id,
+                        'icon' => '/images/pwa/admin-icon-192.png',
+                        'badge' => '/images/pwa/admin-badge-96.png',
+                        'tag' => $dedupeKey ?: ('elsar5a-notif-' . $notification->id),
+                        'timestamp' => $notification->created_at?->getTimestampMs() ?? (time() * 1000),
+                    ]);
+
+                    if ($sentCount > 0) {
+                        $notification->update(['push_sent_at' => now()]);
+                    }
                 }
             } catch (\Throwable $e) {
                 // Ignore unique constraint race on dedupe_key or non-fatal push errors

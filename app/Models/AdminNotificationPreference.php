@@ -43,10 +43,10 @@ class AdminNotificationPreference extends Model
             ['user_id' => $userId],
             [
                 'new_bookings' => true,
-                'payment_proofs' => true,
-                'whatsapp_failures' => true,
-                'ticket_delivery' => true,
-                'completed_bookings' => true,
+                'payment_proofs' => false,
+                'whatsapp_failures' => false,
+                'ticket_delivery' => false,
+                'completed_bookings' => false,
             ]
         );
     }
