@@ -254,6 +254,25 @@ class AdminPwaAndPushNotificationTest extends TestCase
         $this->assertEquals("تم رفع إثبات تحويل للحجز #{$booking->id} ويحتاج إلى مراجعة.", $proofNotif->body);
         $this->assertEquals("/admin/bookings/{$booking->id}", $proofNotif->target_url);
 
+        // Booking with public_number matches the exact display number inside the booking details page (#42)
+        $bookingWithPn = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'سامي العدل',
+            'phone' => '201099887766',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'pending',
+            'reference_code' => 'SRC-PN-99',
+            'public_number' => 42,
+        ]);
+
+        $pnNotif = AdminNotification::where('booking_id', $bookingWithPn->id)
+            ->where('type', 'new_booking')
+            ->first();
+
+        $this->assertNotNull($pnNotif);
+        $this->assertEquals('🔔 حجز جديد #42', $pnNotif->title);
+
         Http::assertSent(fn ($request) => str_contains($request->url(), 'fcm.googleapis.com/fcm/send/admin-phone-1')
             && str_starts_with((string) $request->header('Authorization')[0], 'vapid t='));
     }

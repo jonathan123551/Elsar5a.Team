@@ -16,14 +16,24 @@ class AdminNotificationService
     public function __construct(protected WebPushService $webPush) {}
 
     /**
+     * Get the human-facing display number for the booking (e.g. 14 or fallback to DB id).
+     */
+    public static function bookingNumber(Booking $booking): string
+    {
+        return (string) ($booking->public_number ?? $booking->id);
+    }
+
+    /**
      * 1. New Booking created by customer.
      */
     public function notifyNewBooking(Booking $booking): void
     {
+        $num = self::bookingNumber($booking);
+
         $this->dispatchToAdmins([
             'type' => 'new_booking',
             'category' => 'new_bookings',
-            'title' => "🔔 حجز جديد #{$booking->id}",
+            'title' => "🔔 حجز جديد #{$num}",
             'body' => 'تم إنشاء حجز جديد ويحتاج إلى مراجعة.',
             'booking_id' => $booking->id,
             'ticket_id' => null,
@@ -42,12 +52,13 @@ class AdminNotificationService
         }
 
         $proofHash = substr(sha1((string) $booking->transfer_screenshot_path), 0, 16);
+        $num = self::bookingNumber($booking);
 
         $this->dispatchToAdmins([
             'type' => 'payment_proof_uploaded',
             'category' => 'payment_proofs',
             'title' => '💳 إثبات تحويل جديد',
-            'body' => "تم رفع إثبات تحويل للحجز #{$booking->id} ويحتاج إلى مراجعة.",
+            'body' => "تم رفع إثبات تحويل للحجز #{$num} ويحتاج إلى مراجعة.",
             'booking_id' => $booking->id,
             'ticket_id' => null,
             'target_url' => "/admin/bookings/{$booking->id}",
@@ -61,11 +72,13 @@ class AdminNotificationService
      */
     public function notifyBookingApproved(Booking $booking, ?int $actingUserId = null): void
     {
+        $num = self::bookingNumber($booking);
+
         $this->dispatchToAdmins([
             'type' => 'booking_approved',
             'category' => 'new_bookings',
-            'title' => "✅ تم اعتماد الحجز #{$booking->id}",
-            'body' => "تم اعتماد الحجز #{$booking->id} وبدء تجهيز التذاكر.",
+            'title' => "✅ تم اعتماد الحجز #{$num}",
+            'body' => "تم اعتماد الحجز #{$num} وبدء تجهيز التذاكر.",
             'booking_id' => $booking->id,
             'ticket_id' => null,
             'target_url' => "/admin/bookings/{$booking->id}",
@@ -79,7 +92,8 @@ class AdminNotificationService
     public function notifyWhatsAppTemplateFailed(Booking $booking, ?string $reason = null): void
     {
         $safeReason = self::sanitizeReason($reason);
-        $body = "فشل إرسال قالب الاستلام للحجز #{$booking->id}.";
+        $num = self::bookingNumber($booking);
+        $body = "فشل إرسال قالب الاستلام للحجز #{$num}.";
         if ($safeReason !== '') {
             $body .= " {$safeReason}";
         }
@@ -104,12 +118,13 @@ class AdminNotificationService
     public function notifyCustomerClaimedTicket(Booking $booking): void
     {
         $wamidKey = $booking->template_message_id ?: 'init';
+        $num = self::bookingNumber($booking);
 
         $this->dispatchToAdmins([
             'type' => 'ticket_claimed',
             'category' => 'ticket_delivery',
             'title' => '📲 العميل طلب استلام التذكرة',
-            'body' => "الحجز #{$booking->id} بدأ إرسال التذاكر.",
+            'body' => "الحجز #{$num} بدأ إرسال التذاكر.",
             'booking_id' => $booking->id,
             'ticket_id' => null,
             'target_url' => "/admin/bookings/{$booking->id}",
@@ -126,8 +141,11 @@ class AdminNotificationService
             return;
         }
 
+        $booking = $ticket->relationLoaded('booking') ? $ticket->booking : Booking::find($ticket->booking_id);
+        $num = $booking ? self::bookingNumber($booking) : (string) $ticket->booking_id;
+
         $safeReason = self::sanitizeReason($reason);
-        $body = "فشل تسليم إحدى تذاكر الحجز #{$ticket->booking_id}.";
+        $body = "فشل تسليم إحدى تذاكر الحجز #{$num}.";
         if ($safeReason !== '') {
             $body .= " {$safeReason}";
         }
@@ -161,6 +179,7 @@ class AdminNotificationService
             return;
         }
 
+        $num = self::bookingNumber($booking);
         $totalTickets = $booking->ticketsTotalCount();
         $deliveredTickets = $booking->ticketsDeliveredCount();
         $allDelivered = $totalTickets > 0 && $deliveredTickets >= $totalTickets;
@@ -170,7 +189,7 @@ class AdminNotificationService
                 'type' => 'ticket_delivered',
                 'category' => 'ticket_delivery',
                 'title' => '🎟️ تم تسليم التذاكر',
-                'body' => "تم تسليم جميع تذاكر الحجز #{$booking->id}.",
+                'body' => "تم تسليم جميع تذاكر الحجز #{$num}.",
                 'booking_id' => $booking->id,
                 'ticket_id' => $ticket->id,
                 'target_url' => "/admin/bookings/{$booking->id}",
@@ -180,7 +199,7 @@ class AdminNotificationService
             $this->dispatchToAdmins([
                 'type' => 'booking_completed',
                 'category' => 'completed_bookings',
-                'title' => "✅ الحجز #{$booking->id} مكتمل",
+                'title' => "✅ الحجز #{$num} مكتمل",
                 'body' => 'تم إرسال واستلام جميع تذاكر الحجز بنجاح.',
                 'booking_id' => $booking->id,
                 'ticket_id' => null,
@@ -192,7 +211,7 @@ class AdminNotificationService
                 'type' => 'ticket_delivered',
                 'category' => 'ticket_delivery',
                 'title' => '🎟️ تم تسليم التذاكر',
-                'body' => "تم تسليم تذكرة من الحجز #{$booking->id} ({$deliveredTickets}/{$totalTickets}).",
+                'body' => "تم تسليم تذكرة من الحجز #{$num} ({$deliveredTickets}/{$totalTickets}).",
                 'booking_id' => $booking->id,
                 'ticket_id' => $ticket->id,
                 'target_url' => "/admin/bookings/{$booking->id}",
