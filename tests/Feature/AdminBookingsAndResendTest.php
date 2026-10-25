@@ -1340,7 +1340,7 @@ class AdminBookingsAndResendTest extends TestCase
         ]));
         $incremental->assertOk()->assertJsonPath('index_rows.complete', false);
         $this->assertStringContainsString('data-booking-id="'.$booking->id.'"', $incremental->json('index_rows.table'));
-        $this->assertStringContainsString('فشل التسليم', $incremental->json('index_rows.table'));
+        $this->assertStringContainsString('فشل الإرسال', $incremental->json('index_rows.table'));
     }
 
 
@@ -2190,5 +2190,194 @@ class AdminBookingsAndResendTest extends TestCase
 
         $this->assertEquals('sent', $t1->fresh()->delivery_status);
         $this->assertEquals('pending', $t2->fresh()->delivery_status);
+    }
+
+    /**
+     * Regression Test 11: Resending a previously delivered ticket after 24h when Meta returns
+     * asynchronous 131047 via webhook automatically sends the template, resets the ticket to
+     * 'بانتظار نقر العميل', and delivers the QR image once the customer clicks the new template.
+     */
+    public function test_async_131047_webhook_on_delivered_ticket_auto_sends_template_and_resets_to_awaiting_click()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'عمرو دياب',
+            'phone' => '01055556666',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'reference_code' => 'SRX-ASYNC-131047',
+            'template_sent' => true,
+            'template_status' => 'delivered',
+            'template_message_id' => 'wamid.OLD_TPL_1',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'تذكرة عمرو',
+            'phone' => '01055556666',
+            'ticket_code' => 'TICK-ASYNC-24H',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/async24h.jpg',
+            'whatsapp_sent' => true,
+            'delivery_status' => 'delivered',
+            'whatsapp_message_id' => 'wamid.OLD_IMG_1',
+            'claimed_at' => now()->subDays(4),
+            'last_delivered_at' => now()->subDays(4),
+        ]);
+
+        Http::fake([
+            'graph.facebook.com/*' => Http::sequence()
+                // 1) Admin clicks Resend -> Meta accepts sendImage HTTP call with a new wamid
+                ->push(['messages' => [['id' => 'wamid.RESEND_IMG_24H']]], 200)
+                // 2) Async 131047 webhook arrives -> system auto-sends template
+                ->push(['messages' => [['id' => 'wamid.NEW_TPL_24H']]], 200)
+                // 3) Customer clicks the new template CTA -> system sends the QR image
+                ->push(['messages' => [['id' => 'wamid.FINAL_IMG_DELIV']]], 200),
+        ]);
+
+        // Step 1: Admin clicks resend on the previously delivered ticket
+        $res = $this->actingAs($this->admin)->post(route('admin.resend.ticket', $ticket->id));
+        $res->assertRedirect();
+        $this->assertEquals('wamid.RESEND_IMG_24H', $ticket->fresh()->whatsapp_message_id);
+
+        // Step 2: Meta sends async status webhook with 131047 (24-hour window closed)
+        $webhook131047 = [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'statuses' => [[
+                            'id' => 'wamid.RESEND_IMG_24H',
+                            'status' => 'failed',
+                            'timestamp' => (string) now()->timestamp,
+                            'errors' => [[
+                                'code' => 131047,
+                                'title' => 'Re-engagement message',
+                                'message' => 'Re-engagement message (more than 24 hours have passed since the customer last replied)',
+                            ]],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ];
+
+        $this->postJson('/webhook/whatsapp', $webhook131047)->assertStatus(200);
+
+        // Verify ticket & booking automatically transitioned to 'بانتظار نقر العميل'
+        $ticket->refresh();
+        $booking->refresh();
+
+        $this->assertEquals('pending', $ticket->delivery_status);
+        $this->assertFalse((bool) $ticket->whatsapp_sent);
+        $this->assertNull($ticket->claimed_at);
+        $this->assertNull($ticket->delivery_error);
+        $this->assertEquals('wamid.NEW_TPL_24H', $booking->template_message_id);
+        $this->assertTrue($booking->isAwaitingCustomerClick());
+        $this->assertEquals('بانتظار نقر العميل', $booking->delivery_badge['text']);
+
+        // Also check pollStatus returns updated delivery_html with 'بانتظار نقر العميل'
+        $poll = $this->actingAs($this->admin)->getJson(route('admin.bookings.poll-status', ['booking_id' => $booking->id]));
+        $poll->assertOk();
+        $this->assertStringContainsString('بانتظار نقر العميل', $poll->json('booking.delivery_html'));
+
+        // Step 3: Customer clicks 'استلام التذكرة' on the newly sent template
+        $ctaPayload = [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'messages' => [[
+                            'from' => '201055556666',
+                            'id' => 'wamid.INBOUND_CLICK_24H',
+                            'type' => 'button',
+                            'context' => ['id' => 'wamid.NEW_TPL_24H'],
+                            'button' => ['text' => 'استلام التذكرة', 'payload' => 'استلام التذكرة'],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ];
+
+        $this->postJson('/webhook/whatsapp', $ctaPayload)->assertStatus(200);
+
+        $ticket->refresh();
+        $this->assertEquals('sent', $ticket->delivery_status);
+        $this->assertTrue((bool) $ticket->whatsapp_sent);
+        $this->assertEquals('wamid.FINAL_IMG_DELIV', $ticket->whatsapp_message_id);
+
+        // Step 4: Meta confirms 'delivered' for the QR image
+        $deliveredPayload = [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'statuses' => [[
+                            'id' => 'wamid.FINAL_IMG_DELIV',
+                            'status' => 'delivered',
+                            'timestamp' => (string) now()->timestamp,
+                        ]],
+                    ],
+                ]],
+            ]],
+        ];
+
+        $this->postJson('/webhook/whatsapp', $deliveredPayload)->assertStatus(200);
+
+        $ticket->refresh();
+        $booking->refresh();
+        $this->assertEquals('delivered', $ticket->delivery_status);
+        $this->assertEquals('تم الاستلام (1/1)', $booking->delivery_badge['text']);
+    }
+
+    /**
+     * Regression Test 12: Template job failure (e.g. 131026 phone not on WhatsApp) preserves
+     * formatted Arabic error on booking AND marks waiting tickets as failed with reason.
+     */
+    public function test_template_job_failure_preserves_arabic_error_and_marks_outer_and_inner_status_failed()
+    {
+        $booking = Booking::create([
+            'show_time_id' => $this->showTime->id,
+            'full_name' => 'عميل رقم غير مسجل',
+            'phone' => '01099887766',
+            'tickets_count' => 1,
+            'total_price' => 150,
+            'status' => 'approved',
+            'reference_code' => 'SRX-NO-WA-01',
+            'template_sent' => false,
+            'template_status' => 'sending',
+        ]);
+
+        $ticket = Ticket::create([
+            'booking_id' => $booking->id,
+            'name' => 'تذكرة 1',
+            'phone' => '01099887766',
+            'ticket_code' => 'TICK-NO-WA-1',
+            'qr_image_path' => 'https://res.cloudinary.com/demo/image/upload/v1234/nowa.jpg',
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+        ]);
+
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([
+                'error' => [
+                    'message' => 'Message undeliverable',
+                    'code' => 131026,
+                ],
+            ], 400),
+        ]);
+
+        $job = new \App\Jobs\SendWhatsAppTicketTemplateJob($booking->phone, $booking->id);
+        try {
+            $job->handle(app(\App\Services\TicketDeliveryService::class));
+        } catch (\Throwable $e) {
+            $job->failed($e);
+        }
+
+        $booking->refresh();
+        $ticket->refresh();
+
+        $this->assertEquals('failed', $booking->template_status);
+        $this->assertStringContainsString('رقم الهاتف غير مسجل على WhatsApp', (string) $booking->template_error);
+        $this->assertEquals('فشل الإرسال', $booking->delivery_badge['text']);
+
+        $this->assertEquals('failed', $ticket->delivery_status);
+        $this->assertStringContainsString('رقم الهاتف غير مسجل على WhatsApp', (string) $ticket->delivery_error);
     }
 }

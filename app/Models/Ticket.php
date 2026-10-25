@@ -96,41 +96,57 @@ class Ticket extends Model
     public function markWhatsAppAccepted(?string $messageId): void
     {
         $resolvedMessageId = $messageId ?: $this->whatsapp_message_id;
+        $now = now();
         DB::table($this->getTable())->where('id', $this->getKey())->update([
             'whatsapp_sent' => true,
             'delivery_status' => DB::raw("CASE WHEN delivery_status IN ('delivered', 'read') THEN delivery_status ELSE 'sent' END"),
             'whatsapp_message_id' => $resolvedMessageId,
             'delivery_error' => null,
-            'updated_at' => now(),
+            'updated_at' => $now,
         ]);
+        if ($this->booking_id) {
+            DB::table('bookings')->where('id', $this->booking_id)->update(['updated_at' => $now]);
+        }
         WhatsAppMessageStatusEvent::applyPendingForMessage($resolvedMessageId);
     }
 
     /** Record a terminal send failure without overwriting a webhook-confirmed delivery. */
-    public function markWhatsAppFailed(string $error): void
+    public function markWhatsAppFailed(string $error, bool $forceReset = false): void
     {
-        DB::table($this->getTable())->where('id', $this->getKey())
-            ->whereNotIn('delivery_status', ['delivered', 'read'])
-            ->update([
-                'whatsapp_sent' => false,
-                'delivery_status' => 'failed',
-                'delivery_error' => $error,
-                'updated_at' => now(),
-            ]);
+        $now = now();
+        $query = DB::table($this->getTable())->where('id', $this->getKey());
+        if (! $forceReset) {
+            $query->whereNotIn('delivery_status', ['delivered', 'read']);
+        }
+        $query->update([
+            'whatsapp_sent' => false,
+            'delivery_status' => 'failed',
+            'delivery_error' => $error,
+            'updated_at' => $now,
+        ]);
+        if ($this->booking_id) {
+            DB::table('bookings')->where('id', $this->booking_id)->update(['updated_at' => $now]);
+        }
     }
 
-    /** Return to waiting for a customer CTA after a template recovery, monotonically. */
-    public function markAwaitingCustomerClick(?string $reason): void
+    /** Return to waiting for a customer CTA after a template recovery. */
+    public function markAwaitingCustomerClick(?string $reason, bool $forceReset = false): void
     {
-        DB::table($this->getTable())->where('id', $this->getKey())
-            ->whereNotIn('delivery_status', ['delivered', 'read'])
-            ->update([
-                'whatsapp_sent' => false,
-                'delivery_status' => 'pending',
-                'claimed_at' => null,
-                'delivery_error' => $reason,
-                'updated_at' => now(),
-            ]);
+        $now = now();
+        $query = DB::table($this->getTable())->where('id', $this->getKey());
+        if (! $forceReset) {
+            $query->whereNotIn('delivery_status', ['delivered', 'read']);
+        }
+        $query->update([
+            'whatsapp_sent' => false,
+            'delivery_status' => 'pending',
+            'claimed_at' => null,
+            'delivery_error' => $reason,
+            'updated_at' => $now,
+        ]);
+        if ($this->booking_id) {
+            DB::table('bookings')->where('id', $this->booking_id)->update(['updated_at' => $now]);
+        }
     }
 
     public function booking()

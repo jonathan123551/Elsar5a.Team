@@ -124,18 +124,9 @@ class WhatsAppWebhookController extends Controller
                 if ($templateContextId) {
                     $targetBooking = Booking::where('template_message_id', $templateContextId)
                         ->where('status', 'approved')
-                        ->whereIn('template_status', ['sent', 'delivered', 'read'])
+                        ->whereIn('template_status', ['sending', 'sent', 'delivered', 'read'])
                         ->first();
-                    if (! $targetBooking) {
-                        Log::warning('WHATSAPP_CTA_CONTEXT_UNMATCHED', LogContext::base(
-                            'WHATSAPP_CTA_CONTEXT_UNMATCHED',
-                            'webhook.whatsapp.claim',
-                            ['message_id' => $messageId, 'context_message_id' => $templateContextId, 'phone_masked' => LogContext::maskPhone($phone)]
-                        ));
-                        $this->forwardToChatwoot($request);
-                        return response()->json(['ok' => true, 'status' => 'unmatched_context']);
-                    }
-                    if ($normalizePhone($targetBooking->phone) !== $normalizePhone($phone)) {
+                    if ($targetBooking && $normalizePhone($targetBooking->phone) !== $normalizePhone($phone)) {
                         Log::warning('WHATSAPP_CTA_CONTEXT_PHONE_MISMATCH', LogContext::base(
                             'WHATSAPP_CTA_CONTEXT_PHONE_MISMATCH',
                             'webhook.whatsapp.claim',
@@ -144,18 +135,37 @@ class WhatsAppWebhookController extends Controller
                         $this->forwardToChatwoot($request);
                         return response()->json(['ok' => true, 'status' => 'context_phone_mismatch']);
                     }
-                } else {
-                    // Older inbound button payloads may omit context.id. Only use
-                    // phone fallback when exactly one active template booking fits.
-                    $phoneBookings = Booking::where('status', 'approved')
-                        ->whereIn('template_status', ['sent', 'delivered', 'read'])
+                    if (! $targetBooking) {
+                        Log::warning('WHATSAPP_CTA_CONTEXT_UNMATCHED', LogContext::base(
+                            'WHATSAPP_CTA_CONTEXT_UNMATCHED',
+                            'webhook.whatsapp.claim',
+                            ['message_id' => $messageId, 'context_message_id' => $templateContextId, 'phone_masked' => LogContext::maskPhone($phone)]
+                        ));
+                    }
+                }
+
+                if (! $targetBooking) {
+                    // Older inbound button payloads may omit context.id, or the customer
+                    // may have tapped an earlier template after a resend updated template_message_id.
+                    $phoneBookings = Booking::with('tickets')
+                        ->where('status', 'approved')
+                        ->whereIn('template_status', ['sending', 'sent', 'delivered', 'read'])
                         ->get()
-                        ->filter(fn ($booking) => $normalizePhone($booking->phone) === $normalizePhone($phone));
+                        ->filter(fn ($booking) => $normalizePhone($booking->phone) === $normalizePhone($phone)
+                            || $booking->tickets->contains(fn ($t) => $normalizePhone($t->phone) === $normalizePhone($phone)));
+                    if ($phoneBookings->count() > 1) {
+                        $withUnclaimed = $phoneBookings->filter(fn ($booking) => $booking->tickets->contains(
+                            fn ($t) => $normalizePhone($t->phone) === $normalizePhone($phone) && ! $t->whatsapp_sent && $t->claimed_at === null
+                        ));
+                        if ($withUnclaimed->count() === 1) {
+                            $phoneBookings = $withUnclaimed;
+                        }
+                    }
                     if ($phoneBookings->count() !== 1) {
                         Log::warning('WHATSAPP_CTA_AMBIGUOUS_BOOKING', LogContext::base(
                             'WHATSAPP_CTA_AMBIGUOUS_BOOKING',
                             'webhook.whatsapp.claim',
-                            ['phone_masked' => LogContext::maskPhone($phone), 'booking_count' => $phoneBookings->count()]
+                            ['phone_masked' => LogContext::maskPhone($phone), 'booking_count' => $phoneBookings->count(), 'context_message_id' => $templateContextId]
                         ));
                         $this->forwardToChatwoot($request);
                         return response()->json(['ok' => true, 'status' => $phoneBookings->isEmpty() ? 'no ticket' : 'ambiguous']);
@@ -185,15 +195,18 @@ class WhatsAppWebhookController extends Controller
                 ]);
 
                 // Record customer claimed timestamp and ready status
+                $now = now();
                 Ticket::whereIn('id', $ticketIds)->where('whatsapp_sent', false)
                     ->whereNull('claimed_at')
                     ->where(function ($q) {
                         $q->whereNull('delivery_status')->orWhereIn('delivery_status', ['pending', 'failed']);
                     })->update([
-                    'claimed_at'      => now(),
+                    'claimed_at'      => $now,
                     'delivery_status' => 'pending',
-                    'updated_at'      => now(),
+                    'delivery_error'  => null,
+                    'updated_at'      => $now,
                 ]);
+                Booking::whereKey($targetBooking->id)->update(['updated_at' => $now]);
 
                 foreach ($ticketIds as $ticketId) {
                     SendWhatsAppTicketImageJob::dispatch($ticketId)->onQueue('high');
@@ -291,25 +304,52 @@ class WhatsAppWebhookController extends Controller
         }
 
         if ($ticket) {
+            $now = now();
             if (in_array($statusName, ['delivered', 'read'], true)) {
                 Ticket::whereKey($ticket->id)->update([
                     'delivery_status'   => $statusName === 'read' ? 'read' : DB::raw("CASE WHEN delivery_status = 'read' THEN 'read' ELSE 'delivered' END"),
                     'whatsapp_sent'     => true,
-                    'last_delivered_at' => $ticket->last_delivered_at ?? now(),
+                    'last_delivered_at' => $ticket->last_delivered_at ?? $now,
                     'delivery_error'    => null,
-                    'updated_at'        => now(),
+                    'updated_at'        => $now,
                 ]);
+                if ($ticket->booking_id) {
+                    Booking::whereKey($ticket->booking_id)->update(['updated_at' => $now]);
+                }
             } elseif ($statusName === 'sent') {
                 Ticket::whereKey($ticket->id)->whereNotIn('delivery_status', ['delivered', 'read', 'failed'])->update([
-                    'delivery_status' => 'sent', 'whatsapp_sent' => true, 'updated_at' => now(),
+                    'delivery_status' => 'sent', 'whatsapp_sent' => true, 'updated_at' => $now,
                 ]);
+                if ($ticket->booking_id) {
+                    Booking::whereKey($ticket->booking_id)->update(['updated_at' => $now]);
+                }
             } elseif (in_array($statusName, ['failed', 'undelivered'], true)) {
-                Ticket::whereKey($ticket->id)->whereNotIn('delivery_status', ['delivered', 'read'])->update([
-                    'delivery_status' => 'failed',
-                    'whatsapp_sent'   => false,
-                    'delivery_error'  => $formattedError,
-                    'updated_at'      => now(),
-                ]);
+                $isWindowClosedError = $errorCode === 131047
+                    || str_contains(strtolower((string) $rawErrorMsg), '131047')
+                    || str_contains(strtolower((string) $rawErrorMsg), '24 hours')
+                    || str_contains(strtolower((string) $rawErrorMsg), 're-engagement');
+
+                if ($isWindowClosedError) {
+                    $ticket->markAwaitingCustomerClick(null, true);
+                    $phoneKey = preg_replace('/[^0-9]/', '', (string) $ticket->phone);
+                    $dedupeKey = 'wa_131047_tpl:' . ($ticket->booking_id ?? 0) . ':' . $phoneKey;
+
+                    if (Cache::add($dedupeKey, 1, now()->addSeconds(30))) {
+                        $delivery = app(\App\Services\TicketDeliveryService::class);
+                        $tplResponse = $delivery->sendTemplate($ticket->phone);
+                        $tplWamid = $delivery->getMessageId($tplResponse);
+
+                        if ($tplResponse->successful() && ! $tplResponse->json('error')) {
+                            $ticket->booking?->markTemplateAccepted($tplWamid);
+                        } else {
+                            $tplError = $delivery->getErrorMessage($tplResponse);
+                            $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError, true);
+                            $ticket->booking?->markTemplateFailed($tplError);
+                        }
+                    }
+                } else {
+                    $ticket->markWhatsAppFailed($formattedError);
+                }
             }
             if ($wamid && Schema::hasTable('whatsapp_message_status_events')) DB::table('whatsapp_message_status_events')->where('message_id', $wamid)->delete();
             return;
@@ -351,21 +391,7 @@ class WhatsAppWebhookController extends Controller
             } elseif ($statusName === 'sent') {
                 Booking::whereKey($booking->id)->whereNotIn('template_status', ['delivered', 'read', 'failed'])->update(['template_status' => 'sent', 'updated_at' => now()]);
             } elseif (in_array($statusName, ['failed', 'undelivered'], true)) {
-                Booking::whereKey($booking->id)->whereNotIn('template_status', ['delivered', 'read'])->update([
-                    'template_status' => 'failed',
-                    'template_error'  => $formattedError,
-                    'updated_at'      => now(),
-                ]);
-
-                // Also update any pending tickets in this booking that were waiting on this template
-                $booking->tickets()
-                    ->where('whatsapp_sent', false)
-                    ->whereNotIn('delivery_status', ['delivered', 'sent'])
-                    ->update([
-                        'delivery_status' => 'failed',
-                        'delivery_error'  => 'فشل إرسال قالب الاستلام: ' . $formattedError,
-                        'updated_at'      => now(),
-                    ]);
+                $booking->markTemplateFailed($formattedError);
             }
             if ($wamid && Schema::hasTable('whatsapp_message_status_events')) DB::table('whatsapp_message_status_events')->where('message_id', $wamid)->delete();
             return;

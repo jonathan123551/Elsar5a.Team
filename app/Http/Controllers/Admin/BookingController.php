@@ -183,6 +183,7 @@ class BookingController extends Controller
                         'status_badge_text'    => $statusBadgeText,
                         'status_badge_type'    => $statusBadgeType,
                     ],
+                    'delivery_html' => view('admin.bookings.partials.wa-delivery-section', compact('booking'))->render(),
                 ];
             }
         }
@@ -494,7 +495,7 @@ public function receiveTicket(Request $request)
             $ticket->update(['resend_requested_at' => now()]);
             $templateResponse = $delivery->sendTemplate($ticket->phone);
             if ($templateResponse->successful() && !$templateResponse->json('error')) {
-                $ticket->markAwaitingCustomerClick(null);
+                $ticket->markAwaitingCustomerClick(null, true);
                 $ticket->booking->markTemplateAccepted($delivery->getMessageId($templateResponse));
                 return back()->with('status', '✅ تم إعادة إرسال قالب استلام التذكرة، وبانتظار نقر العميل.');
             }
@@ -531,7 +532,7 @@ public function receiveTicket(Request $request)
             $tplWamid = $delivery->getMessageId($tplResponse);
 
             if ($tplResponse->successful() && !$tplResponse->json('error')) {
-                $ticket->markAwaitingCustomerClick(null);
+                $ticket->markAwaitingCustomerClick(null, true);
 
                 if ($ticket->booking) {
                     $ticket->booking->markTemplateAccepted($tplWamid);
@@ -541,7 +542,7 @@ public function receiveTicket(Request $request)
             }
 
             $tplError = $delivery->getErrorMessage($tplResponse);
-            $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError);
+            $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError, true);
 
             if ($ticket->booking) {
                 $ticket->booking->markTemplateFailed($tplError);
@@ -594,7 +595,7 @@ public function receiveTicket(Request $request)
                 $sentCount++;
             } elseif ($delivery->isWindowClosed($response)) {
                 $windowClosed = true;
-                $ticket->markAwaitingCustomerClick(null);
+                $ticket->markAwaitingCustomerClick(null, true);
             } else {
                 $failCount++;
                 $ticket->markWhatsAppFailed($delivery->getErrorMessage($response));
@@ -683,11 +684,11 @@ public function receiveTicket(Request $request)
                 $tplWamid = $delivery->getMessageId($tplResponse);
                 if ($tplResponse->successful() && !$tplResponse->json('error')) {
                     $templateCount++;
-                    $ticket->markAwaitingCustomerClick(null);
+                    $ticket->markAwaitingCustomerClick(null, true);
                     $booking->markTemplateAccepted($tplWamid);
                 } else {
                     $failCount++;
-                    $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse));
+                    $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse), true);
                 }
             } else {
                 $failCount++;
@@ -770,13 +771,13 @@ public function receiveTicket(Request $request)
                 $tplWamid = $delivery->getMessageId($tplResponse);
                 if ($tplResponse->successful() && !$tplResponse->json('error')) {
                     $templateCount++;
-                    $ticket->markAwaitingCustomerClick(null);
+                    $ticket->markAwaitingCustomerClick(null, true);
                     if ($ticket->booking_id) {
                         $affectedBookings[$ticket->booking_id] = $tplWamid;
                     }
                 } else {
                     $failCount++;
-                    $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse));
+                    $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $delivery->getErrorMessage($tplResponse), true);
                 }
             } else {
                 $failCount++;
@@ -807,7 +808,7 @@ public function receiveTicket(Request $request)
         $key = $ticket->booking_id . ':' . $phone;
         if (array_key_exists($key, $attempts)) {
             if ($attempts[$key] === true) {
-                $ticket->markAwaitingCustomerClick(null);
+                $ticket->markAwaitingCustomerClick(null, true);
                 return true;
             }
             $ticket->markWhatsAppFailed((string) $attempts[$key]);
@@ -817,7 +818,7 @@ public function receiveTicket(Request $request)
         $ticket->update(['resend_requested_at' => now()]);
         $response = $delivery->sendTemplate($ticket->phone);
         if ($response->successful() && ! $response->json('error')) {
-            $ticket->markAwaitingCustomerClick(null);
+            $ticket->markAwaitingCustomerClick(null, true);
             $ticket->booking->markTemplateAccepted($delivery->getMessageId($response));
             $attempts[$key] = true;
             return true;
@@ -832,10 +833,21 @@ public function receiveTicket(Request $request)
 
     private function isWaitingForCustomerClick(Ticket $ticket): bool
     {
-        return $ticket->claimed_at === null
-            && $ticket->booking !== null
-            && $ticket->booking->isTemplateSent()
-            && in_array($ticket->delivery_status, ['pending', 'failed', null], true);
+        if ($ticket->claimed_at !== null || $ticket->isTicketDeliveredOrReceived()) {
+            return false;
+        }
+
+        if ($ticket->booking !== null && $ticket->booking->isTemplateSent() && in_array($ticket->delivery_status, ['pending', 'failed', null], true)) {
+            return true;
+        }
+
+        if ($ticket->delivery_status === 'failed' && $ticket->delivery_error !== null) {
+            if (str_contains($ticket->delivery_error, '24 ساعة') || str_contains($ticket->delivery_error, 'قالب الاستلام') || str_contains($ticket->delivery_error, '131047')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function delete($id)

@@ -132,6 +132,21 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
                 return;
             }
 
+            if ($delivery->isWindowClosed($response)) {
+                $tplResponse = $delivery->sendTemplate($ticket->phone);
+                $tplWamid = $delivery->getMessageId($tplResponse);
+                if ($tplResponse->successful() && ! $tplResponse->json('error')) {
+                    $ticket->markAwaitingCustomerClick(null, true);
+                    $ticket->booking?->markTemplateAccepted($tplWamid);
+                    return;
+                }
+                $tplError = $delivery->getErrorMessage($tplResponse);
+                $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError, true);
+                $ticket->booking?->markTemplateFailed($tplError);
+                $this->fail(new \RuntimeException($tplError));
+                return;
+            }
+
             $errorMessage = $delivery->getErrorMessage($response);
 
             Log::error(
@@ -154,35 +169,20 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
             $errorCode = $response->json('error.code');
             $permanent = in_array($errorCode, [131026, 131047, 131053], true);
 
-            Ticket::whereKey($ticket->id)
-                ->whereNotIn('delivery_status', ['delivered', 'read'])
-                ->update([
-                    'whatsapp_sent'   => false,
-                    'delivery_status' => 'failed',
-                    'delivery_error'  => $errorMessage,
-                ]);
+            $ticket->markWhatsAppFailed($errorMessage);
 
             if ($permanent) {
-                $this->fail(new \RuntimeException(
-                    'Permanent Meta error '.$errorCode.' — '.$response->body()
-                ));
+                $this->fail(new \RuntimeException($errorMessage));
 
                 return;
             }
 
             // Retryable — throw so the worker schedules the next attempt. The
             // row is back at 'failed', so the retry (or a fresh tap) re-claims it.
-            throw new \RuntimeException(
-                'WhatsApp image send failed (status '.$response->status().'): '.$response->body()
-            );
+            throw new \RuntimeException($errorMessage);
         } catch (\Throwable $e) {
             if ($response === null) {
-                Ticket::whereKey($ticket->id)
-                    ->whereNotIn('delivery_status', ['delivered', 'read'])
-                    ->update([
-                        'delivery_status' => 'failed',
-                        'delivery_error'  => $e->getMessage(),
-                    ]);
+                $ticket->markWhatsAppFailed($e->getMessage());
 
                 Log::error(
                     'WHATSAPP_SEND_FAILED',
@@ -208,13 +208,10 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
         // Terminal failure: never leave a ticket stranded as 'sending'.
         // Reset to 'failed' (only if still undelivered) so the admin /
         // customer resend path can re-claim and try again.
-        Ticket::where('id', $this->ticketId)
-            ->where('whatsapp_sent', false)
-            ->whereNotIn('delivery_status', ['delivered', 'read'])
-            ->update([
-                'delivery_status' => 'failed',
-                'delivery_error'  => $e->getMessage(),
-            ]);
+        $ticket = Ticket::find($this->ticketId);
+        if ($ticket && ! $ticket->whatsapp_sent && ! in_array($ticket->delivery_status, ['delivered', 'read'], true)) {
+            $ticket->markWhatsAppFailed($ticket->delivery_error ?: $e->getMessage());
+        }
 
         Log::error(
             'WHATSAPP_SEND_FAILED',

@@ -130,25 +130,45 @@ class Booking extends Model
     public function markTemplateAccepted(?string $messageId): void
     {
         $resolvedMessageId = $messageId ?: $this->template_message_id;
+        $now = now();
         DB::table($this->getTable())->where('id', $this->getKey())->update([
             'template_status' => DB::raw("CASE WHEN template_status IN ('delivered', 'read') THEN template_status ELSE 'sent' END"),
             'template_message_id' => $resolvedMessageId,
-            'template_sent_at' => now(),
+            'template_sent_at' => $now,
             'template_error' => null,
-            'updated_at' => now(),
+            'updated_at' => $now,
         ]);
+        DB::table('tickets')->where('booking_id', $this->getKey())
+            ->where('whatsapp_sent', false)
+            ->whereNull('claimed_at')
+            ->whereNotIn('delivery_status', ['delivered', 'read', 'sent', 'sending'])
+            ->update([
+                'delivery_status' => 'pending',
+                'delivery_error' => null,
+                'updated_at' => $now,
+            ]);
         WhatsAppMessageStatusEvent::applyPendingForMessage($resolvedMessageId);
     }
 
     /** Preserve stronger delivery webhook outcomes when a synchronous template attempt fails. */
     public function markTemplateFailed(string $error): void
     {
+        $now = now();
         DB::table($this->getTable())->where('id', $this->getKey())
             ->whereNotIn('template_status', ['delivered', 'read'])
             ->update([
                 'template_status' => 'failed',
                 'template_error' => $error,
-                'updated_at' => now(),
+                'updated_at' => $now,
+            ]);
+
+        DB::table('tickets')->where('booking_id', $this->getKey())
+            ->where('whatsapp_sent', false)
+            ->whereNotIn('delivery_status', ['delivered', 'read', 'sent'])
+            ->update([
+                'delivery_status' => 'failed',
+                'delivery_error' => 'فشل إرسال قالب الاستلام: ' . $error,
+                'updated_at' => $now,
             ]);
     }
 
@@ -178,7 +198,7 @@ class Booking extends Model
     }
 
     /**
-     * True ONLY when the template was sent and ZERO tickets have been claimed/sent/delivered yet.
+     * True when the template was sent and tickets are waiting for the customer to click the template CTA.
      */
     public function isAwaitingCustomerClick(): bool
     {
@@ -190,13 +210,24 @@ class Booking extends Model
             return false;
         }
 
-        $anyClaimedOrSent = $this->tickets->contains(function ($ticket) {
-            return $ticket->claimed_at !== null
-                || $ticket->whatsapp_sent
-                || in_array($ticket->delivery_status, ['sent', 'delivered', 'read', 'sending'], true);
+        if ($this->tickets->isEmpty()) {
+            return true;
+        }
+
+        $anyInFlightOrFailed = $this->tickets->contains(function ($ticket) {
+            return in_array($ticket->delivery_status, ['sending', 'sent', 'failed'], true)
+                || ($ticket->claimed_at !== null && ! $ticket->isTicketDeliveredOrReceived());
         });
 
-        return ! $anyClaimedOrSent;
+        if ($anyInFlightOrFailed) {
+            return false;
+        }
+
+        return $this->tickets->contains(function ($ticket) {
+            return $ticket->claimed_at === null
+                && ! $ticket->whatsapp_sent
+                && ! $ticket->isTicketDeliveredOrReceived();
+        });
     }
 
     /**
@@ -209,7 +240,7 @@ class Booking extends Model
      *  - rejected: '—' (muted)
      *  - pending: 'بانتظار الاعتماد' (sky)
      *  - approved + all delivered: 'تم الاستلام (X/Y)' (emerald)
-     *  - approved + failure: 'فشل التسليم' (rose)
+     *  - approved + failure: 'فشل الإرسال' (rose)
      *  - approved + active sending: 'جاري الإرسال…' (amber with spinner)
      *  - approved + tickets sent to Meta: 'أُرسلت للشبكة (X/Y)' (cyan/teal, no spinner)
      *  - approved + template sent: 'بانتظار نقر العميل' (sky, gentle pulse)
@@ -262,7 +293,7 @@ class Booking extends Model
                 ?? $this->tickets->where('delivery_status', 'failed')->first()?->delivery_error
                 ?? 'تعذر إرسال بعض التذاكر عبر واتساب';
             return [
-                'text' => 'فشل التسليم',
+                'text' => 'فشل الإرسال',
                 'type' => 'rose',
                 'bg' => 'bg-rose-500/15 text-rose-300 border border-rose-500/40',
                 'has_spinner' => false,

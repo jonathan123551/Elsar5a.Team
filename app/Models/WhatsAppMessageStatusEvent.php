@@ -76,23 +76,51 @@ class WhatsAppMessageStatusEvent extends Model
 
     private static function applyToTicket(Ticket $ticket, object $event): void
     {
+        $now = now();
         if (in_array($event->status, ['delivered', 'read'], true)) {
             Ticket::whereKey($ticket->id)->update([
                 'delivery_status' => $event->status === 'read' ? 'read' : DB::raw("CASE WHEN delivery_status = 'read' THEN 'read' ELSE 'delivered' END"),
                 'whatsapp_sent' => true,
-                'last_delivered_at' => $ticket->last_delivered_at ?? now(),
+                'last_delivered_at' => $ticket->last_delivered_at ?? $now,
                 'delivery_error' => null,
-                'updated_at' => now(),
+                'updated_at' => $now,
             ]);
+            if ($ticket->booking_id) {
+                Booking::whereKey($ticket->booking_id)->update(['updated_at' => $now]);
+            }
         } elseif ($event->status === 'sent') {
             Ticket::whereKey($ticket->id)->whereNotIn('delivery_status', ['delivered', 'read', 'failed'])->update([
-                'delivery_status' => 'sent', 'whatsapp_sent' => true, 'updated_at' => now(),
+                'delivery_status' => 'sent', 'whatsapp_sent' => true, 'updated_at' => $now,
             ]);
+            if ($ticket->booking_id) {
+                Booking::whereKey($ticket->booking_id)->update(['updated_at' => $now]);
+            }
         } elseif (in_array($event->status, ['failed', 'undelivered'], true)) {
-            Ticket::whereKey($ticket->id)->whereNotIn('delivery_status', ['delivered', 'read'])->update([
-                'delivery_status' => 'failed', 'whatsapp_sent' => false,
-                'delivery_error' => $event->error_message ?: 'تعذر تسليم الرسالة عبر WhatsApp', 'updated_at' => now(),
-            ]);
+            $isWindowClosed = (int) ($event->error_code ?? 0) === 131047
+                || str_contains((string) ($event->error_message ?? ''), '131047')
+                || str_contains((string) ($event->error_message ?? ''), '24 ساعة');
+
+            if ($isWindowClosed) {
+                $ticket->markAwaitingCustomerClick(null, true);
+                $phoneKey = preg_replace('/[^0-9]/', '', (string) $ticket->phone);
+                $dedupeKey = 'wa_131047_tpl:' . ($ticket->booking_id ?? 0) . ':' . $phoneKey;
+
+                if (\Illuminate\Support\Facades\Cache::add($dedupeKey, 1, now()->addSeconds(30))) {
+                    $delivery = app(\App\Services\TicketDeliveryService::class);
+                    $tplResponse = $delivery->sendTemplate($ticket->phone);
+                    $tplWamid = $delivery->getMessageId($tplResponse);
+
+                    if ($tplResponse->successful() && ! $tplResponse->json('error')) {
+                        $ticket->booking?->markTemplateAccepted($tplWamid);
+                    } else {
+                        $tplError = $delivery->getErrorMessage($tplResponse);
+                        $ticket->markWhatsAppFailed('نافذة الـ 24 ساعة مغلقة وفشل إرسال القالب أيضاً: ' . $tplError, true);
+                        $ticket->booking?->markTemplateFailed($tplError);
+                    }
+                }
+            } else {
+                $ticket->markWhatsAppFailed($event->error_message ?: 'تعذر تسليم الرسالة عبر WhatsApp');
+            }
         }
     }
 
@@ -109,11 +137,7 @@ class WhatsAppMessageStatusEvent extends Model
                 'template_status' => 'sent', 'updated_at' => now(),
             ]);
         } elseif (in_array($event->status, ['failed', 'undelivered'], true)) {
-            Booking::whereKey($booking->id)->whereNotIn('template_status', ['delivered', 'read'])->update([
-                'template_status' => 'failed',
-                'template_error' => $event->error_message ?: 'تعذر تسليم قالب WhatsApp',
-                'updated_at' => now(),
-            ]);
+            $booking->markTemplateFailed($event->error_message ?: 'تعذر تسليم قالب WhatsApp');
         }
     }
 }

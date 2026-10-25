@@ -529,12 +529,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (modalImg) modalImg.src = '';
     }
 
-    document.querySelectorAll('[data-preview-img]').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            openModal(this.getAttribute('data-preview-img'), this.getAttribute('data-preview-title'));
-        });
+    document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-preview-img]') : null;
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openModal(btn.getAttribute('data-preview-img'), btn.getAttribute('data-preview-title'));
     });
 
     if (modalClose) modalClose.addEventListener('click', closeModal);
@@ -579,9 +579,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // -------------------------------------------------------------
-    // LIVE BOOKING MANAGEMENT STATUS POLLING (5s incremental updates)
+    // LIVE BOOKING MANAGEMENT STATUS POLLING (3s incremental updates)
     // -------------------------------------------------------------
-    var pollInterval = 5000;
+    var pollInterval = 3000;
     var pollTimer = null;
     var abortCtrl = null;
     var latestKnownId = {{ (int) $bookings->max('id') }};

@@ -70,10 +70,8 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
 
             $errorMessage = $delivery->getErrorMessage($response);
             if ($this->bookingId) {
-                \App\Models\Booking::where('id', $this->bookingId)->whereNotIn('template_status', ['delivered', 'read'])->update([
-                    'template_status' => 'failed',
-                    'template_error'  => $errorMessage,
-                ]);
+                $booking = \App\Models\Booking::find($this->bookingId);
+                $booking?->markTemplateFailed($errorMessage);
             }
 
             Log::error(
@@ -94,25 +92,19 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
             $permanent = in_array($errorCode, [131026, 131047], true);
 
             if ($permanent) {
-                $this->fail(new \RuntimeException(
-                    'Permanent Meta error '.$errorCode.' — '.$response->body()
-                ));
+                $this->fail(new \RuntimeException($errorMessage));
 
                 return;
             }
 
-            throw new \RuntimeException(
-                'WhatsApp template send failed (status '.$response->status().'): '.$response->body()
-            );
+            throw new \RuntimeException($errorMessage);
         } catch (\Throwable $e) {
-            if ($this->bookingId) {
-                \App\Models\Booking::where('id', $this->bookingId)->whereNotIn('template_status', ['delivered', 'read'])->update([
-                    'template_status' => 'failed',
-                    'template_error'  => $e->getMessage(),
-                ]);
-            }
-
             if ($response === null) {
+                if ($this->bookingId) {
+                    $booking = \App\Models\Booking::find($this->bookingId);
+                    $booking?->markTemplateFailed($e->getMessage());
+                }
+
                 Log::error(
                     'WHATSAPP_SEND_FAILED',
                     LogContext::whatsappFailure(
@@ -135,10 +127,10 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
     public function failed(\Throwable $e): void
     {
         if ($this->bookingId) {
-            \App\Models\Booking::where('id', $this->bookingId)->whereNotIn('template_status', ['delivered', 'read'])->update([
-                'template_status' => 'failed',
-                'template_error'  => $e->getMessage(),
-            ]);
+            $booking = \App\Models\Booking::find($this->bookingId);
+            if ($booking && ! in_array($booking->template_status, ['delivered', 'read'], true)) {
+                $booking->markTemplateFailed($booking->template_error ?: $e->getMessage());
+            }
         }
 
         Log::error(
