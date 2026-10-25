@@ -7,8 +7,14 @@
     <meta name="theme-color" content="#070a11">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="icon" type="image/png" href="{{ asset('images/sarkha-logo.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/sarkha-logo.png') }}">
+    <meta name="application-name" content="Elsar5a Admin">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Elsar5a">
+    <link rel="manifest" href="{{ route('admin.pwa.manifest') }}" crossorigin="use-credentials">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('images/pwa/admin-icon-192.png') }}">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('images/pwa/admin-icon-192.png') }}">
 
     <script>document.documentElement.classList.replace('no-js', 'js');</script>
 
@@ -306,6 +312,12 @@
             {{-- Center: Desktop Operational Navigation --}}
             @php
                 $pendingBookingsCount = \App\Models\Booking::where('status', 'pending')->count();
+                $admUnreadNotifsCount = 0;
+                $admRecentNotifs = collect();
+                if (auth()->check() && \Illuminate\Support\Facades\Schema::hasTable('admin_notifications')) {
+                    $admUnreadNotifsCount = \App\Models\AdminNotification::where('user_id', auth()->id())->whereNull('read_at')->count();
+                    $admRecentNotifs = \App\Models\AdminNotification::where('user_id', auth()->id())->orderByDesc('created_at')->orderByDesc('id')->limit(10)->get();
+                }
             @endphp
             <nav class="hidden lg:flex items-center gap-1.5 overflow-x-auto py-1" aria-label="أقسام الإدارة الرئيسية">
                 <a href="{{ route('admin.dashboard') }}"
@@ -364,7 +376,94 @@
             </nav>
 
             {{-- Left: Utilities & Mobile Hamburger --}}
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 relative">
+                {{-- Notification Center Bell & Dropdown (Phase 7 & 8) --}}
+                <div class="relative" id="adm-notif-wrapper">
+                    <button type="button"
+                            id="adm-notif-toggle"
+                            class="relative inline-flex items-center justify-center w-11 h-11 rounded-xl bg-white/5 border border-white/10 text-slate-200 hover:text-amber-300 hover:border-amber-400/40 transition focus:outline-none focus:ring-2 focus:ring-amber-400"
+                            aria-expanded="false"
+                            aria-controls="adm-notif-dropdown"
+                            aria-label="مركز الإشعارات"
+                            title="الإشعارات والتنبيهات">
+                        <span class="text-base leading-none" aria-hidden="true">🔔</span>
+                        <span id="adm-notif-unread-badge"
+                              class="{{ $admUnreadNotifsCount > 0 ? '' : 'hidden' }} absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-amber-500 text-black text-[10px] font-extrabold flex items-center justify-center tabular-nums shadow">
+                            {{ $admUnreadNotifsCount }}
+                        </span>
+                    </button>
+
+                    {{-- Dropdown Panel --}}
+                    <div id="adm-notif-dropdown"
+                         class="hidden fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 top-16 sm:top-13 sm:w-96 bg-[#0b101b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50">
+                        <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2 bg-black/40">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-white">🔔 الإشعارات</span>
+                                @if($admUnreadNotifsCount > 0)
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold tabular-nums">
+                                        {{ $admUnreadNotifsCount }} جديد
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="flex items-center gap-2">
+                                @if($admUnreadNotifsCount > 0)
+                                    <form action="{{ route('admin.notifications.read-all') }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="text-[11px] text-amber-300 hover:text-amber-200 font-semibold">
+                                            تحديد الكل كمقروء
+                                        </button>
+                                    </form>
+                                @endif
+                                <a href="{{ route('admin.notifications.index') }}" class="text-[11px] text-slate-400 hover:text-white">
+                                    الإعدادات ⚙️
+                                </a>
+                            </div>
+                        </div>
+
+                        {{-- Push Opt-In Quick Banner (Phase 8) --}}
+                        <div id="adm-push-optin-bar" class="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between gap-2">
+                            <span id="adm-push-status-text" class="text-[11px] text-amber-200 font-medium">
+                                استقبل تنبيهات الحجوزات على هاتفك
+                            </span>
+                            <button type="button"
+                                    data-enable-admin-push
+                                    class="px-3 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-bold transition shrink-0">
+                                تفعيل إشعارات الحجوزات
+                            </button>
+                        </div>
+
+                        {{-- Notification Items --}}
+                        <div id="adm-notif-list" class="max-h-80 overflow-y-auto divide-y divide-white/5">
+                            @forelse($admRecentNotifs as $notif)
+                                <a href="{{ route('admin.notifications.open', $notif) }}"
+                                   class="block px-4 py-3 hover:bg-white/[0.05] transition {{ $notif->isUnread() ? 'bg-amber-500/[0.07]' : '' }}">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <span class="text-xs font-bold {{ $notif->isUnread() ? 'text-amber-200' : 'text-slate-200' }}">
+                                            {{ $notif->title }}
+                                        </span>
+                                        <span class="text-[10px] text-slate-400 shrink-0" dir="ltr">
+                                            {{ $notif->created_at?->diffForHumans() }}
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
+                                        {{ $notif->body }}
+                                    </p>
+                                </a>
+                            @empty
+                                <div class="px-4 py-6 text-center text-xs text-slate-400">
+                                    لا توجد إشعارات حالياً.
+                                </div>
+                            @endforelse
+                        </div>
+
+                        <div class="px-4 py-2.5 border-t border-white/10 bg-black/40 text-center">
+                            <a href="{{ route('admin.notifications.index') }}" class="text-xs text-amber-300 hover:text-amber-200 font-semibold">
+                                عرض كل الإشعارات وإعدادات التنبيهات &larr;
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Public Site Link --}}
                 <a href="{{ url('/') }}"
                    target="_blank"
@@ -638,6 +737,169 @@
                 if (!drawer.contains(e.target) && !toggle.contains(e.target)) {
                     setOpen(false);
                 }
+            }
+        });
+    })();
+
+    /* =========================================================
+       ADMIN PWA SERVICE WORKER & WEB PUSH SUBSCRIPTION MANAGER
+       ========================================================= */
+    (function () {
+        var notifToggle = document.getElementById('adm-notif-toggle');
+        var notifDropdown = document.getElementById('adm-notif-dropdown');
+        var notifWrapper = document.getElementById('adm-notif-wrapper');
+
+        if (notifToggle && notifDropdown) {
+            notifToggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var isOpen = !notifDropdown.classList.contains('hidden');
+                notifDropdown.classList.toggle('hidden', isOpen);
+                notifToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (notifWrapper && !notifWrapper.contains(e.target)) {
+                    notifDropdown.classList.add('hidden');
+                    notifToggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            var padding = '='.repeat((4 - base64String.length % 4) % 4);
+            var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            var rawData = window.atob(base64);
+            var outputArray = new Uint8Array(rawData.length);
+            for (var i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        function markPushUiEnabled() {
+            var statusText = document.getElementById('adm-push-status-text');
+            if (statusText) {
+                statusText.textContent = 'تم تفعيل الإشعارات بنجاح ✓';
+                statusText.classList.remove('text-amber-200');
+                statusText.classList.add('text-emerald-300', 'font-bold');
+            }
+            var pageFeedback = document.getElementById('push-status-feedback');
+            if (pageFeedback) {
+                pageFeedback.textContent = 'تم تفعيل الإشعارات بنجاح ✓';
+                pageFeedback.classList.remove('hidden');
+            }
+            document.querySelectorAll('[data-enable-admin-push]').forEach(function (btn) {
+                btn.textContent = 'تم تفعيل الإشعارات بنجاح ✓';
+            });
+            document.querySelectorAll('[data-disable-admin-push]').forEach(function (btn) {
+                btn.classList.remove('hidden');
+            });
+        }
+
+        var swRegistrationPromise = null;
+        if ('serviceWorker' in navigator) {
+            swRegistrationPromise = navigator.serviceWorker.register('{{ route('admin.pwa.sw') }}', {
+                scope: '/admin'
+            }).then(function (reg) {
+                if ('PushManager' in window && Notification.permission === 'granted') {
+                    reg.pushManager.getSubscription().then(function (sub) {
+                        if (sub) {
+                            markPushUiEnabled();
+                        }
+                    }).catch(function () {});
+                }
+                return reg;
+            }).catch(function () {
+                return null;
+            });
+        }
+
+        function enableAdminPush(buttonEl) {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+                alert('المتصفح الحالي لا يدعم إشعارات الويب الفورية. على iPhone يرجى إضافة الموقع إلى الشاشة الرئيسية (Add to Home Screen) أولاً.');
+                return;
+            }
+
+            if (buttonEl) {
+                buttonEl.disabled = true;
+            }
+
+            Notification.requestPermission().then(function (permission) {
+                if (permission !== 'granted') {
+                    if (buttonEl) buttonEl.disabled = false;
+                    return;
+                }
+
+                return (swRegistrationPromise || navigator.serviceWorker.register('{{ route('admin.pwa.sw') }}', { scope: '/admin' }))
+                    .then(function (reg) {
+                        return fetch('{{ route('admin.push-subscriptions.vapid-public-key') }}', {
+                            headers: { 'Accept': 'application/json' },
+                            credentials: 'same-origin'
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            var appServerKey = urlBase64ToUint8Array(data.publicKey);
+                            return reg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: appServerKey
+                            });
+                        });
+                    })
+                    .then(function (subscription) {
+                        var csrf = document.querySelector('meta[name="csrf-token"]');
+                        return fetch('{{ route('admin.push-subscriptions.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : ''
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(subscription.toJSON ? subscription.toJSON() : subscription)
+                        });
+                    })
+                    .then(function (res) { return res.json(); })
+                    .then(function (res) {
+                        if (res && res.ok) {
+                            markPushUiEnabled();
+                        }
+                    })
+                    .finally(function () {
+                        if (buttonEl) buttonEl.disabled = false;
+                    });
+            });
+        }
+
+        document.addEventListener('click', function (e) {
+            var enableBtn = e.target.closest('[data-enable-admin-push]');
+            if (enableBtn) {
+                e.preventDefault();
+                enableAdminPush(enableBtn);
+                return;
+            }
+
+            var disableBtn = e.target.closest('[data-disable-admin-push]');
+            if (disableBtn && 'serviceWorker' in navigator) {
+                e.preventDefault();
+                navigator.serviceWorker.ready.then(function (reg) {
+                    return reg.pushManager.getSubscription();
+                }).then(function (sub) {
+                    var endpoint = sub ? sub.endpoint : '';
+                    if (sub) sub.unsubscribe();
+                    var csrf = document.querySelector('meta[name="csrf-token"]');
+                    return fetch('{{ route('admin.push-subscriptions.unsubscribe') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : ''
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ endpoint: endpoint })
+                    });
+                }).then(function () {
+                    window.location.reload();
+                });
             }
         });
     })();

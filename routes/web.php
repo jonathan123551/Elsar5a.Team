@@ -27,6 +27,9 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\AboutController;
 use App\Http\Controllers\Admin\ArchiveController;
 use App\Http\Controllers\Admin\TeamApplicationController as AdminTeamApplicationController;
+use App\Http\Controllers\Admin\PwaController as AdminPwaController;
+use App\Http\Controllers\Admin\PushSubscriptionController as AdminPushSubscriptionController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -146,6 +149,14 @@ Route::post('/admin/scanner/check', [ScannerController::class, 'check'])
     ->middleware('throttle:120,1')
     ->name('admin.scanner.check');
 
+// Admin PWA Manifest & Service Worker (restricted to /admin scope)
+Route::get('/admin/manifest.webmanifest', [AdminPwaController::class, 'manifest'])
+    ->name('admin.pwa.manifest');
+Route::get('/admin-manifest.webmanifest', [AdminPwaController::class, 'manifest']);
+Route::get('/admin/sw.js', [AdminPwaController::class, 'serviceWorker'])
+    ->name('admin.pwa.sw');
+Route::get('/admin-sw.js', [AdminPwaController::class, 'serviceWorker']);
+
 
 /*
 |--------------------------------------------------------------------------
@@ -240,4 +251,26 @@ Route::middleware('admin')
         ->name('settings.payments.edit');
     Route::post('/settings/payments', [SettingsController::class, 'updatePayments'])
         ->name('settings.payments.update');
+
+    // Web Push Subscriptions (Admin-only)
+    Route::get('/push-subscriptions/vapid-public-key', [AdminPushSubscriptionController::class, 'vapidPublicKey'])
+        ->name('push-subscriptions.vapid-public-key');
+    Route::post('/push-subscriptions', [AdminPushSubscriptionController::class, 'store'])
+        ->name('push-subscriptions.store');
+    Route::delete('/push-subscriptions', [AdminPushSubscriptionController::class, 'destroy'])
+        ->name('push-subscriptions.destroy');
+    Route::post('/push-subscriptions/unsubscribe', [AdminPushSubscriptionController::class, 'destroy'])
+        ->name('push-subscriptions.unsubscribe');
+
+    // In-App Notifications & Preferences (Admin-only)
+    Route::get('/notifications', [AdminNotificationController::class, 'index'])
+        ->name('notifications.index');
+    Route::post('/notifications/read-all', [AdminNotificationController::class, 'markAllAsRead'])
+        ->name('notifications.read-all');
+    Route::post('/notifications/preferences', [AdminNotificationController::class, 'updatePreferences'])
+        ->name('notifications.preferences.update');
+    Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'markAsRead'])
+        ->name('notifications.read');
+    Route::get('/notifications/{notification}/open', [AdminNotificationController::class, 'open'])
+        ->name('notifications.open');
 });

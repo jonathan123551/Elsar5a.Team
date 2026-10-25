@@ -106,6 +106,24 @@ class Booking extends Model
         'public_number'     => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (self $booking): void {
+            if (($booking->status ?? 'pending') === 'pending') {
+                app(\App\Services\AdminNotificationService::class)->notifyNewBooking($booking);
+            }
+            if (! empty($booking->transfer_screenshot_path)) {
+                app(\App\Services\AdminNotificationService::class)->notifyPaymentProofUploaded($booking);
+            }
+        });
+
+        static::updated(function (self $booking): void {
+            if ($booking->wasChanged('transfer_screenshot_path') && ! empty($booking->transfer_screenshot_path)) {
+                app(\App\Services\AdminNotificationService::class)->notifyPaymentProofUploaded($booking);
+            }
+        });
+    }
+
     public function isTemplateSent(): bool
     {
         return in_array($this->template_status, ['sent', 'delivered', 'read'], true);
@@ -154,7 +172,7 @@ class Booking extends Model
     public function markTemplateFailed(string $error): void
     {
         $now = now();
-        DB::table($this->getTable())->where('id', $this->getKey())
+        $updated = DB::table($this->getTable())->where('id', $this->getKey())
             ->whereNotIn('template_status', ['delivered', 'read'])
             ->update([
                 'template_status' => 'failed',
@@ -170,6 +188,10 @@ class Booking extends Model
                 'delivery_error' => 'فشل إرسال قالب الاستلام: ' . $error,
                 'updated_at' => $now,
             ]);
+
+        if ($updated > 0) {
+            app(\App\Services\AdminNotificationService::class)->notifyWhatsAppTemplateFailed($this, $error);
+        }
     }
 
     public function ticketsDeliveredCount(): int

@@ -41,5 +41,17 @@
             حفظ الإعدادات
         </button>
     </form>
+
+    <div class="pt-4 border-t border-white/10">
+        <div class="bg-[#0e131f] border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-sm font-bold text-white">🔔 إعدادات الإشعارات وتطبيق الهاتف (PWA)</h2>
+                <p class="text-xs text-slate-400 mt-0.5">تخصيص تنبيهات الحجوزات الجديدة والتحويلات والواتساب.</p>
+            </div>
+            <a href="{{ route('admin.notifications.index') }}" class="admin-btn admin-btn--secondary admin-btn--sm shrink-0">
+                <span>إدارة الإشعارات</span>
+            </a>
+        </div>
+    </div>
 </section>
 @endsection

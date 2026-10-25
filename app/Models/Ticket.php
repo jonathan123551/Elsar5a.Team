@@ -118,7 +118,7 @@ class Ticket extends Model
         if (! $forceReset) {
             $query->whereNotIn('delivery_status', ['delivered', 'read']);
         }
-        $query->update([
+        $updated = $query->update([
             'whatsapp_sent' => false,
             'delivery_status' => 'failed',
             'delivery_error' => $error,
@@ -126,6 +126,9 @@ class Ticket extends Model
         ]);
         if ($this->booking_id) {
             DB::table('bookings')->where('id', $this->booking_id)->update(['updated_at' => $now]);
+        }
+        if ($updated > 0 && ! str_starts_with($error, 'فشل إرسال قالب الاستلام:')) {
+            app(\App\Services\AdminNotificationService::class)->notifyTicketDeliveryFailed($this, $error);
         }
     }
 

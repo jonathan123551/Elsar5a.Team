@@ -222,6 +222,8 @@ class BookingController extends Controller
         'template_error'  => null,
     ]);
 
+    app(\App\Services\AdminNotificationService::class)->notifyBookingApproved($booking, auth()->id());
+
     Log::info('BOOKING_APPROVED', LogContext::base(
         'BOOKING_APPROVED',
         'admin.booking.approve',

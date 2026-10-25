@@ -78,6 +78,7 @@ class WhatsAppMessageStatusEvent extends Model
     {
         $now = now();
         if (in_array($event->status, ['delivered', 'read'], true)) {
+            $wasAlreadyDelivered = in_array($ticket->delivery_status, ['delivered', 'read'], true);
             Ticket::whereKey($ticket->id)->update([
                 'delivery_status' => $event->status === 'read' ? 'read' : DB::raw("CASE WHEN delivery_status = 'read' THEN 'read' ELSE 'delivered' END"),
                 'whatsapp_sent' => true,
@@ -87,6 +88,9 @@ class WhatsAppMessageStatusEvent extends Model
             ]);
             if ($ticket->booking_id) {
                 Booking::whereKey($ticket->booking_id)->update(['updated_at' => $now]);
+            }
+            if (! $wasAlreadyDelivered) {
+                app(\App\Services\AdminNotificationService::class)->notifyTicketDelivered($ticket->fresh());
             }
         } elseif ($event->status === 'sent') {
             Ticket::whereKey($ticket->id)->whereNotIn('delivery_status', ['delivered', 'read', 'failed'])->update([

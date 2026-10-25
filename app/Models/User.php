@@ -45,4 +45,24 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function isAdmin(): bool
+    {
+        return $this->email === 'elsar5ateam2026@gmail.com';
+    }
+
+    public function pushSubscriptions()
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    public function adminNotifications()
+    {
+        return $this->hasMany(AdminNotification::class)->latest();
+    }
+
+    public function notificationPreference()
+    {
+        return $this->hasOne(AdminNotificationPreference::class);
+    }
 }

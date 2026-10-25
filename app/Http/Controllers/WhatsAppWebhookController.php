@@ -208,6 +208,8 @@ class WhatsAppWebhookController extends Controller
                 ]);
                 Booking::whereKey($targetBooking->id)->update(['updated_at' => $now]);
 
+                app(\App\Services\AdminNotificationService::class)->notifyCustomerClaimedTicket($targetBooking);
+
                 foreach ($ticketIds as $ticketId) {
                     SendWhatsAppTicketImageJob::dispatch($ticketId)->onQueue('high');
                 }
@@ -306,6 +308,7 @@ class WhatsAppWebhookController extends Controller
         if ($ticket) {
             $now = now();
             if (in_array($statusName, ['delivered', 'read'], true)) {
+                $wasAlreadyDelivered = in_array($ticket->delivery_status, ['delivered', 'read'], true);
                 Ticket::whereKey($ticket->id)->update([
                     'delivery_status'   => $statusName === 'read' ? 'read' : DB::raw("CASE WHEN delivery_status = 'read' THEN 'read' ELSE 'delivered' END"),
                     'whatsapp_sent'     => true,
@@ -315,6 +318,9 @@ class WhatsAppWebhookController extends Controller
                 ]);
                 if ($ticket->booking_id) {
                     Booking::whereKey($ticket->booking_id)->update(['updated_at' => $now]);
+                }
+                if (! $wasAlreadyDelivered) {
+                    app(\App\Services\AdminNotificationService::class)->notifyTicketDelivered($ticket->fresh());
                 }
             } elseif ($statusName === 'sent') {
                 Ticket::whereKey($ticket->id)->whereNotIn('delivery_status', ['delivered', 'read', 'failed'])->update([
