@@ -783,12 +783,81 @@
         var notifDropdown = document.getElementById('adm-notif-dropdown');
         var notifWrapper = document.getElementById('adm-notif-wrapper');
 
+        function syncAppBadge(count) {
+            if ('setAppBadge' in navigator) {
+                if (typeof count === 'number' && count > 0) {
+                    navigator.setAppBadge(count).catch(function () {});
+                } else {
+                    navigator.clearAppBadge().catch(function () {});
+                }
+            } else if ('clearAppBadge' in navigator && (!count || count <= 0)) {
+                navigator.clearAppBadge().catch(function () {});
+            }
+        }
+
+        function markAllAdminNotificationsAsSeen() {
+            syncAppBadge(0);
+
+            var unreadBadge = document.getElementById('adm-notif-unread-badge');
+            var count = unreadBadge ? parseInt(unreadBadge.textContent.trim(), 10) : 0;
+
+            if (count > 0 || (unreadBadge && !unreadBadge.classList.contains('hidden'))) {
+                var csrf = document.querySelector('meta[name="csrf-token"]');
+                fetch('{{ route('admin.notifications.read-all') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : ''
+                    },
+                    credentials: 'same-origin'
+                }).then(function (res) {
+                    return res.json();
+                }).then(function (data) {
+                    if (data && data.ok) {
+                        if (unreadBadge) {
+                            unreadBadge.classList.add('hidden');
+                            unreadBadge.textContent = '0';
+                        }
+                        var dropdownCounter = document.querySelector('#adm-notif-dropdown .text-\\[10px\\].rounded-full.bg-amber-500\\/20');
+                        if (dropdownCounter) {
+                            dropdownCounter.classList.add('hidden');
+                        }
+                        var readAllBtnForm = document.querySelector('#adm-notif-dropdown form[action*="read-all"]');
+                        if (readAllBtnForm) {
+                            readAllBtnForm.classList.add('hidden');
+                        }
+                        var pageBadge = document.getElementById('page-notif-unread-badge');
+                        if (pageBadge) {
+                            pageBadge.classList.add('hidden');
+                        }
+                        var pageReadAllForm = document.querySelector('form[action*="read-all"]');
+                        if (pageReadAllForm) {
+                            pageReadAllForm.classList.add('hidden');
+                        }
+                        document.querySelectorAll('#adm-notif-list > a').forEach(function (item) {
+                            item.classList.remove('bg-amber-500/[0.07]');
+                            var titleSpan = item.querySelector('.text-amber-200');
+                            if (titleSpan) {
+                                titleSpan.classList.remove('text-amber-200');
+                                titleSpan.classList.add('text-slate-200');
+                            }
+                        });
+                        syncAppBadge(0);
+                    }
+                }).catch(function () {});
+            }
+        }
+
         if (notifToggle && notifDropdown) {
             notifToggle.addEventListener('click', function (e) {
                 e.stopPropagation();
                 var isOpen = !notifDropdown.classList.contains('hidden');
                 notifDropdown.classList.toggle('hidden', isOpen);
                 notifToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                if (!isOpen) {
+                    markAllAdminNotificationsAsSeen();
+                }
             });
 
             document.addEventListener('click', function (e) {
@@ -798,6 +867,24 @@
                 }
             });
         }
+
+        // Auto-mark notifications as seen on app open and when resuming from background
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                setTimeout(markAllAdminNotificationsAsSeen, 600);
+            });
+        } else {
+            setTimeout(markAllAdminNotificationsAsSeen, 600);
+        }
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') {
+                markAllAdminNotificationsAsSeen();
+            }
+        });
+        window.addEventListener('focus', function () {
+            markAllAdminNotificationsAsSeen();
+        });
 
         function urlBase64ToUint8Array(base64String) {
             var padding = '='.repeat((4 - base64String.length % 4) % 4);

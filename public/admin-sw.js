@@ -7,7 +7,7 @@
  *   - Only caches static PWA shell icons/logos under CACHE_VERSION.
  * ========================================================================== */
 
-const CACHE_VERSION = 'elsar5a-admin-pwa-v1';
+const CACHE_VERSION = 'elsar5a-admin-pwa-v2';
 const SAFE_STATIC_ASSETS = [
     '/images/sarkha-logo.png',
     '/images/pwa/admin-icon-192.png',
@@ -146,13 +146,28 @@ self.addEventListener('push', (event) => {
         }
     };
 
-    event.waitUntil(
+    const promises = [
         self.registration.showNotification(payload.title || '🔔 إدارة الصرخة', options)
-    );
+    ];
+
+    // App Badging API: Display unread count badge on the external PWA app icon (iOS 16.4+ & Android/Desktop)
+    if ('setAppBadge' in navigator) {
+        const badgeCount = (typeof payload.unread_count === 'number' && payload.unread_count > 0)
+            ? payload.unread_count
+            : 1;
+        promises.push(navigator.setAppBadge(badgeCount).catch(() => {}));
+    }
+
+    event.waitUntil(Promise.all(promises));
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+
+    // Clear app icon badge when notification is opened / tapped
+    if ('clearAppBadge' in navigator) {
+        navigator.clearAppBadge().catch(() => {});
+    }
 
     const data = event.notification.data || {};
     const targetPath = sanitizeAdminUrl(data.url, data.booking_id);

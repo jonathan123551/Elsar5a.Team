@@ -106,6 +106,8 @@ class AdminPwaAndPushNotificationTest extends TestCase
         $this->assertStringContainsString("addEventListener('notificationclick'", $swContent);
         $this->assertStringContainsString('/images/pwa/admin-icon-192.png', $swContent);
         $this->assertStringContainsString("request.mode === 'navigate'", $swContent);
+        $this->assertStringContainsString('setAppBadge', $swContent);
+        $this->assertStringContainsString('clearAppBadge', $swContent);
     }
 
     /**

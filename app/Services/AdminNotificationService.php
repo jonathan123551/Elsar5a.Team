@@ -255,6 +255,10 @@ class AdminNotificationService
                 $shouldSendWebPush = ($data['type'] === 'new_booking');
 
                 if ($shouldSendWebPush) {
+                    $unreadCount = AdminNotification::where('user_id', $admin->id)
+                        ->whereNull('read_at')
+                        ->count();
+
                     $sentCount = $this->webPush->sendToUser($admin->id, [
                         'notification_id' => $notification->id,
                         'type' => $notification->type,
@@ -265,6 +269,7 @@ class AdminNotificationService
                         'ticket_id' => $notification->ticket_id,
                         'icon' => '/images/pwa/admin-icon-192.png',
                         'badge' => '/images/pwa/admin-badge-96.png',
+                        'unread_count' => $unreadCount,
                         'tag' => $dedupeKey ?: ('elsar5a-notif-' . $notification->id),
                         'timestamp' => $notification->created_at?->getTimestampMs() ?? (time() * 1000),
                     ]);
