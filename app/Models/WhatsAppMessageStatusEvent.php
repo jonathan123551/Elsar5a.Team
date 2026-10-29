@@ -115,6 +115,7 @@ class WhatsAppMessageStatusEvent extends Model
                     $tplWamid = $delivery->getMessageId($tplResponse);
 
                     if ($tplResponse->successful() && ! $tplResponse->json('error')) {
+                        \App\Models\WhatsAppTemplateMessage::record($tplWamid, $ticket->booking_id, $ticket->phone);
                         $ticket->booking?->markTemplateAccepted($tplWamid);
                     } else {
                         $tplError = $delivery->getErrorMessage($tplResponse);

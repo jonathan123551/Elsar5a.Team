@@ -136,6 +136,7 @@ class SendWhatsAppTicketImageJob implements ShouldQueue
                 $tplResponse = $delivery->sendTemplate($ticket->phone);
                 $tplWamid = $delivery->getMessageId($tplResponse);
                 if ($tplResponse->successful() && ! $tplResponse->json('error')) {
+                    \App\Models\WhatsAppTemplateMessage::record($tplWamid, $ticket->booking_id, $ticket->phone);
                     $ticket->markAwaitingCustomerClick(null, true);
                     $ticket->booking?->markTemplateAccepted($tplWamid);
                     return;

@@ -46,6 +46,8 @@ class SendWhatsAppTicketTemplateJob implements ShouldQueue
             $wamid = $delivery->getMessageId($response);
 
             if ($response->successful() && !$response->json('error')) {
+                \App\Models\WhatsAppTemplateMessage::record($wamid, $this->bookingId, $this->phone);
+
                 if ($this->bookingId) {
                     $booking = \App\Models\Booking::find($this->bookingId);
                     $booking?->markTemplateAccepted($wamid);

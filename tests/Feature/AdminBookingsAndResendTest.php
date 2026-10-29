@@ -1370,8 +1370,9 @@ class AdminBookingsAndResendTest extends TestCase
         $this->assertStringContainsString('data-booking-id="'.$booking->id.'"', $response->json('index_rows.table'));
     }
 
-    public function test_cta_with_multiple_eligible_bookings_for_same_phone_fails_safely(): void
+    public function test_cta_with_multiple_eligible_bookings_for_same_phone_drains_all_approved_bookings(): void
     {
+        Queue::fake();
         Http::fake();
         $ticketIds = [];
         foreach (['AMBIGUOUS-1', 'AMBIGUOUS-2'] as $reference) {
@@ -1407,20 +1408,20 @@ class AdminBookingsAndResendTest extends TestCase
                     ],
                 ]],
             ]],
-        ])->assertOk()->assertJson(['status' => 'ambiguous']);
+        ])->assertOk()->assertJson(['ok' => true]);
 
         foreach ($ticketIds as $id) {
-            $this->assertNull(Ticket::findOrFail($id)->claimed_at);
+            $this->assertNotNull(Ticket::findOrFail($id)->claimed_at);
             $this->assertEquals('pending', Ticket::findOrFail($id)->delivery_status);
         }
-        Http::assertNothingSent();
+        Queue::assertPushed(\App\Jobs\SendWhatsAppTicketImageJob::class, 2);
     }
 
     /**
      * Regression Test 1: Initial template send results in accurate awaiting customer click state.
      */
 
-    public function test_cta_context_message_id_selects_the_matching_booking_when_phone_is_shared()
+    public function test_cta_context_message_id_validates_and_dispatches_all_undelivered_tickets_for_customer()
     {
         Queue::fake();
         Http::fake();
@@ -1462,9 +1463,10 @@ class AdminBookingsAndResendTest extends TestCase
             ]],
         ])->assertOk();
 
-        $this->assertNull($tickets['CTX-BOOKING-A']->fresh()->claimed_at);
+        // Both approved bookings belonging to this customer are dispatched
+        $this->assertNotNull($tickets['CTX-BOOKING-A']->fresh()->claimed_at);
         $this->assertNotNull($tickets['CTX-BOOKING-B']->fresh()->claimed_at);
-        Queue::assertPushed(\App\Jobs\SendWhatsAppTicketImageJob::class, 1);
+        Queue::assertPushed(\App\Jobs\SendWhatsAppTicketImageJob::class, 2);
     }
 
     public function test_initial_template_send_results_in_awaiting_customer_click_state()

@@ -820,8 +820,10 @@ public function receiveTicket(Request $request)
         $ticket->update(['resend_requested_at' => now()]);
         $response = $delivery->sendTemplate($ticket->phone);
         if ($response->successful() && ! $response->json('error')) {
+            $tplWamid = $delivery->getMessageId($response);
+            \App\Models\WhatsAppTemplateMessage::record($tplWamid, $ticket->booking_id, $ticket->phone);
             $ticket->markAwaitingCustomerClick(null, true);
-            $ticket->booking->markTemplateAccepted($delivery->getMessageId($response));
+            $ticket->booking->markTemplateAccepted($tplWamid);
             $attempts[$key] = true;
             return true;
         }
