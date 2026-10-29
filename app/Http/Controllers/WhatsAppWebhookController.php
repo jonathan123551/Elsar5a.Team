@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Support\LogContext;
+use App\Support\PhoneNumber;
 
 class WhatsAppWebhookController extends Controller
 {
@@ -112,21 +113,25 @@ class WhatsAppWebhookController extends Controller
                 // only built at approval). Each ticket gets its own queued job;
                 // the job's atomic claim guarantees exactly-once delivery even if
                 // this same tap arrives twice or collides with a resend.
-                $normalizePhone = static function ($value): string {
-                    $digits = preg_replace('/[^0-9]/', '', (string) $value);
-                    if (str_starts_with($digits, '00')) $digits = substr($digits, 2);
-                    if (str_starts_with($digits, '0') && strlen($digits) === 11) $digits = '2'.$digits;
-                    elseif (strlen($digits) === 10 && str_starts_with($digits, '1')) $digits = '20'.$digits;
-                    return $digits;
-                };
+                $normalizePhone = static fn ($value): string => PhoneNumber::canonical($value);
                 $templateContextId = data_get($message, 'context.id');
                 $targetBooking = null;
                 if ($templateContextId) {
-                    $targetBooking = Booking::where('template_message_id', $templateContextId)
+                    $targetBooking = Booking::with('tickets')
+                        ->where('template_message_id', $templateContextId)
                         ->where('status', 'approved')
                         ->whereIn('template_status', ['sending', 'sent', 'delivered', 'read'])
                         ->first();
-                    if ($targetBooking && $normalizePhone($targetBooking->phone) !== $normalizePhone($phone)) {
+                    // Templates are sent to EVERY unique ticket phone of the booking and
+                    // each accepted WAMID overwrites booking.template_message_id, so the
+                    // context WAMID may belong to a secondary ticket holder — not only the
+                    // booker. Accept the tap when the sender is the booker OR holds a
+                    // ticket in this booking; anyone else is still rejected.
+                    $senderBelongsToBooking = $targetBooking && (
+                        PhoneNumber::same($targetBooking->phone, $phone)
+                        || $targetBooking->tickets->contains(fn ($t) => PhoneNumber::same($t->phone, $phone))
+                    );
+                    if ($targetBooking && ! $senderBelongsToBooking) {
                         Log::warning('WHATSAPP_CTA_CONTEXT_PHONE_MISMATCH', LogContext::base(
                             'WHATSAPP_CTA_CONTEXT_PHONE_MISMATCH',
                             'webhook.whatsapp.claim',
